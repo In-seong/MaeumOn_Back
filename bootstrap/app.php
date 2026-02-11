@@ -14,9 +14,6 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware): void {
-        // Sanctum Stateful API 설정
-        $middleware->statefulApi();
-
         // 미들웨어 alias 등록
         $middleware->alias([
             'role' => \App\Http\Middleware\CheckRole::class,
