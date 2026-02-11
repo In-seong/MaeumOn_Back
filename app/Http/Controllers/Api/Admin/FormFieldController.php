@@ -3,22 +3,22 @@
 namespace App\Http\Controllers\Api\Admin;
 
 use App\Http\Controllers\Controller;
-use App\Models\ClaimFormTemplate;
-use App\Models\TemplatePage;
-use App\Models\TemplateField;
+use App\Models\ClaimForm;
+use App\Models\FormPage;
+use App\Models\FormField;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
-class TemplateFieldController extends Controller
+class FormFieldController extends Controller
 {
     /**
      * 양식의 필드 목록
      */
     public function index(int $templateId): JsonResponse
     {
-        $template = ClaimFormTemplate::findOrFail($templateId);
-        $fields = $template->templateFields()->orderBy('sort_order')->get();
+        $template = ClaimForm::findOrFail($templateId);
+        $fields = $template->formFields()->orderBy('field_order')->get();
 
         return response()->json([
             'success' => true,
@@ -31,8 +31,8 @@ class TemplateFieldController extends Controller
      */
     public function indexByPage(int $pageId): JsonResponse
     {
-        $page = TemplatePage::findOrFail($pageId);
-        $fields = $page->templateFields()->orderBy('sort_order')->get();
+        $page = FormPage::findOrFail($pageId);
+        $fields = $page->formFields()->orderBy('field_order')->get();
 
         return response()->json([
             'success' => true,
@@ -45,11 +45,11 @@ class TemplateFieldController extends Controller
      */
     public function store(Request $request, int $templateId): JsonResponse
     {
-        $template = ClaimFormTemplate::findOrFail($templateId);
+        $template = ClaimForm::findOrFail($templateId);
 
         $validated = $request->validate([
-            'template_page_id' => 'nullable|exists:template_pages,id',
-            'field_name' => 'required|string|max:50|unique:template_fields,field_name,NULL,id,claim_form_template_id,' . $templateId,
+            'form_page_id' => 'nullable|exists:form_page,form_page_id',
+            'field_name' => 'required|string|max:50|unique:form_field,field_name,NULL,form_field_id,claim_form_id,' . $templateId,
             'field_label' => 'required|string|max:100',
             'field_type' => 'required|in:text,date,number,resident_number,phone,textarea',
             'x_position' => 'required|integer|min:0',
@@ -59,27 +59,27 @@ class TemplateFieldController extends Controller
             'font_size' => 'integer|min:8|max:72',
             'font_color' => 'string|regex:/^#[0-9A-Fa-f]{6}$/',
             'is_required' => 'boolean',
-            'sort_order' => 'integer|min:0',
+            'field_order' => 'integer|min:0',
             'placeholder' => 'nullable|string|max:255',
             'default_value' => 'nullable|string|max:255',
         ]);
 
-        $validated['claim_form_template_id'] = $templateId;
+        $validated['claim_form_id'] = $templateId;
 
         // 페이지 ID가 없으면 첫 번째 페이지에 연결
-        if (empty($validated['template_page_id'])) {
-            $firstPage = $template->templatePages()->first();
+        if (empty($validated['form_page_id'])) {
+            $firstPage = $template->formPages()->first();
             if ($firstPage) {
-                $validated['template_page_id'] = $firstPage->id;
+                $validated['form_page_id'] = $firstPage->form_page_id;
             }
         }
 
-        // sort_order가 없으면 마지막으로
-        if (!isset($validated['sort_order'])) {
-            $validated['sort_order'] = $template->templateFields()->max('sort_order') + 1;
+        // field_order가 없으면 마지막으로
+        if (!isset($validated['field_order'])) {
+            $validated['field_order'] = $template->formFields()->max('field_order') + 1;
         }
 
-        $field = TemplateField::create($validated);
+        $field = FormField::create($validated);
 
         return response()->json([
             'success' => true,
@@ -93,11 +93,11 @@ class TemplateFieldController extends Controller
      */
     public function storeToPage(Request $request, int $pageId): JsonResponse
     {
-        $page = TemplatePage::findOrFail($pageId);
-        $templateId = $page->claim_form_template_id;
+        $page = FormPage::findOrFail($pageId);
+        $templateId = $page->claim_form_id;
 
         $validated = $request->validate([
-            'field_name' => 'required|string|max:50|unique:template_fields,field_name,NULL,id,claim_form_template_id,' . $templateId,
+            'field_name' => 'required|string|max:50|unique:form_field,field_name,NULL,form_field_id,claim_form_id,' . $templateId,
             'field_label' => 'required|string|max:100',
             'field_type' => 'required|in:text,date,number,resident_number,phone,textarea',
             'x_position' => 'required|integer|min:0',
@@ -107,20 +107,20 @@ class TemplateFieldController extends Controller
             'font_size' => 'integer|min:8|max:72',
             'font_color' => 'string|regex:/^#[0-9A-Fa-f]{6}$/',
             'is_required' => 'boolean',
-            'sort_order' => 'integer|min:0',
+            'field_order' => 'integer|min:0',
             'placeholder' => 'nullable|string|max:255',
             'default_value' => 'nullable|string|max:255',
         ]);
 
-        $validated['claim_form_template_id'] = $templateId;
-        $validated['template_page_id'] = $pageId;
+        $validated['claim_form_id'] = $templateId;
+        $validated['form_page_id'] = $pageId;
 
-        // sort_order가 없으면 마지막으로
-        if (!isset($validated['sort_order'])) {
-            $validated['sort_order'] = $page->templateFields()->max('sort_order') + 1;
+        // field_order가 없으면 마지막으로
+        if (!isset($validated['field_order'])) {
+            $validated['field_order'] = $page->formFields()->max('field_order') + 1;
         }
 
-        $field = TemplateField::create($validated);
+        $field = FormField::create($validated);
 
         return response()->json([
             'success' => true,
@@ -134,11 +134,11 @@ class TemplateFieldController extends Controller
      */
     public function update(Request $request, int $id): JsonResponse
     {
-        $field = TemplateField::findOrFail($id);
+        $field = FormField::findOrFail($id);
 
         $validated = $request->validate([
-            'template_page_id' => 'sometimes|nullable|exists:template_pages,id',
-            'field_name' => 'sometimes|required|string|max:50|unique:template_fields,field_name,' . $id . ',id,claim_form_template_id,' . $field->claim_form_template_id,
+            'form_page_id' => 'sometimes|nullable|exists:form_page,form_page_id',
+            'field_name' => 'sometimes|required|string|max:50|unique:form_field,field_name,' . $id . ',form_field_id,claim_form_id,' . $field->claim_form_id,
             'field_label' => 'sometimes|required|string|max:100',
             'field_type' => 'sometimes|required|in:text,date,number,resident_number,phone,textarea',
             'x_position' => 'sometimes|required|integer|min:0',
@@ -148,7 +148,7 @@ class TemplateFieldController extends Controller
             'font_size' => 'integer|min:8|max:72',
             'font_color' => 'string|regex:/^#[0-9A-Fa-f]{6}$/',
             'is_required' => 'boolean',
-            'sort_order' => 'integer|min:0',
+            'field_order' => 'integer|min:0',
             'placeholder' => 'nullable|string|max:255',
             'default_value' => 'nullable|string|max:255',
         ]);
@@ -167,7 +167,7 @@ class TemplateFieldController extends Controller
      */
     public function destroy(int $id): JsonResponse
     {
-        $field = TemplateField::findOrFail($id);
+        $field = FormField::findOrFail($id);
 
         // 연관된 청구 값이 있는지 확인
         if ($field->claimFieldValues()->count() > 0) {
@@ -190,22 +190,22 @@ class TemplateFieldController extends Controller
      */
     public function bulkUpdate(Request $request, int $templateId): JsonResponse
     {
-        $template = ClaimFormTemplate::findOrFail($templateId);
+        $template = ClaimForm::findOrFail($templateId);
 
         $validated = $request->validate([
             'fields' => 'required|array',
-            'fields.*.id' => 'required|exists:template_fields,id',
+            'fields.*.form_field_id' => 'required|exists:form_field,form_field_id',
             'fields.*.x_position' => 'required|integer|min:0',
             'fields.*.y_position' => 'required|integer|min:0',
             'fields.*.width' => 'integer|min:10|max:2000',
             'fields.*.height' => 'integer|min:10|max:1000',
-            'fields.*.sort_order' => 'integer|min:0',
+            'fields.*.field_order' => 'integer|min:0',
         ]);
 
         DB::transaction(function () use ($validated, $templateId) {
             foreach ($validated['fields'] as $fieldData) {
-                $field = TemplateField::where('id', $fieldData['id'])
-                    ->where('claim_form_template_id', $templateId)
+                $field = FormField::where('form_field_id', $fieldData['form_field_id'])
+                    ->where('claim_form_id', $templateId)
                     ->first();
 
                 if ($field) {
@@ -220,8 +220,8 @@ class TemplateFieldController extends Controller
                     if (isset($fieldData['height'])) {
                         $updateData['height'] = $fieldData['height'];
                     }
-                    if (isset($fieldData['sort_order'])) {
-                        $updateData['sort_order'] = $fieldData['sort_order'];
+                    if (isset($fieldData['field_order'])) {
+                        $updateData['field_order'] = $fieldData['field_order'];
                     }
 
                     $field->update($updateData);
@@ -229,7 +229,7 @@ class TemplateFieldController extends Controller
             }
         });
 
-        $fields = $template->templateFields()->orderBy('sort_order')->get();
+        $fields = $template->formFields()->orderBy('field_order')->get();
 
         return response()->json([
             'success' => true,

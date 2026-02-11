@@ -2,19 +2,23 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class InsuranceCompany extends Model
 {
-    use HasFactory;
+    protected $table = 'insurance_company';
+    protected $primaryKey = 'company_id';
 
     protected $fillable = [
-        'name',
-        'code',
+        'company_name',
+        'company_code',
+        'business_number',
+        'representative_name',
+        'address',
+        'contact_phone',
         'fax_number',
         'logo_path',
+        'website_url',
         'is_active',
     ];
 
@@ -22,25 +26,11 @@ class InsuranceCompany extends Model
         'is_active' => 'boolean',
     ];
 
-    /**
-     * 보험사의 청구서 양식 템플릿들
-     */
-    public function claimFormTemplates(): HasMany
+    public function claimForms()
     {
-        return $this->hasMany(ClaimFormTemplate::class);
+        return $this->hasMany(ClaimForm::class, 'company_id', 'company_id');
     }
 
-    /**
-     * 활성화된 양식 템플릿들만
-     */
-    public function activeTemplates(): HasMany
-    {
-        return $this->hasMany(ClaimFormTemplate::class)->where('is_active', true);
-    }
-
-    /**
-     * 활성화된 보험사만 조회하는 스코프
-     */
     public function scopeActive($query)
     {
         return $query->where('is_active', true);

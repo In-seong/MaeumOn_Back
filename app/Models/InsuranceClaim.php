@@ -2,112 +2,116 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Support\Facades\Storage;
 
 class InsuranceClaim extends Model
 {
-    use HasFactory;
+    // 상태 상수 (물리설계 기준)
+    const STATUS_PENDING = 'pending';
+    const STATUS_PROCESSING = 'processing';
+    const STATUS_APPROVED = 'approved';
+    const STATUS_REJECTED = 'rejected';
+    const STATUS_PAID = 'paid';
+
+    const VALID_STATUSES = [
+        self::STATUS_PENDING,
+        self::STATUS_PROCESSING,
+        self::STATUS_APPROVED,
+        self::STATUS_REJECTED,
+        self::STATUS_PAID,
+    ];
+
+    // 허용되는 상태 전이 규칙
+    const ALLOWED_TRANSITIONS = [
+        self::STATUS_PENDING => [self::STATUS_PROCESSING, self::STATUS_REJECTED],
+        self::STATUS_PROCESSING => [self::STATUS_APPROVED, self::STATUS_REJECTED],
+        self::STATUS_APPROVED => [self::STATUS_PAID],
+        self::STATUS_REJECTED => [],
+        self::STATUS_PAID => [],
+    ];
+
+    protected $table = 'insurance_claim';
+    protected $primaryKey = 'claim_id';
 
     protected $fillable = [
-        'user_id',
-        'claim_form_template_id',
-        'status',
-        'generated_image_path',
+        'customer_id',
+        'insurance_id',
+        'company_id',
+        'agent_id',
+        'claim_form_id',
+        'claim_number',
+        'claim_type',
+        'accident_date',
+        'claim_amount',
+        'approved_amount',
+        'claim_status',
+        'claim_date',
+        'approval_date',
+        'rejection_reason',
         'generated_pdf_path',
         'fax_sent_at',
         'fax_status',
         'notes',
+        'created_by_id',
+        'updated_by_id',
     ];
+
+    protected $appends = ['generated_pdf_url'];
 
     protected $casts = [
+        'accident_date' => 'date',
+        'claim_date' => 'date',
+        'approval_date' => 'date',
         'fax_sent_at' => 'datetime',
+        'claim_amount' => 'decimal:2',
+        'approved_amount' => 'decimal:2',
     ];
 
-    /**
-     * 청구한 고객
-     */
-    public function user(): BelongsTo
-    {
-        return $this->belongsTo(User::class);
-    }
-
-    /**
-     * 사용한 양식 템플릿
-     */
-    public function claimFormTemplate(): BelongsTo
-    {
-        return $this->belongsTo(ClaimFormTemplate::class);
-    }
-
-    /**
-     * 청구서에 입력된 필드 값들
-     */
-    public function fieldValues(): HasMany
-    {
-        return $this->hasMany(ClaimFieldValue::class);
-    }
-
-    /**
-     * 상태 한글 라벨
-     */
     public function getStatusLabelAttribute(): string
     {
-        return match ($this->status) {
-            'pending' => '대기중',
-            'processing' => '처리중',
-            'completed' => '완료',
-            'rejected' => '거절',
-            default => $this->status,
+        return match($this->claim_status) {
+            self::STATUS_PENDING => '접수 대기',
+            self::STATUS_PROCESSING => '처리중',
+            self::STATUS_APPROVED => '승인',
+            self::STATUS_REJECTED => '거절',
+            self::STATUS_PAID => '지급 완료',
+            default => $this->claim_status ?? '알 수 없음',
         };
     }
 
-    /**
-     * 팩스 상태 한글 라벨
-     */
-    public function getFaxStatusLabelAttribute(): ?string
+    public function canTransitionTo(string $newStatus): bool
     {
-        if (!$this->fax_status) {
-            return null;
-        }
-
-        return match ($this->fax_status) {
-            'pending' => '발송 대기',
-            'sent' => '발송 완료',
-            'failed' => '발송 실패',
-            default => $this->fax_status,
-        };
+        $allowed = self::ALLOWED_TRANSITIONS[$this->claim_status] ?? [];
+        return in_array($newStatus, $allowed);
     }
 
-    /**
-     * 생성된 이미지 URL
-     */
-    public function getGeneratedImageUrlAttribute(): ?string
-    {
-        if (!$this->generated_image_path) {
-            return null;
-        }
-        return asset('storage/' . $this->generated_image_path);
-    }
-
-    /**
-     * 생성된 PDF URL
-     */
     public function getGeneratedPdfUrlAttribute(): ?string
     {
-        if (!$this->generated_pdf_path) {
-            return null;
+        if ($this->generated_pdf_path) {
+            $ttl = config('filesystems.s3_private_url_ttl', 60);
+            return Storage::disk('s3')->temporaryUrl($this->generated_pdf_path, now()->addMinutes($ttl));
         }
-        return asset('storage/' . $this->generated_pdf_path);
+        return null;
     }
 
-    /**
-     * 상태별 스코프
-     */
-    public function scopeStatus($query, string $status)
+    public function customer()
     {
-        return $query->where('status', $status);
+        return $this->belongsTo(Customer::class, 'customer_id', 'customer_id');
+    }
+
+    public function claimForm()
+    {
+        return $this->belongsTo(ClaimForm::class, 'claim_form_id', 'claim_form_id');
+    }
+
+    public function insuranceCompany()
+    {
+        return $this->belongsTo(InsuranceCompany::class, 'company_id', 'company_id');
+    }
+
+    public function fieldValues()
+    {
+        return $this->hasMany(ClaimFieldValue::class, 'claim_id', 'claim_id');
     }
 }

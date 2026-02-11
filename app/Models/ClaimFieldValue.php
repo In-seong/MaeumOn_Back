@@ -2,33 +2,26 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class ClaimFieldValue extends Model
 {
-    use HasFactory;
+    protected $table = 'claim_field_value';
+    protected $primaryKey = 'claim_field_value_id';
 
     protected $fillable = [
-        'insurance_claim_id',
-        'template_field_id',
+        'claim_id',
+        'form_field_id',
         'field_value',
     ];
 
-    /**
-     * 소속 청구
-     */
-    public function insuranceClaim(): BelongsTo
+    public function insuranceClaim()
     {
-        return $this->belongsTo(InsuranceClaim::class);
+        return $this->belongsTo(InsuranceClaim::class, 'claim_id', 'claim_id');
     }
 
-    /**
-     * 연결된 필드 정의
-     */
-    public function templateField(): BelongsTo
+    public function formField()
     {
-        return $this->belongsTo(TemplateField::class);
+        return $this->belongsTo(FormField::class, 'form_field_id', 'form_field_id');
     }
 }

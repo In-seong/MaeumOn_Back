@@ -15,8 +15,8 @@ class InsuranceCompanyController extends Controller
     public function publicIndex(Request $request): JsonResponse
     {
         $companies = InsuranceCompany::active()
-            ->select('id', 'name', 'code', 'logo_path')
-            ->orderBy('name')
+            ->select('company_id', 'company_name', 'company_code', 'logo_path')
+            ->orderBy('company_name')
             ->get();
 
         return response()->json([
@@ -36,8 +36,8 @@ class InsuranceCompanyController extends Controller
         if ($request->has('search')) {
             $search = $request->search;
             $query->where(function ($q) use ($search) {
-                $q->where('name', 'like', "%{$search}%")
-                  ->orWhere('code', 'like', "%{$search}%");
+                $q->where('company_name', 'like', "%{$search}%")
+                  ->orWhere('company_code', 'like', "%{$search}%");
             });
         }
 
@@ -46,8 +46,8 @@ class InsuranceCompanyController extends Controller
             $query->where('is_active', $request->boolean('is_active'));
         }
 
-        $companies = $query->withCount('claimFormTemplates')
-            ->orderBy('name')
+        $companies = $query->withCount('claimForms')
+            ->orderBy('company_name')
             ->paginate($request->get('per_page', 15));
 
         return response()->json([
@@ -62,9 +62,15 @@ class InsuranceCompanyController extends Controller
     public function store(Request $request): JsonResponse
     {
         $validated = $request->validate([
-            'name' => 'required|string|max:100',
-            'code' => 'required|string|max:20|unique:insurance_companies,code',
-            'fax_number' => 'nullable|string|max:20',
+            'company_name' => 'required|string|max:100',
+            'company_code' => 'nullable|string|max:20|unique:insurance_company,company_code',
+            'business_number' => 'nullable|string|max:20',
+            'representative_name' => 'nullable|string|max:50',
+            'address' => 'nullable|string|max:255',
+            'contact_phone' => 'nullable|string|max:20',
+            'fax_number' => 'required|string|max:20',
+            'logo_path' => 'nullable|string|max:255',
+            'website_url' => 'nullable|string|max:255',
             'is_active' => 'boolean',
         ]);
 
@@ -82,8 +88,8 @@ class InsuranceCompanyController extends Controller
      */
     public function show(int $id): JsonResponse
     {
-        $company = InsuranceCompany::with(['claimFormTemplates' => function ($query) {
-            $query->withCount('templateFields');
+        $company = InsuranceCompany::with(['claimForms' => function ($query) {
+            $query->withCount('formFields');
         }])->findOrFail($id);
 
         return response()->json([
@@ -100,9 +106,15 @@ class InsuranceCompanyController extends Controller
         $company = InsuranceCompany::findOrFail($id);
 
         $validated = $request->validate([
-            'name' => 'sometimes|required|string|max:100',
-            'code' => 'sometimes|required|string|max:20|unique:insurance_companies,code,' . $id,
-            'fax_number' => 'nullable|string|max:20',
+            'company_name' => 'sometimes|required|string|max:100',
+            'company_code' => 'nullable|string|max:20|unique:insurance_company,company_code,' . $id . ',company_id',
+            'business_number' => 'nullable|string|max:20',
+            'representative_name' => 'nullable|string|max:50',
+            'address' => 'nullable|string|max:255',
+            'contact_phone' => 'nullable|string|max:20',
+            'fax_number' => 'sometimes|required|string|max:20',
+            'logo_path' => 'nullable|string|max:255',
+            'website_url' => 'nullable|string|max:255',
             'is_active' => 'boolean',
         ]);
 
@@ -123,7 +135,7 @@ class InsuranceCompanyController extends Controller
         $company = InsuranceCompany::findOrFail($id);
 
         // 연관된 양식이 있는지 확인
-        if ($company->claimFormTemplates()->count() > 0) {
+        if ($company->claimForms()->count() > 0) {
             return response()->json([
                 'success' => false,
                 'message' => '이 보험사에 연결된 양식이 있어 삭제할 수 없습니다.',

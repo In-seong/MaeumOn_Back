@@ -3,7 +3,8 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
-use App\Models\User;
+use App\Models\Account;
+use App\Models\Customer;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
@@ -17,32 +18,45 @@ class AuthController extends Controller
     public function login(Request $request): JsonResponse
     {
         $request->validate([
-            'email' => 'required|email',
+            'username' => 'required|string',
             'password' => 'required',
         ]);
 
-        $user = User::where('email', $request->email)->first();
+        $account = Account::where('username', $request->username)->first();
 
-        if (!$user || !Hash::check($request->password, $user->password)) {
+        if (!$account || !Hash::check($request->password, $account->password_hash)) {
             throw ValidationException::withMessages([
-                'email' => ['The provided credentials are incorrect.'],
+                'username' => ['아이디 또는 비밀번호가 올바르지 않습니다.'],
+            ]);
+        }
+
+        // 고객은 ID/PW 로그인 불가 (OTP + PIN 방식 사용)
+        if ($account->isCustomer()) {
+            throw ValidationException::withMessages([
+                'username' => ['고객 계정은 휴대폰 인증으로 로그인해주세요.'],
+            ]);
+        }
+
+        if (!$account->is_active) {
+            throw ValidationException::withMessages([
+                'username' => ['This account has been deactivated.'],
             ]);
         }
 
         // 기존 토큰 삭제 후 새 토큰 발급
-        $user->tokens()->delete();
-        $token = $user->createToken('auth-token')->plainTextToken;
+        $account->tokens()->delete();
+        $token = $account->createToken('auth-token')->plainTextToken;
+
+        // last_login_at 업데이트
+        $account->update(['last_login_at' => now()]);
+
+        // customer 관계 로드
+        $account->load('customer');
 
         return response()->json([
             'success' => true,
             'data' => [
-                'user' => [
-                    'id' => $user->id,
-                    'name' => $user->name,
-                    'email' => $user->email,
-                    'phone' => $user->phone,
-                    'role' => $user->role ?? 'user',
-                ],
+                'account' => $account,
                 'token' => $token,
             ],
             'message' => '로그인 성공',
@@ -67,17 +81,12 @@ class AuthController extends Controller
      */
     public function me(Request $request): JsonResponse
     {
-        $user = $request->user();
+        $account = $request->user();
+        $account->load('customer');
 
         return response()->json([
             'success' => true,
-            'data' => [
-                'id' => $user->id,
-                'name' => $user->name,
-                'email' => $user->email,
-                'phone' => $user->phone,
-                'role' => $user->role ?? 'user',
-            ],
+            'data' => $account,
         ]);
     }
 
@@ -87,32 +96,43 @@ class AuthController extends Controller
     public function register(Request $request): JsonResponse
     {
         $request->validate([
-            'name' => 'required|string|max:255',
-            'email' => 'required|email|unique:users,email',
+            'username' => 'required|string|max:50|unique:account,username',
             'password' => 'required|min:6|confirmed',
+            'name' => 'required|string|max:100',
             'phone' => 'nullable|string|max:20',
+            'email' => 'nullable|email|max:100',
         ]);
 
-        $user = User::create([
+        $account = Account::create([
+            'username' => $request->username,
+            'password_hash' => Hash::make($request->password),
+            'role' => Account::ROLE_CUSTOMER,
+            'is_active' => true,
+        ]);
+
+        // customer_id 생성 (8자리 문자열)
+        $customerId = str_pad((string) random_int(0, 99999999), 8, '0', STR_PAD_LEFT);
+        while (Customer::where('customer_id', $customerId)->exists()) {
+            $customerId = str_pad((string) random_int(0, 99999999), 8, '0', STR_PAD_LEFT);
+        }
+
+        Customer::create([
+            'customer_id' => $customerId,
+            'account_id' => $account->account_id,
             'name' => $request->name,
-            'email' => $request->email,
-            'password' => Hash::make($request->password),
             'phone' => $request->phone,
-            'role' => 'user',
+            'email' => $request->email,
+            'is_active' => true,
         ]);
 
-        $token = $user->createToken('auth-token')->plainTextToken;
+        $token = $account->createToken('auth-token')->plainTextToken;
+
+        $account->load('customer');
 
         return response()->json([
             'success' => true,
             'data' => [
-                'user' => [
-                    'id' => $user->id,
-                    'name' => $user->name,
-                    'email' => $user->email,
-                    'phone' => $user->phone,
-                    'role' => $user->role,
-                ],
+                'account' => $account,
                 'token' => $token,
             ],
             'message' => '회원가입 성공',

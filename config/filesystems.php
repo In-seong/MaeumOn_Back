@@ -15,6 +15,8 @@ return [
 
     'default' => env('FILESYSTEM_DISK', 'local'),
 
+    's3_private_url_ttl' => (int) env('AWS_PRIVATE_URL_TTL', 60),
+
     /*
     |--------------------------------------------------------------------------
     | Filesystem Disks
@@ -56,8 +58,11 @@ return [
             'url' => env('AWS_URL'),
             'endpoint' => env('AWS_ENDPOINT'),
             'use_path_style_endpoint' => env('AWS_USE_PATH_STYLE_ENDPOINT', false),
-            'throw' => false,
+            'throw' => true,
             'report' => false,
+            'options' => [
+                'ACL' => '',
+            ],
         ],
 
     ],

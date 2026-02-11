@@ -10,66 +10,61 @@ use Intervention\Image\Typography\FontFactory;
 class ClaimGeneratorService
 {
     /**
-     * 청구서 이미지 생성 (다중 페이지 지원)
-     * 단일 페이지인 경우: 기존과 동일하게 단일 이미지 반환
-     * 다중 페이지인 경우: 첫 번째 페이지 이미지 경로 반환, 전체 페이지는 별도 배열로 저장
+     * 청구서 이미지 생성 (메모리 내 바이너리 배열 반환, S3 저장 안 함)
+     *
+     * @return array<array{page_number: int, binary: string}>
      */
-    public function generateClaimImage(InsuranceClaim $claim): string
+    public function generateClaimImages(InsuranceClaim $claim): array
     {
-        $template = $claim->claimFormTemplate;
-        $pages = $template->templatePages()->orderBy('page_number')->get();
+        $claimForm = $claim->claimForm;
+        $pages = $claimForm->formPages()->orderBy('page_number')->get();
 
         // 페이지가 없으면 구 방식 (단일 이미지)으로 처리
         if ($pages->isEmpty()) {
-            return $this->generateSinglePageImage($claim, $template);
+            return $this->generateSinglePageImageBinary($claim, $claimForm);
         }
 
-        // 다중 페이지 이미지 생성
-        $generatedImages = $this->generateMultiPageImages($claim, $pages);
-
-        // 첫 번째 페이지 이미지 경로 반환 (하위 호환성)
-        return $generatedImages[0] ?? '';
+        // 다중 페이지 이미지 바이너리 생성
+        return $this->generateMultiPageImageBinaries($claim, $pages);
     }
 
     /**
-     * 다중 페이지 이미지 생성
+     * 다중 페이지 이미지 바이너리 생성
+     *
+     * @return array<array{page_number: int, binary: string}>
      */
-    public function generateMultiPageImages(InsuranceClaim $claim, $pages = null): array
+    private function generateMultiPageImageBinaries(InsuranceClaim $claim, $pages): array
     {
-        $template = $claim->claimFormTemplate;
-
-        if ($pages === null) {
-            $pages = $template->templatePages()->orderBy('page_number')->get();
-        }
-
-        $generatedImages = [];
-        $fieldValues = $claim->fieldValues()->with('templateField')->get()->keyBy('template_field_id');
+        $imageBinaries = [];
+        $fieldValues = $claim->fieldValues()->with('formField')->get()->keyBy('form_field_id');
 
         foreach ($pages as $page) {
             if (!$page->page_image_path) {
                 continue;
             }
 
-            $templateImagePath = Storage::disk('public')->path($page->page_image_path);
-
-            if (!file_exists($templateImagePath)) {
+            // S3에서 템플릿 이미지 읽기
+            $templateImageBinary = Storage::disk('s3')->get($page->page_image_path);
+            if (!$templateImageBinary) {
                 continue;
             }
 
-            // 페이지 이미지 로드
-            $image = Image::read($templateImagePath);
+            // 바이너리에서 이미지 로드
+            $image = Image::read($templateImageBinary);
 
             // 해당 페이지의 필드들만 처리
-            foreach ($page->templateFields as $field) {
-                $fieldValue = $fieldValues->get($field->id);
+            foreach ($page->formFields as $field) {
+                $fieldValue = $fieldValues->get($field->form_field_id);
 
                 if (!$fieldValue || !$fieldValue->field_value) {
                     continue;
                 }
 
+                $formattedValue = $this->formatFieldValue($field->field_type, $fieldValue->field_value);
+
                 $this->drawText(
                     $image,
-                    $fieldValue->field_value,
+                    $formattedValue,
                     $field->x_position,
                     $field->y_position,
                     $field->font_size,
@@ -77,48 +72,49 @@ class ClaimGeneratorService
                 );
             }
 
-            // 이미지 저장
-            $filename = 'claim_' . $claim->id . '_page_' . $page->page_number . '_' . time() . '.png';
-            $outputPath = 'claims/' . $filename;
-            $fullPath = Storage::disk('public')->path($outputPath);
-
-            $image->save($fullPath);
-
-            $generatedImages[] = $outputPath;
+            // 바이너리로 변환 (저장하지 않음)
+            $imageBinaries[] = [
+                'page_number' => $page->page_number,
+                'binary' => $image->toPng()->toString(),
+            ];
         }
 
-        return $generatedImages;
+        return $imageBinaries;
     }
 
     /**
-     * 단일 페이지 이미지 생성 (구 방식, 하위 호환성)
+     * 단일 페이지 이미지 바이너리 생성 (구 방식, 하위 호환성)
+     *
+     * @return array<array{page_number: int, binary: string}>
      */
-    private function generateSinglePageImage(InsuranceClaim $claim, $template): string
+    private function generateSinglePageImageBinary(InsuranceClaim $claim, $claimForm): array
     {
-        if (!$template->template_image_path) {
+        if (!$claimForm->template_image_path) {
             throw new \Exception('템플릿 이미지가 없습니다.');
         }
 
-        $templateImagePath = Storage::disk('public')->path($template->template_image_path);
-
-        if (!file_exists($templateImagePath)) {
+        // S3에서 템플릿 이미지 읽기
+        $templateImageBinary = Storage::disk('s3')->get($claimForm->template_image_path);
+        if (!$templateImageBinary) {
             throw new \Exception('템플릿 이미지 파일을 찾을 수 없습니다.');
         }
 
-        // 템플릿 이미지 로드
-        $image = Image::read($templateImagePath);
+        // 바이너리에서 이미지 로드
+        $image = Image::read($templateImageBinary);
 
         // 필드 값들을 이미지에 텍스트로 삽입
-        foreach ($claim->fieldValues()->with('templateField')->get() as $fieldValue) {
-            $field = $fieldValue->templateField;
+        foreach ($claim->fieldValues()->with('formField')->get() as $fieldValue) {
+            $field = $fieldValue->formField;
 
             if (!$field || !$fieldValue->field_value) {
                 continue;
             }
 
+            $formattedValue = $this->formatFieldValue($field->field_type, $fieldValue->field_value);
+
             $this->drawText(
                 $image,
-                $fieldValue->field_value,
+                $formattedValue,
                 $field->x_position,
                 $field->y_position,
                 $field->font_size,
@@ -126,70 +122,43 @@ class ClaimGeneratorService
             );
         }
 
-        // 이미지 저장
-        $filename = 'claim_' . $claim->id . '_' . time() . '.png';
-        $outputPath = 'claims/' . $filename;
-        $fullPath = Storage::disk('public')->path($outputPath);
-
-        $image->save($fullPath);
-
-        return $outputPath;
-    }
-
-    /**
-     * 전체 페이지 이미지 URL 목록 반환
-     */
-    public function getGeneratedImageUrls(InsuranceClaim $claim): array
-    {
-        $template = $claim->claimFormTemplate;
-        $pages = $template->templatePages()->orderBy('page_number')->get();
-
-        if ($pages->isEmpty()) {
-            // 단일 페이지
-            if ($claim->generated_image_path) {
-                return [asset('storage/' . $claim->generated_image_path)];
-            }
-            return [];
-        }
-
-        // 다중 페이지: claim_id_page_N 패턴으로 파일 검색
-        $urls = [];
-        $claimDir = Storage::disk('public')->path('claims');
-        $pattern = 'claim_' . $claim->id . '_page_*';
-
-        foreach (glob($claimDir . '/' . $pattern) as $file) {
-            $urls[] = asset('storage/claims/' . basename($file));
-        }
-
-        // 페이지 번호로 정렬
-        usort($urls, function ($a, $b) {
-            preg_match('/page_(\d+)/', $a, $matchA);
-            preg_match('/page_(\d+)/', $b, $matchB);
-            return ($matchA[1] ?? 0) <=> ($matchB[1] ?? 0);
-        });
-
-        return $urls;
+        return [
+            [
+                'page_number' => 1,
+                'binary' => $image->toPng()->toString(),
+            ],
+        ];
     }
 
     /**
      * 이미지에 텍스트 그리기
+     *
+     * font_size는 admin 에디터에서 CSS px 단위로 설정됨.
+     * 고해상도 이미지가 A4 PDF에 축소되면 텍스트가 매우 작아지므로,
+     * 이미지 너비 / A4 너비(595pt) 비율로 스케일업하여
+     * PDF 출력 시 원래 의도한 크기로 보이도록 함.
      */
     private function drawText($image, string $text, int $x, int $y, int $fontSize, string $color): void
     {
+        // A4 너비 595.28pt 기준으로 스케일 계산
+        $imageWidth = $image->width();
+        $a4WidthPt = 595.28;
+        $scaleFactor = $imageWidth / $a4WidthPt;
+        $scaledFontSize = max(1, (int) round($fontSize * $scaleFactor));
+
         // 폰트 파일 경로 (한글 폰트 필요)
         $fontPath = public_path('fonts/NanumGothic.ttf');
 
         // 폰트 파일이 없으면 기본 폰트 사용
         if (!file_exists($fontPath)) {
-            // 기본 시스템 폰트 사용 시도
             $fontPath = null;
         }
 
-        $image->text($text, $x, $y, function (FontFactory $font) use ($fontSize, $color, $fontPath) {
+        $image->text($text, $x, $y, function (FontFactory $font) use ($scaledFontSize, $color, $fontPath) {
             if ($fontPath) {
                 $font->filename($fontPath);
             }
-            $font->size($fontSize);
+            $font->size($scaledFontSize);
             $font->color($color);
             $font->align('left');
             $font->valign('top');

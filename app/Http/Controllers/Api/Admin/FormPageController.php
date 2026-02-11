@@ -3,24 +3,24 @@
 namespace App\Http\Controllers\Api\Admin;
 
 use App\Http\Controllers\Controller;
-use App\Models\ClaimFormTemplate;
-use App\Models\TemplatePage;
+use App\Models\ClaimForm;
+use App\Models\FormPage;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use Intervention\Image\Laravel\Facades\Image;
 
-class TemplatePageController extends Controller
+class FormPageController extends Controller
 {
     /**
      * 템플릿의 모든 페이지 목록
      */
     public function index(int $templateId): JsonResponse
     {
-        $template = ClaimFormTemplate::findOrFail($templateId);
+        $template = ClaimForm::findOrFail($templateId);
 
-        $pages = $template->templatePages()
-            ->with('templateFields')
+        $pages = $template->formPages()
+            ->with('formFields')
             ->orderBy('page_number')
             ->get();
 
@@ -35,7 +35,7 @@ class TemplatePageController extends Controller
      */
     public function store(Request $request, int $templateId): JsonResponse
     {
-        $template = ClaimFormTemplate::findOrFail($templateId);
+        $template = ClaimForm::findOrFail($templateId);
 
         $validated = $request->validate([
             'page_number' => 'nullable|integer|min:1',
@@ -43,12 +43,12 @@ class TemplatePageController extends Controller
 
         // 페이지 번호 자동 할당 (기존 최대 + 1)
         if (empty($validated['page_number'])) {
-            $maxPageNumber = $template->templatePages()->max('page_number') ?? 0;
+            $maxPageNumber = $template->formPages()->max('page_number') ?? 0;
             $validated['page_number'] = $maxPageNumber + 1;
         }
 
         // 중복 체크
-        $exists = $template->templatePages()
+        $exists = $template->formPages()
             ->where('page_number', $validated['page_number'])
             ->exists();
 
@@ -59,7 +59,7 @@ class TemplatePageController extends Controller
             ], 400);
         }
 
-        $page = $template->templatePages()->create($validated);
+        $page = $template->formPages()->create($validated);
 
         return response()->json([
             'success' => true,
@@ -73,8 +73,8 @@ class TemplatePageController extends Controller
      */
     public function show(int $templateId, int $pageId): JsonResponse
     {
-        $page = TemplatePage::where('claim_form_template_id', $templateId)
-            ->with('templateFields')
+        $page = FormPage::where('claim_form_id', $templateId)
+            ->with('formFields')
             ->findOrFail($pageId);
 
         return response()->json([
@@ -88,7 +88,7 @@ class TemplatePageController extends Controller
      */
     public function update(Request $request, int $templateId, int $pageId): JsonResponse
     {
-        $page = TemplatePage::where('claim_form_template_id', $templateId)
+        $page = FormPage::where('claim_form_id', $templateId)
             ->findOrFail($pageId);
 
         $validated = $request->validate([
@@ -97,9 +97,9 @@ class TemplatePageController extends Controller
 
         if (isset($validated['page_number'])) {
             // 중복 체크 (자신 제외)
-            $exists = TemplatePage::where('claim_form_template_id', $templateId)
+            $exists = FormPage::where('claim_form_id', $templateId)
                 ->where('page_number', $validated['page_number'])
-                ->where('id', '!=', $pageId)
+                ->where('form_page_id', '!=', $pageId)
                 ->exists();
 
             if ($exists) {
@@ -124,12 +124,12 @@ class TemplatePageController extends Controller
      */
     public function destroy(int $templateId, int $pageId): JsonResponse
     {
-        $page = TemplatePage::where('claim_form_template_id', $templateId)
+        $page = FormPage::where('claim_form_id', $templateId)
             ->findOrFail($pageId);
 
         // 이미지 파일 삭제
         if ($page->page_image_path) {
-            Storage::disk('public')->delete($page->page_image_path);
+            Storage::disk('s3')->delete($page->page_image_path);
         }
 
         $page->delete();
@@ -148,7 +148,7 @@ class TemplatePageController extends Controller
      */
     public function uploadImage(Request $request, int $templateId, int $pageId): JsonResponse
     {
-        $page = TemplatePage::where('claim_form_template_id', $templateId)
+        $page = FormPage::where('claim_form_id', $templateId)
             ->findOrFail($pageId);
 
         $request->validate([
@@ -157,16 +157,16 @@ class TemplatePageController extends Controller
 
         // 기존 이미지 삭제
         if ($page->page_image_path) {
-            Storage::disk('public')->delete($page->page_image_path);
+            Storage::disk('s3')->delete($page->page_image_path);
         }
 
         // 새 이미지 저장
         $file = $request->file('image');
         $filename = 'template_' . $templateId . '_page_' . $page->page_number . '_' . time() . '.' . $file->getClientOriginalExtension();
-        $path = $file->storeAs('templates', $filename, 'public');
+        $path = $file->storeAs('templates', $filename, 's3');
 
         // 이미지 크기 가져오기
-        $image = Image::read(Storage::disk('public')->path($path));
+        $image = Image::read($file->path());
         $width = $image->width();
         $height = $image->height();
 
@@ -196,13 +196,13 @@ class TemplatePageController extends Controller
     {
         $request->validate([
             'pages' => 'required|array',
-            'pages.*.id' => 'required|exists:template_pages,id',
+            'pages.*.form_page_id' => 'required|exists:form_page,form_page_id',
             'pages.*.page_number' => 'required|integer|min:1',
         ]);
 
         foreach ($request->pages as $pageData) {
-            TemplatePage::where('id', $pageData['id'])
-                ->where('claim_form_template_id', $templateId)
+            FormPage::where('form_page_id', $pageData['form_page_id'])
+                ->where('claim_form_id', $templateId)
                 ->update(['page_number' => $pageData['page_number']]);
         }
 
@@ -217,7 +217,7 @@ class TemplatePageController extends Controller
      */
     private function reorderPages(int $templateId): void
     {
-        $pages = TemplatePage::where('claim_form_template_id', $templateId)
+        $pages = FormPage::where('claim_form_id', $templateId)
             ->orderBy('page_number')
             ->get();
 

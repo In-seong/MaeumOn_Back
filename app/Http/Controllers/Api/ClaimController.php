@@ -4,7 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\ClaimFieldValue;
-use App\Models\ClaimFormTemplate;
+use App\Models\ClaimForm;
 use App\Models\InsuranceClaim;
 use App\Services\ClaimGeneratorService;
 use App\Services\FaxService;
@@ -35,17 +35,17 @@ class ClaimController extends Controller
      */
     public function index(Request $request): JsonResponse
     {
-        $user = $request->user();
+        $customerId = $request->user()->customer->customer_id;
 
-        $query = InsuranceClaim::where('user_id', $user->id)
+        $query = InsuranceClaim::where('customer_id', $customerId)
             ->with([
-                'claimFormTemplate:id,name,insurance_company_id',
-                'claimFormTemplate.insuranceCompany:id,name,code',
+                'claimForm:claim_form_id,form_name,company_id',
+                'claimForm.insuranceCompany:company_id,company_name,company_code',
             ]);
 
         // 상태 필터
         if ($request->has('status')) {
-            $query->where('status', $request->status);
+            $query->where('claim_status', $request->status);
         }
 
         $claims = $query->orderBy('created_at', 'desc')
@@ -62,19 +62,21 @@ class ClaimController extends Controller
      */
     public function store(Request $request): JsonResponse
     {
-        $user = $request->user();
+        $account = $request->user();
+        $account->load('customer');
+        $customerId = $account->customer->customer_id;
 
         $validated = $request->validate([
-            'claim_form_template_id' => 'required|exists:claim_form_templates,id',
+            'claim_form_id' => 'required|exists:claim_form,claim_form_id',
             'fields' => 'required|array',
-            'fields.*.template_field_id' => 'required|exists:template_fields,id',
+            'fields.*.form_field_id' => 'required|exists:form_field,form_field_id',
             'fields.*.field_value' => 'nullable|string',
         ]);
 
-        $template = ClaimFormTemplate::with('templateFields')->findOrFail($validated['claim_form_template_id']);
+        $claimForm = ClaimForm::with('formFields')->findOrFail($validated['claim_form_id']);
 
-        // 활성화된 템플릿인지 확인
-        if (!$template->is_active) {
+        // 활성화된 양식인지 확인
+        if (!$claimForm->is_active) {
             return response()->json([
                 'success' => false,
                 'message' => '비활성화된 양식입니다.',
@@ -82,18 +84,18 @@ class ClaimController extends Controller
         }
 
         // 필수 필드 검증
-        $requiredFields = $template->templateFields->where('is_required', true);
-        $inputFieldIds = collect($validated['fields'])->pluck('template_field_id')->toArray();
+        $requiredFields = $claimForm->formFields->where('is_required', true);
+        $inputFieldIds = collect($validated['fields'])->pluck('form_field_id')->toArray();
 
         foreach ($requiredFields as $requiredField) {
-            if (!in_array($requiredField->id, $inputFieldIds)) {
+            if (!in_array($requiredField->form_field_id, $inputFieldIds)) {
                 return response()->json([
                     'success' => false,
                     'message' => "{$requiredField->field_label} 필드는 필수입니다.",
                 ], 422);
             }
 
-            $inputField = collect($validated['fields'])->firstWhere('template_field_id', $requiredField->id);
+            $inputField = collect($validated['fields'])->firstWhere('form_field_id', $requiredField->form_field_id);
             if (empty($inputField['field_value'])) {
                 return response()->json([
                     'success' => false,
@@ -104,28 +106,34 @@ class ClaimController extends Controller
 
         DB::beginTransaction();
         try {
+            // claim_number 자동 생성
+            $claimNumber = 'CLM-' . date('Ymd') . '-' . str_pad((string) random_int(0, 9999), 4, '0', STR_PAD_LEFT);
+
             // 청구 레코드 생성
             $claim = InsuranceClaim::create([
-                'user_id' => $user->id,
-                'claim_form_template_id' => $template->id,
-                'status' => 'pending',
+                'customer_id' => $customerId,
+                'company_id' => $claimForm->company_id,
+                'claim_form_id' => $claimForm->claim_form_id,
+                'claim_number' => $claimNumber,
+                'claim_type' => '직접청구',
+                'claim_status' => InsuranceClaim::STATUS_PENDING,
+                'claim_date' => now(),
             ]);
 
             // 필드 값 저장
             foreach ($validated['fields'] as $fieldData) {
                 ClaimFieldValue::create([
-                    'insurance_claim_id' => $claim->id,
-                    'template_field_id' => $fieldData['template_field_id'],
+                    'claim_id' => $claim->claim_id,
+                    'form_field_id' => $fieldData['form_field_id'],
                     'field_value' => $fieldData['field_value'] ?? '',
                 ]);
             }
 
-            // 청구서 이미지 생성
-            $imagePath = $this->claimGenerator->generateClaimImage($claim);
-            $claim->update(['generated_image_path' => $imagePath]);
+            // 이미지 생성 (메모리 내)
+            $imageBinaries = $this->claimGenerator->generateClaimImages($claim);
 
-            // PDF 생성
-            $pdfPath = $this->pdfGenerator->generateClaimPdf($claim);
+            // PDF 생성 → S3 저장
+            $pdfPath = $this->pdfGenerator->generateClaimPdf($claim, $imageBinaries);
             $claim->update(['generated_pdf_path' => $pdfPath]);
 
             DB::commit();
@@ -133,9 +141,9 @@ class ClaimController extends Controller
             return response()->json([
                 'success' => true,
                 'data' => $claim->load([
-                    'claimFormTemplate:id,name,insurance_company_id',
-                    'claimFormTemplate.insuranceCompany:id,name,code',
-                    'fieldValues.templateField:id,field_label,field_type',
+                    'claimForm:claim_form_id,form_name,company_id',
+                    'claimForm.insuranceCompany:company_id,company_name,company_code',
+                    'fieldValues.formField:form_field_id,field_label,field_type',
                 ]),
                 'message' => '청구서가 생성되었습니다.',
             ], 201);
@@ -143,9 +151,100 @@ class ClaimController extends Controller
         } catch (\Exception $e) {
             DB::rollBack();
 
+            $message = app()->isProduction()
+                ? '청구서 생성 중 오류가 발생했습니다.'
+                : '청구서 생성 중 오류가 발생했습니다: ' . $e->getMessage();
+
             return response()->json([
                 'success' => false,
-                'message' => '청구서 생성 중 오류가 발생했습니다: ' . $e->getMessage(),
+                'message' => $message,
+            ], 500);
+        }
+    }
+
+    /**
+     * 청구서 수정
+     */
+    public function update(Request $request, int $id): JsonResponse
+    {
+        $customerId = $request->user()->customer->customer_id;
+
+        $claim = InsuranceClaim::where('customer_id', $customerId)
+            ->where('claim_status', InsuranceClaim::STATUS_PENDING)
+            ->findOrFail($id);
+
+        $validated = $request->validate([
+            'fields' => 'required|array',
+            'fields.*.form_field_id' => 'required|exists:form_field,form_field_id',
+            'fields.*.field_value' => 'nullable|string',
+        ]);
+
+        // 필수 필드 검증
+        $claimForm = $claim->claimForm()->with('formFields')->first();
+        $requiredFields = $claimForm->formFields->where('is_required', true);
+        $inputFieldIds = collect($validated['fields'])->pluck('form_field_id')->toArray();
+
+        foreach ($requiredFields as $requiredField) {
+            if (!in_array($requiredField->form_field_id, $inputFieldIds)) {
+                return response()->json([
+                    'success' => false,
+                    'message' => "{$requiredField->field_label} 필드는 필수입니다.",
+                ], 422);
+            }
+
+            $inputField = collect($validated['fields'])->firstWhere('form_field_id', $requiredField->form_field_id);
+            if (empty($inputField['field_value'])) {
+                return response()->json([
+                    'success' => false,
+                    'message' => "{$requiredField->field_label} 필드는 필수입니다.",
+                ], 422);
+            }
+        }
+
+        DB::beginTransaction();
+        try {
+            // 기존 필드값 삭제 후 재생성
+            $claim->fieldValues()->delete();
+            foreach ($validated['fields'] as $fieldData) {
+                ClaimFieldValue::create([
+                    'claim_id' => $claim->claim_id,
+                    'form_field_id' => $fieldData['form_field_id'],
+                    'field_value' => $fieldData['field_value'] ?? '',
+                ]);
+            }
+
+            // 기존 PDF 삭제
+            if ($claim->generated_pdf_path) {
+                Storage::disk('s3')->delete($claim->generated_pdf_path);
+            }
+
+            // PDF 재생성
+            $imageBinaries = $this->claimGenerator->generateClaimImages($claim);
+            $pdfPath = $this->pdfGenerator->generateClaimPdf($claim, $imageBinaries);
+            $claim->update(['generated_pdf_path' => $pdfPath]);
+
+            DB::commit();
+
+            return response()->json([
+                'success' => true,
+                'data' => $claim->load([
+                    'claimForm:claim_form_id,form_name,company_id',
+                    'claimForm.insuranceCompany:company_id,company_name,company_code',
+                    'fieldValues.formField:form_field_id,field_label,field_type',
+                ]),
+                'message' => '청구서가 수정되었습니다.',
+            ]);
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+
+            $message = app()->isProduction()
+                ? '청구서 수정 중 오류가 발생했습니다.'
+                : '청구서 수정 중 오류가 발생했습니다: ' . $e->getMessage();
+
+            return response()->json([
+                'success' => false,
+                'message' => $message,
             ], 500);
         }
     }
@@ -155,19 +254,15 @@ class ClaimController extends Controller
      */
     public function show(Request $request, int $id): JsonResponse
     {
-        $user = $request->user();
+        $customerId = $request->user()->customer->customer_id;
 
-        $claim = InsuranceClaim::where('user_id', $user->id)
+        $claim = InsuranceClaim::where('customer_id', $customerId)
             ->with([
-                'claimFormTemplate:id,name,description,insurance_company_id,template_image_path',
-                'claimFormTemplate.insuranceCompany:id,name,code,fax_number',
-                'fieldValues.templateField:id,field_name,field_label,field_type',
+                'claimForm:claim_form_id,form_name,form_description,company_id',
+                'claimForm.insuranceCompany:company_id,company_name,company_code,fax_number',
+                'fieldValues.formField:form_field_id,field_name,field_label,field_type',
             ])
             ->findOrFail($id);
-
-        // URL 추가
-        $claim->generated_image_url = $claim->generated_image_url;
-        $claim->generated_pdf_url = $claim->generated_pdf_url;
 
         return response()->json([
             'success' => true,
@@ -176,43 +271,13 @@ class ClaimController extends Controller
     }
 
     /**
-     * 청구서 이미지 다운로드
-     */
-    public function downloadImage(Request $request, int $id)
-    {
-        $user = $request->user();
-
-        $claim = InsuranceClaim::where('user_id', $user->id)->findOrFail($id);
-
-        if (!$claim->generated_image_path) {
-            return response()->json([
-                'success' => false,
-                'message' => '생성된 이미지가 없습니다.',
-            ], 404);
-        }
-
-        $path = Storage::disk('public')->path($claim->generated_image_path);
-
-        if (!file_exists($path)) {
-            return response()->json([
-                'success' => false,
-                'message' => '파일을 찾을 수 없습니다.',
-            ], 404);
-        }
-
-        $filename = '청구서_' . $claim->id . '_' . date('Ymd') . '.png';
-
-        return response()->download($path, $filename);
-    }
-
-    /**
-     * 청구서 PDF 다운로드
+     * 청구서 PDF 다운로드 (S3 streamDownload)
      */
     public function downloadPdf(Request $request, int $id)
     {
-        $user = $request->user();
+        $customerId = $request->user()->customer->customer_id;
 
-        $claim = InsuranceClaim::where('user_id', $user->id)->findOrFail($id);
+        $claim = InsuranceClaim::where('customer_id', $customerId)->findOrFail($id);
 
         if (!$claim->generated_pdf_path) {
             return response()->json([
@@ -221,28 +286,28 @@ class ClaimController extends Controller
             ], 404);
         }
 
-        $path = Storage::disk('public')->path($claim->generated_pdf_path);
-
-        if (!file_exists($path)) {
+        if (!Storage::disk('s3')->exists($claim->generated_pdf_path)) {
             return response()->json([
                 'success' => false,
                 'message' => '파일을 찾을 수 없습니다.',
             ], 404);
         }
 
-        $filename = '청구서_' . $claim->id . '_' . date('Ymd') . '.pdf';
+        $filename = '청구서_' . $claim->claim_id . '_' . date('Ymd') . '.pdf';
 
-        return response()->download($path, $filename);
+        return response()->streamDownload(function () use ($claim) {
+            echo Storage::disk('s3')->get($claim->generated_pdf_path);
+        }, $filename, ['Content-Type' => 'application/pdf']);
     }
 
     /**
-     * 팩스 발송 (Mock)
+     * 팩스 발송
      */
     public function sendFax(Request $request, int $id): JsonResponse
     {
-        $user = $request->user();
+        $customerId = $request->user()->customer->customer_id;
 
-        $claim = InsuranceClaim::where('user_id', $user->id)->findOrFail($id);
+        $claim = InsuranceClaim::where('customer_id', $customerId)->findOrFail($id);
 
         $validated = $request->validate([
             'fax_number' => 'nullable|string|max:20',
@@ -279,15 +344,15 @@ class ClaimController extends Controller
     public function adminIndex(Request $request): JsonResponse
     {
         $query = InsuranceClaim::with([
-            'user:id,name,email,phone',
-            'claimFormTemplate:id,name,insurance_company_id',
-            'claimFormTemplate.insuranceCompany:id,name,code',
+            'customer:customer_id,name,phone,email',
+            'claimForm:claim_form_id,form_name,company_id',
+            'claimForm.insuranceCompany:company_id,company_name,company_code',
         ]);
 
         // 검색
         if ($request->has('search')) {
             $search = $request->search;
-            $query->whereHas('user', function ($q) use ($search) {
+            $query->whereHas('customer', function ($q) use ($search) {
                 $q->where('name', 'like', "%{$search}%")
                   ->orWhere('email', 'like', "%{$search}%");
             });
@@ -295,13 +360,13 @@ class ClaimController extends Controller
 
         // 상태 필터
         if ($request->has('status')) {
-            $query->where('status', $request->status);
+            $query->where('claim_status', $request->status);
         }
 
         // 보험사 필터
         if ($request->has('insurance_company_id')) {
-            $query->whereHas('claimFormTemplate', function ($q) use ($request) {
-                $q->where('insurance_company_id', $request->insurance_company_id);
+            $query->whereHas('claimForm', function ($q) use ($request) {
+                $q->where('company_id', $request->insurance_company_id);
             });
         }
 
@@ -329,19 +394,27 @@ class ClaimController extends Controller
     {
         $claim = InsuranceClaim::findOrFail($id);
 
+        $validStatuses = implode(',', InsuranceClaim::VALID_STATUSES);
         $validated = $request->validate([
-            'status' => 'required|in:pending,processing,completed,rejected',
+            'claim_status' => "required|in:{$validStatuses}",
             'notes' => 'nullable|string',
         ]);
+
+        if (!$claim->canTransitionTo($validated['claim_status'])) {
+            return response()->json([
+                'success' => false,
+                'message' => "'{$claim->status_label}' 상태에서 '{$validated['claim_status']}' 상태로 변경할 수 없습니다.",
+            ], 422);
+        }
 
         $claim->update($validated);
 
         return response()->json([
             'success' => true,
             'data' => $claim->load([
-                'user:id,name,email',
-                'claimFormTemplate:id,name,insurance_company_id',
-                'claimFormTemplate.insuranceCompany:id,name,code',
+                'customer:customer_id,name,email',
+                'claimForm:claim_form_id,form_name,company_id',
+                'claimForm.insuranceCompany:company_id,company_name,company_code',
             ]),
             'message' => '청구 상태가 변경되었습니다.',
         ]);
