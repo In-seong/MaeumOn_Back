@@ -38,6 +38,7 @@ Route::prefix('customer-auth')->group(function () {
     Route::post('/register', [CustomerAuthController::class, 'register']);
     Route::post('/set-pin', [CustomerAuthController::class, 'setPin']);
     Route::post('/login-pin', [CustomerAuthController::class, 'loginWithPin']);
+    Route::post('/login-pin-new-device', [CustomerAuthController::class, 'loginPinNewDevice']);
     Route::post('/check-device', [CustomerAuthController::class, 'checkDevice']);
 });
 

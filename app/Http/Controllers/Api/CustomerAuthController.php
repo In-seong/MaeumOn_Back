@@ -318,6 +318,86 @@ class CustomerAuthController extends Controller
     }
 
     /**
+     * Step 4-B: PIN 로그인 + 새 기기 등록 (OTP 인증 후 새 기기에서)
+     */
+    public function loginPinNewDevice(Request $request): JsonResponse
+    {
+        $request->validate([
+            'phone' => 'required|string|regex:/^01[0-9]{8,9}$/',
+            'pin' => 'required|string|size:6',
+            'device_uuid' => 'required|string|max:100',
+            'device_name' => 'nullable|string|max:100',
+        ]);
+
+        // OTP 인증 완료 여부 확인
+        if (!$this->otpService->isVerified($request->phone)) {
+            return response()->json([
+                'success' => false,
+                'message' => 'OTP 인증이 필요합니다.',
+            ], 403);
+        }
+
+        $customer = Customer::where('phone', $request->phone)->first();
+        if (!$customer) {
+            return response()->json([
+                'success' => false,
+                'message' => '등록되지 않은 전화번호입니다.',
+            ], 401);
+        }
+
+        $account = $customer->account;
+
+        if (!$account || !$account->is_active) {
+            return response()->json([
+                'success' => false,
+                'message' => '비활성화된 계정입니다.',
+            ], 401);
+        }
+
+        // PIN 검증
+        if (!Hash::check($request->pin, $account->pin_hash)) {
+            return response()->json([
+                'success' => false,
+                'message' => 'PIN이 올바르지 않습니다.',
+            ], 401);
+        }
+
+        // 새 기기 등록
+        $deviceTokenPlain = Str::random(64);
+        DeviceToken::updateOrCreate(
+            [
+                'account_id' => $account->account_id,
+                'device_uuid' => $request->device_uuid,
+            ],
+            [
+                'token_hash' => Hash::make($deviceTokenPlain),
+                'device_name' => $request->device_name,
+                'is_active' => true,
+                'last_used_at' => now(),
+            ]
+        );
+
+        // OTP 인증 플래그 소모
+        $this->otpService->consumeVerification($request->phone);
+
+        // 기존 토큰 삭제 후 새 토큰 발급
+        $account->tokens()->delete();
+        $token = $account->createToken('customer-auth')->plainTextToken;
+        $account->update(['last_login_at' => now()]);
+        $account->load('customer');
+
+        return response()->json([
+            'success' => true,
+            'data' => [
+                'account' => $account,
+                'token' => $token,
+                'device_token' => $deviceTokenPlain,
+            ],
+            'message' => '로그인 성공. 기기가 등록되었습니다.',
+        ]);
+    }
+
+    /**
      * 디바이스 등록 여부 확인 (앱 시작 시 호출)
      */
     public function checkDevice(Request $request): JsonResponse
