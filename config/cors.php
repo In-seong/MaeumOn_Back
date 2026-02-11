@@ -26,6 +26,9 @@ return [
         'http://127.0.0.1:5173',
         'http://127.0.0.1:5174',
         'http://127.0.0.1:5175',
+        'https://devuser.podo-life.co.kr',
+        'https://devagent.podo-life.co.kr',
+        'https://devadmin.podo-life.co.kr',
     ],
 
     'allowed_origins_patterns' => [],
