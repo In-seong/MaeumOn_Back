@@ -52,6 +52,9 @@ class InsuranceClaim extends Model
         'generated_pdf_path',
         'fax_sent_at',
         'fax_status',
+        'fax_batch_id',
+        'fax_number_sent',
+        'fax_result_code',
         'notes',
         'created_by_id',
         'updated_by_id',
@@ -113,5 +116,31 @@ class InsuranceClaim extends Model
     public function fieldValues()
     {
         return $this->hasMany(ClaimFieldValue::class, 'claim_id', 'claim_id');
+    }
+
+    /**
+     * 팩스 상태 한글 라벨
+     */
+    public function getFaxStatusLabelAttribute(): ?string
+    {
+        if (!$this->fax_status) {
+            return null;
+        }
+
+        return match ($this->fax_status) {
+            'pending' => '발송 대기',
+            'sending' => '발송 중',
+            'sent' => '발송 완료',
+            'failed' => '발송 실패',
+            default => $this->fax_status,
+        };
+    }
+
+    /**
+     * FC 팩스 배치 메타 정보
+     */
+    public function fcMetaTran()
+    {
+        return $this->hasOne(FcMetaTran::class, 'tr_batchid', 'fax_batch_id');
     }
 }

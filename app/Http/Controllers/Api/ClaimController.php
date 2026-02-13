@@ -317,8 +317,10 @@ class ClaimController extends Controller
 
         if ($result['success']) {
             $claim->update([
-                'fax_status' => 'sent',
+                'fax_status' => 'pending',
                 'fax_sent_at' => now(),
+                'fax_batch_id' => $result['reference_id'],
+                'fax_number_sent' => $result['fax_number'],
             ]);
 
             return response()->json([
