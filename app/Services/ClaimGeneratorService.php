@@ -77,7 +77,7 @@ class ClaimGeneratorService
 
             $imageBinaries[] = [
                 'page_number' => $page->page_number,
-                'binary' => $image->toJpeg(quality: 80)->toString(),
+                'binary' => $image->toJpeg(quality: 65)->toString(),
             ];
         }
 
@@ -129,7 +129,7 @@ class ClaimGeneratorService
         return [
             [
                 'page_number' => 1,
-                'binary' => $image->toJpeg(quality: 80)->toString(),
+                'binary' => $image->toJpeg(quality: 65)->toString(),
             ],
         ];
     }
@@ -174,7 +174,7 @@ class ClaimGeneratorService
      */
     private function resizeForFax($image)
     {
-        $maxWidth = 1654; // A4 200DPI
+        $maxWidth = 2480; // A4 300DPI
 
         if ($image->width() > $maxWidth) {
             $image->scaleDown(width: $maxWidth);
