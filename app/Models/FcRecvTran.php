@@ -6,7 +6,7 @@ use Illuminate\Database\Eloquent\Model;
 
 class FcRecvTran extends Model
 {
-    protected $table = 'fc_recv_tran';
+    protected $table = 'FC_RECV_TRAN';
     public $incrementing = false;
     public $timestamps = false;
 

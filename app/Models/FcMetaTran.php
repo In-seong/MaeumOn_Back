@@ -7,7 +7,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class FcMetaTran extends Model
 {
-    protected $table = 'fc_meta_tran';
+    protected $table = 'FC_META_TRAN';
     protected $primaryKey = 'tr_batchid';
     public $timestamps = false;
 

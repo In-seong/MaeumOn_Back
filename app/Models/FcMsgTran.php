@@ -7,7 +7,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class FcMsgTran extends Model
 {
-    protected $table = 'fc_msg_tran';
+    protected $table = 'FC_MSG_TRAN';
     public $incrementing = false;
     public $timestamps = false;
 
