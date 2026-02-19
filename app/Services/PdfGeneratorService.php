@@ -32,7 +32,7 @@ class PdfGeneratorService
         $imagesHtml = '';
 
         foreach ($imageBinaries as $index => $imageData) {
-            $imageBase64 = 'data:image/png;base64,' . base64_encode($imageData['binary']);
+            $imageBase64 = 'data:image/jpeg;base64,' . base64_encode($imageData['binary']);
             $pageBreak = $index > 0 ? 'style="page-break-before: always;"' : '';
 
             $imagesHtml .= "<div {$pageBreak}><img src=\"{$imageBase64}\" class=\"claim-image\"></div>";
@@ -64,7 +64,7 @@ class PdfGeneratorService
             throw new \Exception('청구서 이미지 바이너리가 없습니다.');
         }
 
-        $imageBase64 = 'data:image/png;base64,' . base64_encode($imageBinaries[0]['binary']);
+        $imageBase64 = 'data:image/jpeg;base64,' . base64_encode($imageBinaries[0]['binary']);
         $imagesHtml = "<div><img src=\"{$imageBase64}\" class=\"claim-image\"></div>";
 
         $html = $this->generatePdfHtml($imagesHtml);

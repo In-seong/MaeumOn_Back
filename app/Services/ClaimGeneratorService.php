@@ -72,10 +72,12 @@ class ClaimGeneratorService
                 );
             }
 
-            // 바이너리로 변환 (저장하지 않음)
+            // 팩스 발송 용량 제한(2MB) 대응: 적정 해상도로 리사이즈 + JPEG 압축
+            $image = $this->resizeForFax($image);
+
             $imageBinaries[] = [
                 'page_number' => $page->page_number,
-                'binary' => $image->toPng()->toString(),
+                'binary' => $image->toJpeg(quality: 80)->toString(),
             ];
         }
 
@@ -122,10 +124,12 @@ class ClaimGeneratorService
             );
         }
 
+        $image = $this->resizeForFax($image);
+
         return [
             [
                 'page_number' => 1,
-                'binary' => $image->toPng()->toString(),
+                'binary' => $image->toJpeg(quality: 80)->toString(),
             ],
         ];
     }
@@ -163,6 +167,20 @@ class ClaimGeneratorService
             $font->align('left');
             $font->valign('top');
         });
+    }
+
+    /**
+     * 팩스 발송 용량 제한 대응: A4 200DPI(1654px) 이하로 리사이즈
+     */
+    private function resizeForFax($image)
+    {
+        $maxWidth = 1654; // A4 200DPI
+
+        if ($image->width() > $maxWidth) {
+            $image->scaleDown(width: $maxWidth);
+        }
+
+        return $image;
     }
 
     /**
