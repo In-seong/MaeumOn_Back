@@ -64,7 +64,7 @@ class CheckFaxResults extends Command
         if ($msg->tr_sendstat === '2') {
             $resultCode = $msg->tr_rsltstat;
 
-            if ($resultCode === '000') {
+            if ((int) $resultCode === 0) {
                 // 성공
                 $claim->update([
                     'fax_status' => 'sent',

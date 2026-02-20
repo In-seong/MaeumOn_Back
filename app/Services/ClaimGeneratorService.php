@@ -170,14 +170,15 @@ class ClaimGeneratorService
     }
 
     /**
-     * 팩스 발송 용량 제한 대응: A4 200DPI(1654px) 이하로 리사이즈
+     * 팩스 발송 용량 제한 대응: LG U+ 가이드 최대 이미지 1728x2333
      */
     private function resizeForFax($image)
     {
-        $maxWidth = 2480; // A4 300DPI
+        $maxWidth = 1728;  // LG U+ 가이드 최대 이미지 너비
+        $maxHeight = 2333; // LG U+ 가이드 최대 이미지 높이
 
-        if ($image->width() > $maxWidth) {
-            $image->scaleDown(width: $maxWidth);
+        if ($image->width() > $maxWidth || $image->height() > $maxHeight) {
+            $image->scaleDown(width: $maxWidth, height: $maxHeight);
         }
 
         return $image;
