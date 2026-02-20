@@ -53,42 +53,61 @@ class CheckFaxResults extends Command
             return;
         }
 
-        // tr_sendstat='1' → 발송 중 상태로 업데이트
-        if ($msg->tr_sendstat === '1' && $claim->fax_status === 'pending') {
-            $claim->update(['fax_status' => 'sending']);
-            $this->line("Claim #{$claim->claim_id}: 발송 중 상태로 변경");
+        // CHAR 컬럼 공백 패딩 제거
+        $sendStat = trim($msg->tr_sendstat);
+        $resultStat = trim($msg->tr_rsltstat ?? '');
+
+        // 디버그 출력
+        $this->line("Claim #{$claim->claim_id}: batch_id={$batchId}, claim_fax_status={$claim->fax_status}, FC tr_sendstat='{$sendStat}', tr_rsltstat='{$resultStat}'");
+
+        // tr_sendstat='1' → 발송 중
+        if ($sendStat === '1') {
+            if ($claim->fax_status === 'pending') {
+                $claim->update(['fax_status' => 'sending']);
+                $this->line("  → 발송 중 상태로 변경");
+            } else {
+                $this->line("  → 발송 중 (대기)");
+            }
             return;
         }
 
         // tr_sendstat='2' → 발송 완료 (결과 확인)
-        if ($msg->tr_sendstat === '2') {
-            $resultCode = $msg->tr_rsltstat;
-
-            if ((int) $resultCode === 0) {
-                // 성공
-                $claim->update([
-                    'fax_status' => 'sent',
-                    'fax_result_code' => $resultCode,
-                ]);
-                $this->info("Claim #{$claim->claim_id}: 발송 성공");
+        if ($sendStat === '2') {
+            if ($resultStat === '0' || $resultStat === '-' || $resultStat === '') {
+                // '0' = 성공, '-' 또는 빈값 = 아직 결과 미확인이지만 발송은 완료
+                if ($resultStat === '0') {
+                    $claim->update([
+                        'fax_status' => 'sent',
+                        'fax_result_code' => $resultStat,
+                    ]);
+                    $this->info("  → 발송 성공");
+                } else {
+                    $this->line("  → 발송 완료, 결과 대기중 (tr_rsltstat='{$resultStat}')");
+                    return;
+                }
             } else {
-                // 실패
-                $resultMessage = $faxService->getResultMessage($resultCode);
+                // 실패 코드
+                $resultMessage = $faxService->getResultMessage($resultStat);
                 $claim->update([
                     'fax_status' => 'failed',
-                    'fax_result_code' => $resultCode,
+                    'fax_result_code' => $resultStat,
                 ]);
-                $this->error("Claim #{$claim->claim_id}: 발송 실패 ({$resultCode}: {$resultMessage})");
+                $this->error("  → 발송 실패 ({$resultStat}: {$resultMessage})");
             }
 
             Log::info('FaxClientNC: 팩스 결과 확인', [
                 'claim_id' => $claim->claim_id,
                 'batch_id' => $batchId,
-                'result_code' => $resultCode,
-                'result_message' => $faxService->getResultMessage($resultCode),
+                'result_code' => $resultStat,
+                'result_message' => $faxService->getResultMessage($resultStat),
             ]);
 
             return;
+        }
+
+        // tr_sendstat='0' → 아직 FaxClientNC가 픽업하지 않음
+        if ($sendStat === '0') {
+            $this->line("  → FaxClientNC 픽업 대기 중");
         }
 
         // 타임아웃 체크
@@ -102,9 +121,10 @@ class CheckFaxResults extends Command
                 'claim_id' => $claim->claim_id,
                 'batch_id' => $batchId,
                 'timeout_minutes' => $timeoutMinutes,
+                'tr_sendstat' => $sendStat,
             ]);
 
-            $this->warn("Claim #{$claim->claim_id}: 타임아웃 ({$timeoutMinutes}분 초과)");
+            $this->warn("  → 타임아웃 ({$timeoutMinutes}분 초과, tr_sendstat='{$sendStat}')");
         }
     }
 }
