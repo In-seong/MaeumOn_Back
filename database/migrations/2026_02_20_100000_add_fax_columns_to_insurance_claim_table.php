@@ -9,9 +9,15 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('insurance_claim', function (Blueprint $table) {
-            $table->string('fax_batch_id', 50)->nullable()->after('fax_status');
-            $table->string('fax_number_sent', 20)->nullable()->after('fax_batch_id');
-            $table->string('fax_result_code', 10)->nullable()->after('fax_number_sent');
+            if (!Schema::hasColumn('insurance_claim', 'fax_batch_id')) {
+                $table->string('fax_batch_id', 50)->nullable()->after('fax_status');
+            }
+            if (!Schema::hasColumn('insurance_claim', 'fax_number_sent')) {
+                $table->string('fax_number_sent', 20)->nullable()->after('fax_batch_id');
+            }
+            if (!Schema::hasColumn('insurance_claim', 'fax_result_code')) {
+                $table->string('fax_result_code', 10)->nullable()->after('fax_number_sent');
+            }
         });
     }
 
