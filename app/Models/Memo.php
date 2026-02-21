@@ -20,7 +20,7 @@ class Memo extends Model
     ];
 
     protected $casts = [
-        'memo_date' => 'datetime',
+        'memo_date' => 'date:Y-m-d',
     ];
 
     public function customer(): BelongsTo
