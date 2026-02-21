@@ -15,22 +15,14 @@ class CustomerAssignment extends Model
         'agent_id',
         'admin_id',
         'assignment_type',
-        'assignment_reason',
-        'customer_info',
-        'status',
-        'processed_at',
-        'is_converted',
-        'contract_date',
-        'contract_amount',
+        'assignment_date',
+        'notes',
         'created_by_id',
         'updated_by_id',
     ];
 
     protected $casts = [
-        'processed_at' => 'datetime',
-        'is_converted' => 'boolean',
-        'contract_date' => 'date',
-        'contract_amount' => 'decimal:2',
+        'assignment_date' => 'date',
     ];
 
     public function customer(): BelongsTo

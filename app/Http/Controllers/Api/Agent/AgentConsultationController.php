@@ -22,7 +22,7 @@ class AgentConsultationController extends Controller
 
         // 상태 필터
         if ($request->has('status')) {
-            $query->where('status', $request->status);
+            $query->where('consultation_status', $request->status);
         }
 
         // 상담 유형 필터
@@ -73,9 +73,7 @@ class AgentConsultationController extends Controller
         ]);
 
         $consultation->update([
-            'answer' => $validated['answer'],
-            'answered_at' => now(),
-            'status' => 'completed',
+            'consultation_status' => 'completed',
         ]);
 
         return response()->json([

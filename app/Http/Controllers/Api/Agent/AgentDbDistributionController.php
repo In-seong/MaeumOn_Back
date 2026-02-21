@@ -18,10 +18,6 @@ class AgentDbDistributionController extends Controller
 
         $query = CustomerAssignment::where('agent_id', $agentId);
 
-        if ($request->filled('status')) {
-            $query->where('status', $request->get('status'));
-        }
-
         $assignments = $query->with('customer:customer_id,name,phone')
             ->orderBy('created_at', 'desc')
             ->paginate(min(max((int) $request->get('per_page', 15), 1), 100));
@@ -80,13 +76,8 @@ class AgentDbDistributionController extends Controller
         }
 
         $validated = $request->validate([
-            'status' => 'required|in:processing,completed,failed',
-            'is_converted' => 'nullable|boolean',
-            'contract_date' => 'nullable|date',
-            'contract_amount' => 'nullable|numeric',
+            'notes' => 'nullable|string',
         ]);
-
-        $validated['processed_at'] = now();
 
         $assignment->update($validated);
 

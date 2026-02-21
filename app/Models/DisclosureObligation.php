@@ -8,24 +8,26 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 class DisclosureObligation extends Model
 {
     protected $table = 'disclosure_obligation';
-    protected $primaryKey = 'obligation_id';
+    protected $primaryKey = 'disclosure_id';
 
     protected $fillable = [
         'customer_id',
         'medical_record_id',
-        'obligation_start_date',
-        'obligation_end_date',
-        'obligation_status',
-        'is_notified',
-        'notification_date',
+        'disease_name',
+        'diagnosis_date',
+        'tracking_start_date',
+        'tracking_end_date',
+        'is_disclosed',
+        'disclosure_date',
         'notes',
     ];
 
     protected $casts = [
-        'obligation_start_date' => 'date',
-        'obligation_end_date' => 'date',
-        'is_notified' => 'boolean',
-        'notification_date' => 'date',
+        'diagnosis_date' => 'date',
+        'tracking_start_date' => 'date',
+        'tracking_end_date' => 'date',
+        'is_disclosed' => 'boolean',
+        'disclosure_date' => 'date',
     ];
 
     public function customer(): BelongsTo

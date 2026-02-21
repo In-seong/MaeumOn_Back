@@ -15,24 +15,17 @@ class Consultation extends Model
         'assignee_id',
         'assignee_type',
         'consultation_type',
-        'title',
-        'content',
+        'consultation_date',
+        'consultation_content',
+        'consultation_status',
         'customer_name',
         'customer_phone',
-        'birth_date',
-        'region',
-        'status',
-        'answer',
-        'answered_at',
-        'satisfaction_rating',
         'created_by_id',
         'updated_by_id',
     ];
 
     protected $casts = [
-        'birth_date' => 'date',
-        'answered_at' => 'datetime',
-        'satisfaction_rating' => 'integer',
+        'consultation_date' => 'datetime',
     ];
 
     public function customer(): BelongsTo

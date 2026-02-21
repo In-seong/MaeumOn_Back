@@ -24,7 +24,6 @@ class Customer extends Model
         'address',
         'detailed_address',
         'job',
-        'acquisition_channel',
         'is_active',
     ];
 

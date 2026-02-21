@@ -66,7 +66,6 @@ class AgentCustomerController extends Controller
             'gender' => 'nullable|in:M,F,OTHER',
             'address' => 'nullable|string|max:200',
             'detailed_address' => 'nullable|string|max:200',
-            'acquisition_channel' => 'nullable|string|max:50',
         ]);
 
         do {
@@ -131,7 +130,6 @@ class AgentCustomerController extends Controller
             'gender' => 'nullable|in:M,F,OTHER',
             'address' => 'nullable|string|max:200',
             'detailed_address' => 'nullable|string|max:200',
-            'acquisition_channel' => 'nullable|string|max:50',
         ]);
 
         $customer->update($validated);

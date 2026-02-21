@@ -20,33 +20,29 @@ class AgentObligationController extends Controller
             $q->where('agent_id', $agentId);
         });
 
-        if ($request->filled('obligation_status')) {
-            $status = $request->get('obligation_status');
+        if ($request->filled('is_disclosed')) {
+            $query->where('is_disclosed', filter_var($request->get('is_disclosed'), FILTER_VALIDATE_BOOLEAN));
+        }
 
-            if ($status === 'expiring_soon') {
-                $query->where('obligation_status', 'active')
-                    ->where('obligation_end_date', '>=', now())
-                    ->where('obligation_end_date', '<=', now()->addDays(30));
-            } elseif ($status === 'expired') {
-                $query->where('obligation_end_date', '<', now());
-            } else {
-                $query->where('obligation_status', $status);
-            }
+        if ($request->filled('expiring_soon') && $request->get('expiring_soon')) {
+            $query->where('is_disclosed', false)
+                ->where('tracking_end_date', '>=', now())
+                ->where('tracking_end_date', '<=', now()->addDays(30));
         }
 
         if ($request->filled('urgency')) {
             $urgency = (int) $request->get('urgency');
 
             if ($urgency === 0) {
-                $query->whereDate('obligation_end_date', now()->toDateString());
+                $query->whereDate('tracking_end_date', now()->toDateString());
             } else {
-                $query->where('obligation_end_date', '>=', now())
-                    ->where('obligation_end_date', '<=', now()->addDays($urgency));
+                $query->where('tracking_end_date', '>=', now())
+                    ->where('tracking_end_date', '<=', now()->addDays($urgency));
             }
         }
 
         $obligations = $query->with(['customer', 'medicalRecord'])
-            ->orderBy('obligation_end_date', 'asc')
+            ->orderBy('tracking_end_date', 'asc')
             ->paginate(min(max((int) $request->get('per_page', 15), 1), 100));
 
         return response()->json([
@@ -63,7 +59,7 @@ class AgentObligationController extends Controller
     {
         $agentId = $request->user()->agent->agent_id;
 
-        $obligation = DisclosureObligation::where('obligation_id', $id)
+        $obligation = DisclosureObligation::where('disclosure_id', $id)
             ->whereHas('customer', function ($q) use ($agentId) {
                 $q->where('agent_id', $agentId);
             })

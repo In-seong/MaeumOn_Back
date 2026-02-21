@@ -26,7 +26,7 @@ class AgentDashboardController extends Controller
             ->count();
 
         $pendingConsultations = Consultation::where('assignee_id', $agentId)
-            ->where('status', 'pending')
+            ->where('consultation_status', 'pending')
             ->count();
 
         $unreadNotifications = Notification::where('receiver_id', $agentId)
@@ -41,9 +41,9 @@ class AgentDashboardController extends Controller
         $upcomingObligations = DisclosureObligation::whereHas('customer', function ($query) use ($agentId) {
             $query->where('agent_id', $agentId);
         })
-            ->where('obligation_end_date', '>=', now())
-            ->where('obligation_end_date', '<=', now()->addDays(30))
-            ->where('obligation_status', '!=', 'completed')
+            ->where('tracking_end_date', '>=', now())
+            ->where('tracking_end_date', '<=', now()->addDays(30))
+            ->where('is_disclosed', false)
             ->count();
 
         return response()->json([

@@ -24,10 +24,6 @@ class AgentMessageController extends Controller
             $query->where('send_status', $request->get('send_status'));
         }
 
-        if ($request->filled('send_method')) {
-            $query->where('send_method', $request->get('send_method'));
-        }
-
         if ($request->filled('message_type')) {
             $query->where('message_type', $request->get('message_type'));
         }
@@ -52,10 +48,9 @@ class AgentMessageController extends Controller
         $validated = $request->validate([
             'receiver_id' => 'required|exists:customer,customer_id',
             'message_type' => 'required|string',
-            'title' => 'nullable|string|max:200',
-            'content' => 'required|string',
+            'message_content' => 'required|string',
+            'phone_number' => 'required|string|max:20',
             'image_url' => 'nullable|string|max:500',
-            'send_method' => 'required|in:SMS,KAKAO,PUSH',
             'scheduled_at' => 'nullable|date|after:now',
         ]);
 
@@ -74,14 +69,12 @@ class AgentMessageController extends Controller
 
         $messageData = [
             'receiver_id' => $validated['receiver_id'],
-            'receiver_type' => 'CUSTOMER',
             'sender_id' => $agentId,
             'sender_type' => 'AGENT',
+            'phone_number' => $validated['phone_number'],
             'message_type' => $validated['message_type'],
-            'title' => $validated['title'] ?? null,
-            'content' => $validated['content'],
+            'message_content' => $validated['message_content'],
             'image_url' => $validated['image_url'] ?? null,
-            'send_method' => $validated['send_method'],
         ];
 
         if (!empty($validated['scheduled_at'])) {
