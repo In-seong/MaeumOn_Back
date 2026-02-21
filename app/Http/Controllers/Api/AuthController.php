@@ -20,6 +20,7 @@ class AuthController extends Controller
         $request->validate([
             'username' => 'required|string',
             'password' => 'required',
+            'role' => 'nullable|string|in:AGENT,ADMIN',
         ]);
 
         $account = Account::where('username', $request->username)->first();
@@ -37,9 +38,16 @@ class AuthController extends Controller
             ]);
         }
 
+        // role 파라미터가 있으면 해당 role과 일치하는지 검증
+        if ($request->role && $account->role !== $request->role) {
+            throw ValidationException::withMessages([
+                'username' => ['해당 계정은 이 서비스에 접근할 수 없습니다.'],
+            ]);
+        }
+
         if (!$account->is_active) {
             throw ValidationException::withMessages([
-                'username' => ['This account has been deactivated.'],
+                'username' => ['비활성화된 계정입니다.'],
             ]);
         }
 
@@ -50,8 +58,12 @@ class AuthController extends Controller
         // last_login_at 업데이트
         $account->update(['last_login_at' => now()]);
 
-        // customer 관계 로드
-        $account->load('customer');
+        // role에 맞는 관계 로드
+        if ($account->isAgent()) {
+            $account->load('agent');
+        } else {
+            $account->load('customer');
+        }
 
         return response()->json([
             'success' => true,
