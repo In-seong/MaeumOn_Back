@@ -62,10 +62,12 @@ class AgentCustomerController extends Controller
             'name' => 'required|string|max:50',
             'phone' => 'required|string|max:20',
             'email' => 'nullable|email|max:100',
+            'resident_number' => 'nullable|string|max:20',
             'birth_date' => 'nullable|date',
             'gender' => 'nullable|in:M,F,OTHER',
             'address' => 'nullable|string|max:200',
             'detailed_address' => 'nullable|string|max:200',
+            'job' => 'nullable|string|max:50',
         ]);
 
         do {
@@ -126,10 +128,12 @@ class AgentCustomerController extends Controller
             'name' => 'sometimes|string|max:50',
             'phone' => 'sometimes|string|max:20',
             'email' => 'nullable|email|max:100',
+            'resident_number' => 'nullable|string|max:20',
             'birth_date' => 'nullable|date',
             'gender' => 'nullable|in:M,F,OTHER',
             'address' => 'nullable|string|max:200',
             'detailed_address' => 'nullable|string|max:200',
+            'job' => 'nullable|string|max:50',
         ]);
 
         $customer->update($validated);
