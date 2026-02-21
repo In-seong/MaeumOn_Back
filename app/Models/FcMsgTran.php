@@ -30,6 +30,20 @@ class FcMsgTran extends Model
         'tr_senddate' => 'datetime',
     ];
 
+    /**
+     * FC 테이블 DDL이 대문자 컬럼명(TR_SENDSTAT 등)을 사용하므로
+     * SELECT 결과의 키를 소문자로 변환하여 코드와 일치시킴
+     */
+    public function newFromBuilder($attributes = [], $connection = null)
+    {
+        $lowered = [];
+        foreach ((array) $attributes as $key => $value) {
+            $lowered[strtolower($key)] = $value;
+        }
+
+        return parent::newFromBuilder((object) $lowered, $connection);
+    }
+
     public function getKeyName()
     {
         return ['tr_batchid', 'tr_serialno'];
