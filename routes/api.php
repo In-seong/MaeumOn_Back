@@ -8,6 +8,16 @@ use App\Http\Controllers\Api\Admin\FormFieldController;
 use App\Http\Controllers\Api\Admin\FormPageController;
 use App\Http\Controllers\Api\CustomerAuthController;
 use App\Http\Controllers\Api\ClaimController;
+use App\Http\Controllers\Api\Agent\AgentDashboardController;
+use App\Http\Controllers\Api\Agent\AgentCustomerController;
+use App\Http\Controllers\Api\Agent\AgentMemoController;
+use App\Http\Controllers\Api\Agent\AgentConsultationController;
+use App\Http\Controllers\Api\Agent\AgentClaimController;
+use App\Http\Controllers\Api\Agent\AgentMessageController;
+use App\Http\Controllers\Api\Agent\AgentNotificationController;
+use App\Http\Controllers\Api\Agent\AgentObligationController;
+use App\Http\Controllers\Api\Agent\AgentSatisfactionController;
+use App\Http\Controllers\Api\Agent\AgentDbDistributionController;
 
 /*
 |--------------------------------------------------------------------------
@@ -80,6 +90,57 @@ Route::middleware('auth:sanctum')->group(function () {
         // 청구 관리 (관리자용)
         Route::get('/claims', [ClaimController::class, 'adminIndex']);
         Route::put('/claims/{id}/status', [ClaimController::class, 'updateStatus']);
+    });
+
+    // 설계사 API
+    Route::prefix('agent')->middleware('role:AGENT')->group(function () {
+        // 대시보드
+        Route::get('/dashboard', [AgentDashboardController::class, 'index']);
+        Route::get('/profile', [AgentDashboardController::class, 'profile']);
+        Route::put('/profile', [AgentDashboardController::class, 'updateProfile']);
+
+        // 고객 관리 (SFR-019~022)
+        Route::apiResource('customers', AgentCustomerController::class);
+        Route::get('/customers/{id}/contracts', [AgentCustomerController::class, 'contracts']);
+
+        // 메모 (SFR-025)
+        Route::get('/customers/{customerId}/memos', [AgentMemoController::class, 'index']);
+        Route::post('/customers/{customerId}/memos', [AgentMemoController::class, 'store']);
+        Route::put('/memos/{id}', [AgentMemoController::class, 'update']);
+        Route::delete('/memos/{id}', [AgentMemoController::class, 'destroy']);
+
+        // 상담 (SFR-008 관련)
+        Route::get('/consultations', [AgentConsultationController::class, 'index']);
+        Route::get('/consultations/{id}', [AgentConsultationController::class, 'show']);
+        Route::put('/consultations/{id}/answer', [AgentConsultationController::class, 'answer']);
+
+        // 보험 청구 조회
+        Route::get('/claims', [AgentClaimController::class, 'index']);
+        Route::get('/claims/{id}', [AgentClaimController::class, 'show']);
+
+        // 발송 (SFR-026~028)
+        Route::get('/messages', [AgentMessageController::class, 'index']);
+        Route::post('/messages', [AgentMessageController::class, 'store']);
+        Route::get('/messages/{id}', [AgentMessageController::class, 'show']);
+
+        // 알림 (SFR-003)
+        Route::get('/notifications', [AgentNotificationController::class, 'index']);
+        Route::put('/notifications/read-all', [AgentNotificationController::class, 'markAllAsRead']);
+        Route::put('/notifications/{id}/read', [AgentNotificationController::class, 'markAsRead']);
+
+        // 알릴의무 (SFR-029)
+        Route::get('/obligations', [AgentObligationController::class, 'index']);
+        Route::get('/obligations/{id}', [AgentObligationController::class, 'show']);
+
+        // 만족도조사 (SFR-030~031)
+        Route::get('/satisfaction-surveys', [AgentSatisfactionController::class, 'index']);
+        Route::post('/satisfaction-surveys', [AgentSatisfactionController::class, 'store']);
+        Route::get('/satisfaction-surveys/{id}', [AgentSatisfactionController::class, 'show']);
+
+        // DB배분 수신
+        Route::get('/assignments', [AgentDbDistributionController::class, 'index']);
+        Route::get('/assignments/{id}', [AgentDbDistributionController::class, 'show']);
+        Route::put('/assignments/{id}/process', [AgentDbDistributionController::class, 'process']);
     });
 
     // 고객 API

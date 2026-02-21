@@ -103,6 +103,11 @@ class InsuranceClaim extends Model
         return $this->belongsTo(Customer::class, 'customer_id', 'customer_id');
     }
 
+    public function agent()
+    {
+        return $this->belongsTo(Agent::class, 'agent_id', 'agent_id');
+    }
+
     public function claimForm()
     {
         return $this->belongsTo(ClaimForm::class, 'claim_form_id', 'claim_form_id');

@@ -65,6 +65,11 @@ class Account extends Authenticatable
         return $this->hasOne(Customer::class, 'account_id', 'account_id');
     }
 
+    public function agent()
+    {
+        return $this->hasOne(Agent::class, 'account_id', 'account_id');
+    }
+
     public function deviceTokens()
     {
         return $this->hasMany(\App\Models\DeviceToken::class, 'account_id', 'account_id');
