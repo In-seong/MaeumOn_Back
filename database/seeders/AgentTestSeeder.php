@@ -35,9 +35,7 @@ class AgentTestSeeder extends Seeder
             'name' => '김설계',
             'phone' => '010-1234-5678',
             'email' => 'agent@test.com',
-            'license_number' => 'LA-2024-001',
-            'affiliation' => '마음온 보험대리점',
-            'position' => '팀장',
+            'office_location' => '마음온 보험대리점',
             'is_active' => true,
         ]);
 

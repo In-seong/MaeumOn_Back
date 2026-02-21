@@ -17,13 +17,12 @@ class Agent extends Model
         'agent_id',
         'account_id',
         'name',
+        'employee_number',
         'phone',
         'email',
-        'license_number',
-        'affiliation',
-        'position',
-        'specialization',
-        'profile_image_url',
+        'office_location',
+        'hire_date',
+        'resignation_date',
         'is_active',
     ];
 
