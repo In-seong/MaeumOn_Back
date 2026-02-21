@@ -122,11 +122,14 @@ class AuthController extends Controller
             'is_active' => true,
         ]);
 
-        // customer_id 생성 (8자리 문자열)
-        $customerId = str_pad((string) random_int(0, 99999999), 8, '0', STR_PAD_LEFT);
-        while (Customer::where('customer_id', $customerId)->exists()) {
-            $customerId = str_pad((string) random_int(0, 99999999), 8, '0', STR_PAD_LEFT);
-        }
+        // Customer ID 생성 (C + 7자리 순번)
+        $lastCustomer = Customer::where('customer_id', 'like', 'C%')
+            ->orderByRaw('CAST(SUBSTRING(customer_id, 2) AS UNSIGNED) DESC')
+            ->first();
+        $nextNum = $lastCustomer
+            ? (int) substr($lastCustomer->customer_id, 1) + 1
+            : 1;
+        $customerId = 'C' . str_pad((string) $nextNum, 7, '0', STR_PAD_LEFT);
 
         Customer::create([
             'customer_id' => $customerId,

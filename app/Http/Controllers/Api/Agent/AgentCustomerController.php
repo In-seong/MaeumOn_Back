@@ -70,9 +70,14 @@ class AgentCustomerController extends Controller
             'job' => 'nullable|string|max:50',
         ]);
 
-        do {
-            $customerId = 'C' . strtoupper(Str::random(7));
-        } while (Customer::where('customer_id', $customerId)->exists());
+        // Customer ID 생성 (C + 7자리 순번)
+        $lastCustomer = Customer::where('customer_id', 'like', 'C%')
+            ->orderByRaw('CAST(SUBSTRING(customer_id, 2) AS UNSIGNED) DESC')
+            ->first();
+        $nextNum = $lastCustomer
+            ? (int) substr($lastCustomer->customer_id, 1) + 1
+            : 1;
+        $customerId = 'C' . str_pad((string) $nextNum, 7, '0', STR_PAD_LEFT);
 
         $customer = Customer::create(array_merge($validated, [
             'customer_id' => $customerId,
