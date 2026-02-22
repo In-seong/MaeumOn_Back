@@ -21,6 +21,7 @@ class Agent extends Model
         'phone',
         'email',
         'office_location',
+        'specialization',
         'hire_date',
         'resignation_date',
         'is_active',

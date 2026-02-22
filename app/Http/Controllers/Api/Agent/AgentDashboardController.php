@@ -84,6 +84,7 @@ class AgentDashboardController extends Controller
             'phone' => 'sometimes|string|max:20',
             'email' => 'sometimes|email|max:100',
             'office_location' => 'sometimes|nullable|string|max:100',
+            'specialization' => 'sometimes|nullable|string|max:200',
         ]);
 
         $agent->update($validated);

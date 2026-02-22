@@ -24,12 +24,16 @@ class Customer extends Model
         'address',
         'detailed_address',
         'job',
+        'telecom',
+        'acquisition_channel',
+        'last_contact_date',
         'is_active',
     ];
 
     protected $casts = [
         'is_active' => 'boolean',
         'birth_date' => 'date',
+        'last_contact_date' => 'date',
     ];
 
     public function account()

@@ -68,6 +68,8 @@ class AgentCustomerController extends Controller
             'address' => 'nullable|string|max:200',
             'detailed_address' => 'nullable|string|max:200',
             'job' => 'nullable|string|max:50',
+            'telecom' => 'nullable|string|max:20',
+            'acquisition_channel' => 'nullable|string|max:50',
         ]);
 
         // Customer ID 생성 (C + 7자리 순번)
@@ -139,6 +141,8 @@ class AgentCustomerController extends Controller
             'address' => 'nullable|string|max:200',
             'detailed_address' => 'nullable|string|max:200',
             'job' => 'nullable|string|max:50',
+            'telecom' => 'nullable|string|max:20',
+            'acquisition_channel' => 'nullable|string|max:50',
         ]);
 
         $customer->update($validated);
