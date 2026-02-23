@@ -210,7 +210,8 @@ class ClaimGeneratorService
         $fontColor = $field->font_color ?: '#000000';
 
         foreach ($options['choices'] as $choice) {
-            if (in_array($choice['value'], $selectedValues)) {
+            $choiceValue = !empty($choice['value']) ? $choice['value'] : ($choice['label'] ?? '');
+            if ($choiceValue !== '' && in_array($choiceValue, $selectedValues)) {
                 $this->drawText($image, 'V', (int)$choice['x'], (int)$choice['y'], $checkFontSize, $fontColor);
             }
         }
