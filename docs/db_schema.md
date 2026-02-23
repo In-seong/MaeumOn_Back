@@ -277,7 +277,7 @@
 | form_page_id | int(11) | YES | MUL | | → form_page FK |
 | field_name | varchar(100) | NO | | | 필드 식별명 |
 | field_label | varchar(200) | NO | | | 표시 라벨 |
-| field_type | varchar(50) | NO | | | text/date/select/checkbox 등 |
+| field_type | varchar(50) | NO | | | text/date/number/resident_number/phone/textarea/checkbox/radio/consent/signature |
 | field_order | int(11) | NO | MUL | | 정렬 순서 |
 | is_required | tinyint(1) | NO | | 0 | |
 | field_options | text | YES | | | select 옵션 (JSON) |
@@ -770,3 +770,4 @@ FaxClientNC 연동용 테이블. **테이블명 반드시 대문자 유지**.
 | 2026-02-22 | customer 테이블에 telecom, acquisition_channel, last_contact_date 추가 |
 | 2026-02-22 | agent 테이블에 specialization 추가 |
 | 2026-02-23 | claim_document: Model 미구현 → `ClaimDocument` 모델 구현 완료 |
+| 2026-02-23 | form_field.field_type 허용값 목록 업데이트: checkbox, radio, consent, signature 추가 |

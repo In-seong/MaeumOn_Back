@@ -60,16 +60,27 @@ class ClaimGeneratorService
                     continue;
                 }
 
-                $formattedValue = $this->formatFieldValue($field->field_type, $fieldValue->field_value);
-
-                $this->drawText(
-                    $image,
-                    $formattedValue,
-                    $field->x_position,
-                    $field->y_position,
-                    $field->font_size,
-                    $field->font_color
-                );
+                switch ($field->field_type) {
+                    case 'checkbox':
+                    case 'radio':
+                    case 'consent':
+                        $this->drawCheckmarks($image, $field, $fieldValue->field_value);
+                        break;
+                    case 'signature':
+                        $this->drawSignature($image, $field, $fieldValue->field_value);
+                        break;
+                    default:
+                        $formattedValue = $this->formatFieldValue($field->field_type, $fieldValue->field_value);
+                        $this->drawText(
+                            $image,
+                            $formattedValue,
+                            $field->x_position,
+                            $field->y_position,
+                            $field->font_size,
+                            $field->font_color
+                        );
+                        break;
+                }
             }
 
             // 팩스 발송 용량 제한(2MB) 대응: 적정 해상도로 리사이즈 + JPEG 압축
@@ -112,16 +123,27 @@ class ClaimGeneratorService
                 continue;
             }
 
-            $formattedValue = $this->formatFieldValue($field->field_type, $fieldValue->field_value);
-
-            $this->drawText(
-                $image,
-                $formattedValue,
-                $field->x_position,
-                $field->y_position,
-                $field->font_size,
-                $field->font_color
-            );
+            switch ($field->field_type) {
+                case 'checkbox':
+                case 'radio':
+                case 'consent':
+                    $this->drawCheckmarks($image, $field, $fieldValue->field_value);
+                    break;
+                case 'signature':
+                    $this->drawSignature($image, $field, $fieldValue->field_value);
+                    break;
+                default:
+                    $formattedValue = $this->formatFieldValue($field->field_type, $fieldValue->field_value);
+                    $this->drawText(
+                        $image,
+                        $formattedValue,
+                        $field->x_position,
+                        $field->y_position,
+                        $field->font_size,
+                        $field->font_color
+                    );
+                    break;
+            }
         }
 
         $image = $this->resizeForFax($image);
@@ -167,6 +189,55 @@ class ClaimGeneratorService
             $font->align('left');
             $font->valign('top');
         });
+    }
+
+    /**
+     * 체크마크 그리기 (checkbox/radio/consent)
+     */
+    private function drawCheckmarks($image, $field, string $value): void
+    {
+        $options = $field->field_options;
+        if (!$options || empty($options['choices'])) {
+            return;
+        }
+
+        // 선택된 값 추출
+        $selectedValues = ($field->field_type === 'checkbox')
+            ? (json_decode($value, true) ?: [])
+            : [$value];
+
+        $checkFontSize = $options['check_font_size'] ?? 14;
+        $fontColor = $field->font_color ?: '#000000';
+
+        foreach ($options['choices'] as $choice) {
+            if (in_array($choice['value'], $selectedValues)) {
+                $this->drawText($image, 'V', (int)$choice['x'], (int)$choice['y'], $checkFontSize, $fontColor);
+            }
+        }
+    }
+
+    /**
+     * 서명 이미지 그리기
+     */
+    private function drawSignature($image, $field, string $value): void
+    {
+        if (!str_starts_with($value, 'data:image/')) {
+            return;
+        }
+
+        $parts = explode(',', $value, 2);
+        if (count($parts) !== 2) {
+            return;
+        }
+
+        $binaryData = base64_decode($parts[1]);
+        if (!$binaryData) {
+            return;
+        }
+
+        $signatureImage = Image::read($binaryData);
+        $signatureImage->scaleDown(width: $field->width ?: 200, height: $field->height ?: 80);
+        $image->place($signatureImage, 'top-left', $field->x_position, $field->y_position);
     }
 
     /**

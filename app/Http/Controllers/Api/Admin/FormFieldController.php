@@ -51,7 +51,7 @@ class FormFieldController extends Controller
             'form_page_id' => 'nullable|exists:form_page,form_page_id',
             'field_name' => 'required|string|max:50|unique:form_field,field_name,NULL,form_field_id,claim_form_id,' . $templateId,
             'field_label' => 'required|string|max:100',
-            'field_type' => 'required|in:text,date,number,resident_number,phone,textarea',
+            'field_type' => 'required|in:text,date,number,resident_number,phone,textarea,checkbox,radio,consent,signature',
             'x_position' => 'required|integer|min:0',
             'y_position' => 'required|integer|min:0',
             'width' => 'integer|min:10|max:2000',
@@ -62,6 +62,7 @@ class FormFieldController extends Controller
             'field_order' => 'integer|min:0',
             'placeholder' => 'nullable|string|max:255',
             'default_value' => 'nullable|string|max:255',
+            'field_options' => 'nullable',
         ]);
 
         $validated['claim_form_id'] = $templateId;
@@ -99,7 +100,7 @@ class FormFieldController extends Controller
         $validated = $request->validate([
             'field_name' => 'required|string|max:50|unique:form_field,field_name,NULL,form_field_id,claim_form_id,' . $templateId,
             'field_label' => 'required|string|max:100',
-            'field_type' => 'required|in:text,date,number,resident_number,phone,textarea',
+            'field_type' => 'required|in:text,date,number,resident_number,phone,textarea,checkbox,radio,consent,signature',
             'x_position' => 'required|integer|min:0',
             'y_position' => 'required|integer|min:0',
             'width' => 'integer|min:10|max:2000',
@@ -110,6 +111,7 @@ class FormFieldController extends Controller
             'field_order' => 'integer|min:0',
             'placeholder' => 'nullable|string|max:255',
             'default_value' => 'nullable|string|max:255',
+            'field_options' => 'nullable',
         ]);
 
         $validated['claim_form_id'] = $templateId;
@@ -140,7 +142,7 @@ class FormFieldController extends Controller
             'form_page_id' => 'sometimes|nullable|exists:form_page,form_page_id',
             'field_name' => 'sometimes|required|string|max:50|unique:form_field,field_name,' . $id . ',form_field_id,claim_form_id,' . $field->claim_form_id,
             'field_label' => 'sometimes|required|string|max:100',
-            'field_type' => 'sometimes|required|in:text,date,number,resident_number,phone,textarea',
+            'field_type' => 'sometimes|required|in:text,date,number,resident_number,phone,textarea,checkbox,radio,consent,signature',
             'x_position' => 'sometimes|required|integer|min:0',
             'y_position' => 'sometimes|required|integer|min:0',
             'width' => 'integer|min:10|max:2000',
@@ -151,6 +153,7 @@ class FormFieldController extends Controller
             'field_order' => 'integer|min:0',
             'placeholder' => 'nullable|string|max:255',
             'default_value' => 'nullable|string|max:255',
+            'field_options' => 'nullable',
         ]);
 
         $field->update($validated);

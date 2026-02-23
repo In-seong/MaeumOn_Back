@@ -97,7 +97,14 @@ class ClaimController extends Controller
             }
 
             $inputField = collect($validated['fields'])->firstWhere('form_field_id', $requiredField->form_field_id);
-            if (empty($inputField['field_value'])) {
+            $fieldValue = $inputField['field_value'] ?? '';
+            $isEmpty = match ($requiredField->field_type) {
+                'checkbox' => empty($fieldValue) || $fieldValue === '[]',
+                'consent' => $fieldValue !== 'agree',
+                'signature' => !str_starts_with($fieldValue, 'data:image/'),
+                default => empty(trim($fieldValue)),
+            };
+            if ($isEmpty) {
                 return response()->json([
                     'success' => false,
                     'message' => "{$requiredField->field_label} 필드는 필수입니다.",
@@ -194,7 +201,14 @@ class ClaimController extends Controller
             }
 
             $inputField = collect($validated['fields'])->firstWhere('form_field_id', $requiredField->form_field_id);
-            if (empty($inputField['field_value'])) {
+            $fieldValue = $inputField['field_value'] ?? '';
+            $isEmpty = match ($requiredField->field_type) {
+                'checkbox' => empty($fieldValue) || $fieldValue === '[]',
+                'consent' => $fieldValue !== 'agree',
+                'signature' => !str_starts_with($fieldValue, 'data:image/'),
+                default => empty(trim($fieldValue)),
+            };
+            if ($isEmpty) {
                 return response()->json([
                     'success' => false,
                     'message' => "{$requiredField->field_label} 필드는 필수입니다.",
