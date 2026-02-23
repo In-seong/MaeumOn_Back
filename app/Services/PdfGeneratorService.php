@@ -4,10 +4,18 @@ namespace App\Services;
 
 use App\Models\InsuranceClaim;
 use Barryvdh\DomPDF\Facade\Pdf;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 
 class PdfGeneratorService
 {
+    protected ClaimGeneratorService $claimGenerator;
+
+    public function __construct(ClaimGeneratorService $claimGenerator)
+    {
+        $this->claimGenerator = $claimGenerator;
+    }
+
     /**
      * 청구서 PDF 생성 (이미지 바이너리를 직접 받아 PDF 생성 → S3 저장)
      *
@@ -80,6 +88,69 @@ class PdfGeneratorService
         Storage::disk('s3')->put($s3Key, $pdf->output());
 
         return $s3Key;
+    }
+
+    /**
+     * 청구서 이미지 + 첨부파일 이미지를 하나의 PDF로 병합 (바이너리 return)
+     */
+    public function mergeClaimWithAttachments(InsuranceClaim $claim): string
+    {
+        // 1. 청구서 이미지 재생성
+        $claimImages = $this->claimGenerator->generateClaimImages($claim);
+
+        $imagesHtml = '';
+
+        // 2. 청구서 이미지 페이지 추가
+        foreach ($claimImages as $index => $imageData) {
+            $imageBase64 = 'data:image/jpeg;base64,' . base64_encode($imageData['binary']);
+            $pageBreak = $index > 0 ? 'style="page-break-before: always;"' : '';
+            $imagesHtml .= "<div {$pageBreak}><img src=\"{$imageBase64}\" class=\"claim-image\"></div>";
+        }
+
+        // 3. 첨부파일 이미지 추가 (각각 새 페이지)
+        $claim->load('documents');
+        foreach ($claim->documents as $doc) {
+            $mimeType = $this->guessMimeType($doc->document_file_name);
+
+            // 이미지 파일만 PDF에 추가 (PDF 첨부는 건너뜀)
+            if (str_starts_with($mimeType, 'image/')) {
+                try {
+                    $fileContent = Storage::disk('s3')->get($doc->document_file_url);
+                    $base64 = 'data:' . $mimeType . ';base64,' . base64_encode($fileContent);
+                    $imagesHtml .= "<div style=\"page-break-before: always;\"><img src=\"{$base64}\" class=\"claim-image\"></div>";
+                } catch (\Exception $e) {
+                    Log::warning('첨부파일 병합 실패: ' . $doc->document_file_name, [
+                        'error' => $e->getMessage(),
+                    ]);
+                }
+            }
+        }
+
+        $html = $this->generatePdfHtml($imagesHtml);
+
+        $pdf = Pdf::loadHTML($html)
+            ->setPaper('a4', 'portrait')
+            ->setOptions([
+                'isHtml5ParserEnabled' => true,
+                'isRemoteEnabled' => true,
+            ]);
+
+        return $pdf->output();
+    }
+
+    /**
+     * 파일 확장자로 MIME 타입 추측
+     */
+    private function guessMimeType(string $filename): string
+    {
+        $ext = strtolower(pathinfo($filename, PATHINFO_EXTENSION));
+        return match ($ext) {
+            'jpg', 'jpeg' => 'image/jpeg',
+            'png' => 'image/png',
+            'gif' => 'image/gif',
+            'pdf' => 'application/pdf',
+            default => 'application/octet-stream',
+        };
     }
 
     /**

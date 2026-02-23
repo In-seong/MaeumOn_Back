@@ -151,5 +151,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::put('/{id}', [ClaimController::class, 'update']);
         Route::get('/{id}/download/pdf', [ClaimController::class, 'downloadPdf']);
         Route::post('/{id}/send-fax', [ClaimController::class, 'sendFax']);
+        Route::post('/{id}/documents', [ClaimController::class, 'uploadDocument']);
+        Route::delete('/{id}/documents/{docId}', [ClaimController::class, 'deleteDocument']);
     });
 });

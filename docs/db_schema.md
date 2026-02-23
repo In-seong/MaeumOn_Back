@@ -325,7 +325,7 @@
 
 ### claim_document
 
-청구서 첨부 파일. **Model 미구현**.
+청구서 첨부 파일. **Model: `ClaimDocument`** (2026-02-23 구현).
 
 | 컬럼 | 타입 | NULL | Key | Default | 비고 |
 |------|------|------|-----|---------|------|
@@ -769,3 +769,4 @@ FaxClientNC 연동용 테이블. **테이블명 반드시 대문자 유지**.
 | 2026-02-22 | 최초 작성 (운영 DB DESCRIBE 기준) |
 | 2026-02-22 | customer 테이블에 telecom, acquisition_channel, last_contact_date 추가 |
 | 2026-02-22 | agent 테이블에 specialization 추가 |
+| 2026-02-23 | claim_document: Model 미구현 → `ClaimDocument` 모델 구현 완료 |

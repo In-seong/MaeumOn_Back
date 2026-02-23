@@ -123,6 +123,11 @@ class InsuranceClaim extends Model
         return $this->hasMany(ClaimFieldValue::class, 'claim_id', 'claim_id');
     }
 
+    public function documents()
+    {
+        return $this->hasMany(ClaimDocument::class, 'claim_id', 'claim_id');
+    }
+
     /**
      * 팩스 상태 한글 라벨
      */

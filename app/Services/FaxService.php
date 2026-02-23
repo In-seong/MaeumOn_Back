@@ -157,6 +157,113 @@ class FaxService
     }
 
     /**
+     * 팩스 발송 (PDF 바이너리 직접 전달 방식 — 병합 PDF용)
+     */
+    public function sendFaxWithContent(InsuranceClaim $claim, string $pdfBinary, ?string $faxNumber = null): array
+    {
+        $claimForm = $claim->claimForm;
+        $insuranceCompany = $claimForm->insuranceCompany;
+
+        $targetFaxNumber = $faxNumber ?? $insuranceCompany->fax_number;
+
+        if (!$targetFaxNumber) {
+            return [
+                'success' => false,
+                'message' => '팩스 번호가 없습니다.',
+            ];
+        }
+
+        $targetFaxNumber = preg_replace('/[^0-9]/', '', $targetFaxNumber);
+
+        // 병합 PDF를 SendDoc 디렉토리에 저장
+        $docFileName = "claim_{$claim->claim_id}_merged_" . time() . '.pdf';
+        $sendDocFullPath = rtrim($this->sendDocPath, '/') . '/' . $docFileName;
+
+        try {
+            if (file_put_contents($sendDocFullPath, $pdfBinary) === false) {
+                throw new \RuntimeException('파일 쓰기 실패');
+            }
+        } catch (\Exception $e) {
+            Log::error('FaxClientNC: 병합 PDF 저장 실패', [
+                'claim_id' => $claim->claim_id,
+                'local_path' => $sendDocFullPath,
+                'error' => $e->getMessage(),
+            ]);
+            return [
+                'success' => false,
+                'message' => '팩스 발송 파일 준비에 실패했습니다.',
+            ];
+        }
+
+        try {
+            DB::beginTransaction();
+
+            $meta = FcMetaTran::create([
+                'tr_type' => '1',
+                'tr_senddate' => now(),
+                'tr_id' => $this->relayId,
+                'tr_title' => "Claim-{$claim->claim_id}",
+                'tr_sendname' => 'MaeumOn',
+                'tr_sendfaxnum' => $this->senderFaxNumber,
+                'tr_msgcount' => 1,
+                'tr_docname' => $docFileName,
+                'tr_sendstat' => '-',
+            ]);
+
+            $batchId = $meta->tr_batchid;
+
+            FcMsgTran::create([
+                'tr_batchid' => $batchId,
+                'tr_serialno' => 1,
+                'tr_senddate' => now(),
+                'tr_name' => $insuranceCompany->company_name,
+                'tr_phone' => $targetFaxNumber,
+                'tr_sendstat' => '0',
+                'tr_rsltstat' => '-',
+            ]);
+
+            $meta->update(['tr_sendstat' => '0']);
+
+            DB::commit();
+
+            Log::info('FaxClientNC: 병합 팩스 발송 요청 등록', [
+                'claim_id' => $claim->claim_id,
+                'batch_id' => $batchId,
+                'fax_number' => $targetFaxNumber,
+                'doc_name' => $docFileName,
+                'documents_count' => $claim->documents->count(),
+            ]);
+
+            $this->makeClaimFilesPrivate($claim);
+
+            return [
+                'success' => true,
+                'message' => "팩스가 {$this->formatFaxNumber($targetFaxNumber)}로 발송 요청되었습니다.",
+                'fax_number' => $targetFaxNumber,
+                'reference_id' => (string) $batchId,
+                'sent_at' => now()->toDateTimeString(),
+            ];
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+
+            if (file_exists($sendDocFullPath)) {
+                @unlink($sendDocFullPath);
+            }
+
+            Log::error('FaxClientNC: 병합 팩스 발송 요청 실패', [
+                'claim_id' => $claim->claim_id,
+                'error' => $e->getMessage(),
+            ]);
+
+            return [
+                'success' => false,
+                'message' => '팩스 발송 요청 중 오류가 발생했습니다: ' . $e->getMessage(),
+            ];
+        }
+    }
+
+    /**
      * 팩스 발송 상태 확인 (FC_MSG_TRAN 조회)
      */
     public function checkFaxStatus(int $batchId): array

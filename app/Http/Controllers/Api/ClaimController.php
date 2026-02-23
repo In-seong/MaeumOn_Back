@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Models\ClaimDocument;
 use App\Models\ClaimFieldValue;
 use App\Models\ClaimForm;
 use App\Models\InsuranceClaim;
@@ -261,6 +262,7 @@ class ClaimController extends Controller
                 'claimForm:claim_form_id,form_name,form_description,company_id',
                 'claimForm.insuranceCompany:company_id,company_name,company_code,fax_number',
                 'fieldValues.formField:form_field_id,field_name,field_label,field_type',
+                'documents',
             ])
             ->findOrFail($id);
 
@@ -308,12 +310,21 @@ class ClaimController extends Controller
         $customerId = $request->user()->customer->customer_id;
 
         $claim = InsuranceClaim::where('customer_id', $customerId)->findOrFail($id);
+        $claim->load('documents');
 
         $validated = $request->validate([
             'fax_number' => 'nullable|string|max:20',
         ]);
 
-        $result = $this->faxService->sendFax($claim, $validated['fax_number'] ?? null);
+        $faxNumber = $validated['fax_number'] ?? null;
+
+        // 첨부파일이 있으면 병합 PDF로 발송
+        if ($claim->documents->isNotEmpty()) {
+            $mergedPdf = $this->pdfGenerator->mergeClaimWithAttachments($claim);
+            $result = $this->faxService->sendFaxWithContent($claim, $mergedPdf, $faxNumber);
+        } else {
+            $result = $this->faxService->sendFax($claim, $faxNumber);
+        }
 
         if ($result['success']) {
             $claim->update([
@@ -338,6 +349,63 @@ class ClaimController extends Controller
             'success' => false,
             'message' => $result['message'],
         ], 400);
+    }
+
+    /**
+     * 첨부파일 업로드
+     */
+    public function uploadDocument(Request $request, int $id): JsonResponse
+    {
+        $customerId = $request->user()->customer->customer_id;
+        $claim = InsuranceClaim::where('customer_id', $customerId)->findOrFail($id);
+
+        $request->validate([
+            'document' => 'required|file|mimes:jpeg,jpg,png,pdf|max:10240',
+            'supporting_document_id' => 'nullable|integer',
+        ]);
+
+        $file = $request->file('document');
+        $filename = 'doc_' . $claim->claim_id . '_' . time() . '_' . random_int(100, 999) . '.' . $file->getClientOriginalExtension();
+        $path = $file->storeAs('claims/' . $claim->claim_id . '/documents', $filename, 's3');
+
+        $document = ClaimDocument::create([
+            'claim_id' => $claim->claim_id,
+            'supporting_document_id' => $request->input('supporting_document_id', 1),
+            'document_file_url' => $path,
+            'document_file_name' => $file->getClientOriginalName(),
+            'document_file_size' => $file->getSize(),
+            'upload_status' => 'uploaded',
+            'created_by_id' => $customerId,
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'data' => $document,
+            'message' => '파일이 업로드되었습니다.',
+        ], 201);
+    }
+
+    /**
+     * 첨부파일 삭제
+     */
+    public function deleteDocument(Request $request, int $claimId, int $docId): JsonResponse
+    {
+        $customerId = $request->user()->customer->customer_id;
+        $claim = InsuranceClaim::where('customer_id', $customerId)->findOrFail($claimId);
+
+        $document = ClaimDocument::where('claim_id', $claim->claim_id)->findOrFail($docId);
+
+        // S3 파일 삭제
+        if ($document->document_file_url) {
+            Storage::disk('s3')->delete($document->document_file_url);
+        }
+
+        $document->delete();
+
+        return response()->json([
+            'success' => true,
+            'message' => '파일이 삭제되었습니다.',
+        ]);
     }
 
     /**
