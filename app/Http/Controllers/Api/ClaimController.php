@@ -144,6 +144,9 @@ class ClaimController extends Controller
             $pdfPath = $this->pdfGenerator->generateClaimPdf($claim, $imageBinaries);
             $claim->update(['generated_pdf_path' => $pdfPath]);
 
+            // 페이지별 이미지도 S3에 저장 (WebView PDF 미지원 대응)
+            $this->savePageImages($claim, $imageBinaries);
+
             DB::commit();
 
             return response()->json([
@@ -228,15 +231,19 @@ class ClaimController extends Controller
                 ]);
             }
 
-            // 기존 PDF 삭제
+            // 기존 PDF + 페이지 이미지 삭제
             if ($claim->generated_pdf_path) {
                 Storage::disk('s3')->delete($claim->generated_pdf_path);
             }
+            $this->deletePageImages($claim);
 
             // PDF 재생성
             $imageBinaries = $this->claimGenerator->generateClaimImages($claim);
             $pdfPath = $this->pdfGenerator->generateClaimPdf($claim, $imageBinaries);
             $claim->update(['generated_pdf_path' => $pdfPath]);
+
+            // 페이지별 이미지도 S3에 저장 (WebView PDF 미지원 대응)
+            $this->savePageImages($claim, $imageBinaries);
 
             DB::commit();
 
@@ -502,5 +509,31 @@ class ClaimController extends Controller
             ]),
             'message' => '청구 상태가 변경되었습니다.',
         ]);
+    }
+
+    /**
+     * 페이지별 이미지를 S3에 저장 (WebView PDF 미지원 대응)
+     *
+     * @param array<array{page_number: int, binary: string}> $imageBinaries
+     */
+    private function savePageImages(InsuranceClaim $claim, array $imageBinaries): void
+    {
+        foreach ($imageBinaries as $imageData) {
+            $s3Key = 'claims/' . $claim->claim_id . '/page_' . $imageData['page_number'] . '.jpg';
+            Storage::disk('s3')->put($s3Key, $imageData['binary']);
+        }
+    }
+
+    /**
+     * 기존 페이지 이미지 삭제
+     */
+    private function deletePageImages(InsuranceClaim $claim): void
+    {
+        $files = Storage::disk('s3')->files('claims/' . $claim->claim_id);
+        foreach ($files as $file) {
+            if (preg_match('/page_\d+\.jpg$/', $file)) {
+                Storage::disk('s3')->delete($file);
+            }
+        }
     }
 }

@@ -60,7 +60,7 @@ class InsuranceClaim extends Model
         'updated_by_id',
     ];
 
-    protected $appends = ['generated_pdf_url'];
+    protected $appends = ['generated_pdf_url', 'generated_image_urls'];
 
     protected $casts = [
         'accident_date' => 'date',
@@ -96,6 +96,35 @@ class InsuranceClaim extends Model
             return Storage::disk('s3')->temporaryUrl($this->generated_pdf_path, now()->addMinutes($ttl));
         }
         return null;
+    }
+
+    /**
+     * 생성된 페이지별 이미지 URL 배열 (WebView PDF 미지원 대응)
+     */
+    public function getGeneratedImageUrlsAttribute(): array
+    {
+        if (!$this->generated_pdf_path) {
+            return [];
+        }
+
+        $ttl = config('filesystems.s3_private_url_ttl', 60);
+        $dir = 'claims/' . $this->claim_id;
+        $files = Storage::disk('s3')->files($dir);
+
+        $imageUrls = [];
+        foreach ($files as $file) {
+            if (preg_match('/page_(\d+)\.jpg$/', $file, $matches)) {
+                $imageUrls[] = [
+                    'page_number' => (int) $matches[1],
+                    'url' => Storage::disk('s3')->temporaryUrl($file, now()->addMinutes($ttl)),
+                ];
+            }
+        }
+
+        // 페이지 번호 순 정렬
+        usort($imageUrls, fn($a, $b) => $a['page_number'] - $b['page_number']);
+
+        return $imageUrls;
     }
 
     public function customer()
