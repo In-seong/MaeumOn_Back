@@ -415,12 +415,34 @@ class ClaimController extends Controller
             'size' => $file->getSize(),
         ]);
 
+        // supporting_document_id: 명시적 지정 → 보험사 "기타" 조회 → 없으면 자동 생성
+        $supportingDocId = $request->input('supporting_document_id');
+        if (!$supportingDocId) {
+            $supportingDoc = DB::table('supporting_document')
+                ->where('company_id', $claim->company_id)
+                ->where('document_name', '기타')
+                ->first();
+
+            if ($supportingDoc) {
+                $supportingDocId = $supportingDoc->supporting_document_id;
+            } else {
+                $supportingDocId = DB::table('supporting_document')->insertGetId([
+                    'company_id' => $claim->company_id,
+                    'document_name' => '기타',
+                    'document_description' => '기타 첨부파일',
+                    'is_required' => 0,
+                    'is_active' => 1,
+                    'created_at' => now(),
+                ]);
+            }
+        }
+
         $filename = 'doc_' . $claim->claim_id . '_' . time() . '_' . random_int(100, 999) . '.' . $file->getClientOriginalExtension();
         $path = $file->storeAs('claims/' . $claim->claim_id . '/documents', $filename, 's3');
 
         $document = ClaimDocument::create([
             'claim_id' => $claim->claim_id,
-            'supporting_document_id' => $request->input('supporting_document_id', 1),
+            'supporting_document_id' => $supportingDocId,
             'document_file_url' => $path,
             'document_file_name' => $file->getClientOriginalName(),
             'document_file_size' => $file->getSize(),
