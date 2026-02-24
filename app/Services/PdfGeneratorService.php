@@ -109,18 +109,35 @@ class PdfGeneratorService
 
         // 3. 첨부파일 이미지 추가 (각각 새 페이지)
         $claim->load('documents');
+        Log::info('병합 대상 첨부파일', [
+            'claim_id' => $claim->claim_id,
+            'documents_count' => $claim->documents->count(),
+        ]);
+
         foreach ($claim->documents as $doc) {
             $mimeType = $this->guessMimeType($doc->document_file_name);
+            Log::info('첨부파일 처리', [
+                'file_name' => $doc->document_file_name,
+                'file_url' => $doc->document_file_url,
+                'mime_type' => $mimeType,
+                'is_image' => str_starts_with($mimeType, 'image/'),
+                's3_exists' => Storage::disk('s3')->exists($doc->document_file_url),
+            ]);
 
             // 이미지 파일만 PDF에 추가 (PDF 첨부는 건너뜀)
             if (str_starts_with($mimeType, 'image/')) {
                 try {
                     $fileContent = Storage::disk('s3')->get($doc->document_file_url);
+                    Log::info('첨부파일 S3 로드 성공', [
+                        'file_name' => $doc->document_file_name,
+                        'content_length' => strlen($fileContent),
+                    ]);
                     $base64 = 'data:' . $mimeType . ';base64,' . base64_encode($fileContent);
                     $imagesHtml .= "<div style=\"page-break-before: always;\"><img src=\"{$base64}\" class=\"claim-image\"></div>";
                 } catch (\Exception $e) {
-                    Log::warning('첨부파일 병합 실패: ' . $doc->document_file_name, [
+                    Log::error('첨부파일 병합 실패: ' . $doc->document_file_name, [
                         'error' => $e->getMessage(),
+                        'file_url' => $doc->document_file_url,
                     ]);
                 }
             }

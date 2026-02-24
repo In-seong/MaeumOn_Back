@@ -13,6 +13,7 @@ use App\Services\PdfGeneratorService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 
 class ClaimController extends Controller
@@ -339,11 +340,24 @@ class ClaimController extends Controller
 
         $faxNumber = $validated['fax_number'] ?? null;
 
+        // 디버그 로그: 첨부파일 상태 확인
+        Log::info('팩스 발송 시작', [
+            'claim_id' => $claim->claim_id,
+            'documents_count' => $claim->documents->count(),
+            'documents' => $claim->documents->map(fn ($d) => [
+                'id' => $d->claim_document_id,
+                'name' => $d->document_file_name,
+                'url' => $d->document_file_url,
+            ])->toArray(),
+        ]);
+
         // 첨부파일이 있으면 병합 PDF로 발송
         if ($claim->documents->isNotEmpty()) {
+            Log::info('첨부파일 병합 PDF 발송 경로', ['claim_id' => $claim->claim_id]);
             $mergedPdf = $this->pdfGenerator->mergeClaimWithAttachments($claim);
             $result = $this->faxService->sendFaxWithContent($claim, $mergedPdf, $faxNumber);
         } else {
+            Log::info('첨부파일 없음 — 원본 PDF만 발송', ['claim_id' => $claim->claim_id]);
             $result = $this->faxService->sendFax($claim, $faxNumber);
         }
 
