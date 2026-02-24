@@ -771,3 +771,4 @@ FaxClientNC 연동용 테이블. **테이블명 반드시 대문자 유지**.
 | 2026-02-22 | agent 테이블에 specialization 추가 |
 | 2026-02-23 | claim_document: Model 미구현 → `ClaimDocument` 모델 구현 완료 |
 | 2026-02-23 | form_field.field_type 허용값 목록 업데이트: checkbox, radio, consent, signature 추가 |
+| 2026-02-24 | 바로청구 기능 추가: 폼 필드에서 고객 정보 추출 → 자동 고객 생성 후 청구 (customer_id NOT NULL 유지) |

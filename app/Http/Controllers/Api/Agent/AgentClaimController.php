@@ -100,17 +100,12 @@ class AgentClaimController extends Controller
         $agentId = $request->user()->agent->agent_id;
 
         $validated = $request->validate([
-            'customer_id' => 'required|string',
+            'customer_id' => 'nullable|string',
             'claim_form_id' => 'required|integer|exists:claim_form,claim_form_id',
             'fields' => 'required|array',
             'fields.*.form_field_id' => 'required|integer|exists:form_field,form_field_id',
             'fields.*.field_value' => 'nullable|string',
         ]);
-
-        // 담당 고객 검증
-        $customer = Customer::where('agent_id', $agentId)
-            ->where('customer_id', $validated['customer_id'])
-            ->firstOrFail();
 
         $claimForm = ClaimForm::with('formFields')->findOrFail($validated['claim_form_id']);
 
@@ -148,6 +143,22 @@ class AgentClaimController extends Controller
                     'message' => "{$requiredField->field_label} 필드는 필수입니다.",
                 ], 422);
             }
+        }
+
+        // 고객 처리: 기존 고객 선택 또는 폼 필드에서 자동 생성
+        $customer = null;
+        if (!empty($validated['customer_id'])) {
+            // 기존 고객 선택
+            $customer = Customer::where('agent_id', $agentId)
+                ->where('customer_id', $validated['customer_id'])
+                ->firstOrFail();
+        } else {
+            // 바로 청구: 폼 필드에서 고객 정보 추출 → 자동 생성
+            $customer = $this->createCustomerFromFields(
+                $agentId,
+                $claimForm->formFields,
+                collect($validated['fields'])
+            );
         }
 
         DB::beginTransaction();
@@ -501,5 +512,143 @@ class AgentClaimController extends Controller
                 Storage::disk('s3')->delete($file);
             }
         }
+    }
+
+    /**
+     * 바로 청구: 폼 필드에서 고객 정보를 추출하여 고객 자동 생성
+     *
+     * Step 3(계약자) 필드에서 이름, 전화번호, 주민번호 등을 추출하고
+     * 해당 정보로 새 고객을 등록한 뒤 반환합니다.
+     */
+    private function createCustomerFromFields(string $agentId, $formFields, $inputFields): Customer
+    {
+        $customerData = [
+            'name' => null,
+            'phone' => null,
+            'resident_number' => null,
+            'email' => null,
+        ];
+
+        // 폼 필드 정의에서 field_name/field_type/field_label 기반으로 고객 정보 추출
+        foreach ($formFields as $formField) {
+            $inputField = $inputFields->firstWhere('form_field_id', $formField->form_field_id);
+            if (!$inputField || empty($inputField['field_value'])) {
+                continue;
+            }
+
+            $value = trim($inputField['field_value']);
+            $fieldName = strtolower($formField->field_name);
+            $fieldLabel = strtolower($formField->field_label ?? '');
+            $fieldType = $formField->field_type;
+
+            // Step 3(계약자) 필드만 대상 — wizard_step이 3이거나 field_name에 contractor 포함이거나
+            // 또는 field_options에 wizard_step=3이 지정된 경우
+            $wizardStep = $formField->field_options['wizard_step'] ?? null;
+            $isStep3 = $wizardStep == 3
+                || str_starts_with($fieldName, 'contractor_')
+                || (!$wizardStep && !str_starts_with($fieldName, 'insured_')
+                    && !str_starts_with($fieldName, 'beneficiary_')
+                    && !str_starts_with($fieldName, 'account_')
+                    && !str_starts_with($fieldName, 'bank_'));
+
+            if (!$isStep3) {
+                continue;
+            }
+
+            // 이름 매칭
+            if (!$customerData['name'] && (
+                str_contains($fieldName, 'name')
+                || str_contains($fieldLabel, '이름')
+                || str_contains($fieldLabel, '성명')
+            )) {
+                $customerData['name'] = $value;
+            }
+
+            // 전화번호 매칭
+            if (!$customerData['phone'] && (
+                $fieldType === 'phone'
+                || str_contains($fieldName, 'phone')
+                || str_contains($fieldName, 'tel')
+                || str_contains($fieldLabel, '휴대')
+                || str_contains($fieldLabel, '전화')
+                || str_contains($fieldLabel, '연락')
+            )) {
+                $customerData['phone'] = preg_replace('/\D/', '', $value);
+            }
+
+            // 주민번호 매칭: 생년월일(앞6) + 뒷자리(뒤7)를 합침
+            if ($fieldType === 'resident_number'
+                || str_contains($fieldName, 'jumin')
+                || str_contains($fieldName, 'resident')
+            ) {
+                // 뒷자리 (7자리)
+                $digits = preg_replace('/\D/', '', $value);
+                if (strlen($digits) === 7) {
+                    $customerData['resident_number'] = ($customerData['resident_number'] ?? '') . $digits;
+                } elseif (strlen($digits) === 13) {
+                    $customerData['resident_number'] = $digits;
+                } elseif (strlen($digits) <= 7 && !empty($customerData['resident_number'])) {
+                    // 이미 앞자리가 있으면 뒤에 붙임
+                    $customerData['resident_number'] .= $digits;
+                } else {
+                    $customerData['resident_number'] = $digits;
+                }
+            }
+
+            // 생년월일 → 주민번호 앞 6자리
+            if (str_contains($fieldName, 'birth')
+                || str_contains($fieldLabel, '생년')
+                || str_contains($fieldLabel, '생일')
+            ) {
+                $digits = preg_replace('/\D/', '', $value);
+                if (strlen($digits) === 6) {
+                    // 앞 6자리 + 기존 뒷자리
+                    $back = $customerData['resident_number'] ?? '';
+                    $customerData['resident_number'] = $digits . $back;
+                }
+            }
+
+            // 이메일 매칭
+            if (!$customerData['email'] && (
+                str_contains($fieldName, 'email')
+                || str_contains($fieldName, 'mail')
+                || str_contains($fieldLabel, '이메일')
+            )) {
+                $customerData['email'] = $value;
+            }
+        }
+
+        // 이름은 필수 — 없으면 '미입력'
+        if (empty($customerData['name'])) {
+            $customerData['name'] = '미입력';
+        }
+
+        // 주민번호 13자리 초과 시 앞 13자리만
+        if (!empty($customerData['resident_number'])) {
+            $customerData['resident_number'] = substr(
+                preg_replace('/\D/', '', $customerData['resident_number']),
+                0,
+                13
+            );
+        }
+
+        // Customer ID 생성 (C + 7자리 순번)
+        $lastCustomer = Customer::where('customer_id', 'like', 'C%')
+            ->orderByRaw('CAST(SUBSTRING(customer_id, 2) AS UNSIGNED) DESC')
+            ->first();
+        $nextNum = $lastCustomer
+            ? (int) substr($lastCustomer->customer_id, 1) + 1
+            : 1;
+        $customerId = 'C' . str_pad((string) $nextNum, 7, '0', STR_PAD_LEFT);
+
+        return Customer::create(array_filter([
+            'customer_id' => $customerId,
+            'agent_id' => $agentId,
+            'name' => $customerData['name'],
+            'phone' => $customerData['phone'],
+            'resident_number' => $customerData['resident_number'],
+            'email' => $customerData['email'],
+            'is_active' => true,
+        ]));
     }
 }
