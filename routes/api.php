@@ -114,9 +114,15 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/consultations/{id}', [AgentConsultationController::class, 'show']);
         Route::put('/consultations/{id}/answer', [AgentConsultationController::class, 'answer']);
 
-        // 보험 청구 조회
+        // 보험 청구 조회 + 대리 청구
         Route::get('/claims', [AgentClaimController::class, 'index']);
+        Route::post('/claims', [AgentClaimController::class, 'store']);
         Route::get('/claims/{id}', [AgentClaimController::class, 'show']);
+        Route::put('/claims/{id}', [AgentClaimController::class, 'update']);
+        Route::post('/claims/{id}/send-fax', [AgentClaimController::class, 'sendFax']);
+        Route::post('/claims/{id}/documents', [AgentClaimController::class, 'uploadDocument']);
+        Route::delete('/claims/{id}/documents/{docId}', [AgentClaimController::class, 'deleteDocument']);
+        Route::get('/claims/{id}/download/pdf', [AgentClaimController::class, 'downloadPdf']);
 
         // 발송 (SFR-026~028)
         Route::get('/messages', [AgentMessageController::class, 'index']);

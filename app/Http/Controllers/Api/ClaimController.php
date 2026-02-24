@@ -13,7 +13,6 @@ use App\Services\PdfGeneratorService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 
 class ClaimController extends Controller
@@ -340,24 +339,11 @@ class ClaimController extends Controller
 
         $faxNumber = $validated['fax_number'] ?? null;
 
-        // 디버그 로그: 첨부파일 상태 확인
-        Log::info('팩스 발송 시작', [
-            'claim_id' => $claim->claim_id,
-            'documents_count' => $claim->documents->count(),
-            'documents' => $claim->documents->map(fn ($d) => [
-                'id' => $d->claim_document_id,
-                'name' => $d->document_file_name,
-                'url' => $d->document_file_url,
-            ])->toArray(),
-        ]);
-
         // 첨부파일이 있으면 병합 PDF로 발송
         if ($claim->documents->isNotEmpty()) {
-            Log::info('첨부파일 병합 PDF 발송 경로', ['claim_id' => $claim->claim_id]);
             $mergedPdf = $this->pdfGenerator->mergeClaimWithAttachments($claim);
             $result = $this->faxService->sendFaxWithContent($claim, $mergedPdf, $faxNumber);
         } else {
-            Log::info('첨부파일 없음 — 원본 PDF만 발송', ['claim_id' => $claim->claim_id]);
             $result = $this->faxService->sendFax($claim, $faxNumber);
         }
 
@@ -391,13 +377,6 @@ class ClaimController extends Controller
      */
     public function uploadDocument(Request $request, int $id): JsonResponse
     {
-        Log::info('첨부파일 업로드 요청', [
-            'claim_id' => $id,
-            'has_file' => $request->hasFile('document'),
-            'content_type' => $request->header('Content-Type'),
-            'all_files' => array_keys($request->allFiles()),
-        ]);
-
         $customerId = $request->user()->customer->customer_id;
         $claim = InsuranceClaim::where('customer_id', $customerId)->findOrFail($id);
 
@@ -407,13 +386,6 @@ class ClaimController extends Controller
         ]);
 
         $file = $request->file('document');
-        Log::info('첨부파일 정보', [
-            'claim_id' => $id,
-            'original_name' => $file->getClientOriginalName(),
-            'mime_type' => $file->getMimeType(),
-            'extension' => $file->getClientOriginalExtension(),
-            'size' => $file->getSize(),
-        ]);
 
         // supporting_document_id: 명시적 지정 → 보험사 "기타" 조회 → 없으면 자동 생성
         $supportingDocId = $request->input('supporting_document_id');
@@ -448,12 +420,6 @@ class ClaimController extends Controller
             'document_file_size' => $file->getSize(),
             'upload_status' => 'uploaded',
             'created_by_id' => $customerId,
-        ]);
-
-        Log::info('첨부파일 업로드 완료', [
-            'claim_id' => $id,
-            'document_id' => $document->claim_document_id,
-            'path' => $path,
         ]);
 
         return response()->json([

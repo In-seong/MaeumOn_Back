@@ -80,4 +80,9 @@ class Agent extends Model
     {
         return $this->hasMany(Message::class, 'sender_id', 'agent_id');
     }
+
+    public function insuranceClaims(): HasMany
+    {
+        return $this->hasMany(InsuranceClaim::class, 'agent_id', 'agent_id');
+    }
 }

@@ -81,6 +81,16 @@ class AgentCustomerController extends Controller
             : 1;
         $customerId = 'C' . str_pad((string) $nextNum, 7, '0', STR_PAD_LEFT);
 
+        // 주민번호 하이픈 제거 (DB: char(13), 숫자만 저장)
+        if (!empty($validated['resident_number'])) {
+            $validated['resident_number'] = preg_replace('/\D/', '', $validated['resident_number']);
+        }
+
+        // 전화번호 하이픈 제거 (DB: varchar(20)이지만 일관성)
+        if (!empty($validated['phone'])) {
+            $validated['phone'] = preg_replace('/\D/', '', $validated['phone']);
+        }
+
         $customer = Customer::create(array_merge($validated, [
             'customer_id' => $customerId,
             'agent_id' => $agentId,
@@ -144,6 +154,14 @@ class AgentCustomerController extends Controller
             'telecom' => 'nullable|string|max:20',
             'acquisition_channel' => 'nullable|string|max:50',
         ]);
+
+        // 주민번호/전화번호 하이픈 제거
+        if (!empty($validated['resident_number'])) {
+            $validated['resident_number'] = preg_replace('/\D/', '', $validated['resident_number']);
+        }
+        if (!empty($validated['phone'])) {
+            $validated['phone'] = preg_replace('/\D/', '', $validated['phone']);
+        }
 
         $customer->update($validated);
 
