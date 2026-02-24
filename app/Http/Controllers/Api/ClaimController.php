@@ -391,15 +391,30 @@ class ClaimController extends Controller
      */
     public function uploadDocument(Request $request, int $id): JsonResponse
     {
+        Log::info('첨부파일 업로드 요청', [
+            'claim_id' => $id,
+            'has_file' => $request->hasFile('document'),
+            'content_type' => $request->header('Content-Type'),
+            'all_files' => array_keys($request->allFiles()),
+        ]);
+
         $customerId = $request->user()->customer->customer_id;
         $claim = InsuranceClaim::where('customer_id', $customerId)->findOrFail($id);
 
         $request->validate([
-            'document' => 'required|file|mimes:jpeg,jpg,png,pdf|max:10240',
+            'document' => 'required|file|mimes:jpeg,jpg,png,gif,heic,heif,webp,pdf|max:10240',
             'supporting_document_id' => 'nullable|integer',
         ]);
 
         $file = $request->file('document');
+        Log::info('첨부파일 정보', [
+            'claim_id' => $id,
+            'original_name' => $file->getClientOriginalName(),
+            'mime_type' => $file->getMimeType(),
+            'extension' => $file->getClientOriginalExtension(),
+            'size' => $file->getSize(),
+        ]);
+
         $filename = 'doc_' . $claim->claim_id . '_' . time() . '_' . random_int(100, 999) . '.' . $file->getClientOriginalExtension();
         $path = $file->storeAs('claims/' . $claim->claim_id . '/documents', $filename, 's3');
 
@@ -411,6 +426,12 @@ class ClaimController extends Controller
             'document_file_size' => $file->getSize(),
             'upload_status' => 'uploaded',
             'created_by_id' => $customerId,
+        ]);
+
+        Log::info('첨부파일 업로드 완료', [
+            'claim_id' => $id,
+            'document_id' => $document->claim_document_id,
+            'path' => $path,
         ]);
 
         return response()->json([
