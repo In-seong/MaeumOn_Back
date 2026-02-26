@@ -1,6 +1,6 @@
 # MaeumOn DB 스키마 (운영 기준)
 
-> **최종 업데이트**: 2026-02-22
+> **최종 업데이트**: 2026-02-26
 > **DB**: MySQL (MariaDB)
 > **총 테이블**: 43개 (비즈니스 35개 + Laravel 시스템 8개)
 
@@ -52,7 +52,8 @@
 
 ### admin
 
-관리자 정보. **Model 미구현**.
+관리자 정보. **Model: `Admin`** (`app/Models/Admin.php`, 2026-02-26 구현).
+- 관계: `account()` → BelongsTo(Account), `notices()` → HasMany(Notice), `customerAssignments()` → HasMany(CustomerAssignment)
 
 | 컬럼 | 타입 | NULL | Key | Default | 비고 |
 |------|------|------|-----|---------|------|
@@ -548,7 +549,8 @@ DB 배분 (고객 배정).
 
 ### notice
 
-공지사항. **Model 미구현**.
+공지사항. **Model: `Notice`** (`app/Models/Notice.php`, 2026-02-26 구현).
+- 관계: `author()` → BelongsTo(Admin, 'author_id', 'admin_id')
 
 | 컬럼 | 타입 | NULL | Key | Default | 비고 |
 |------|------|------|-----|---------|------|
@@ -772,3 +774,7 @@ FaxClientNC 연동용 테이블. **테이블명 반드시 대문자 유지**.
 | 2026-02-23 | claim_document: Model 미구현 → `ClaimDocument` 모델 구현 완료 |
 | 2026-02-23 | form_field.field_type 허용값 목록 업데이트: checkbox, radio, consent, signature 추가 |
 | 2026-02-24 | 바로청구 기능 추가: 폼 필드에서 고객 정보 추출 → 자동 고객 생성 후 청구 (customer_id NOT NULL 유지) |
+| 2026-02-26 | admin: Model 미구현 → `Admin` 모델 구현 완료 (관계: account, notices, customerAssignments) |
+| 2026-02-26 | notice: Model 미구현 → `Notice` 모델 구현 완료 (관계: author → Admin) |
+| 2026-02-26 | Account 모델에 `admin()` hasOne 관계 추가 |
+| 2026-02-26 | Customer 모델에 `medicalRecords()` hasMany 관계 추가 |

@@ -18,6 +18,14 @@ use App\Http\Controllers\Api\Agent\AgentNotificationController;
 use App\Http\Controllers\Api\Agent\AgentObligationController;
 use App\Http\Controllers\Api\Agent\AgentSatisfactionController;
 use App\Http\Controllers\Api\Agent\AgentDbDistributionController;
+use App\Http\Controllers\Api\Admin\AdminNoticeController;
+use App\Http\Controllers\Api\Admin\AdminCustomerController;
+use App\Http\Controllers\Api\Admin\AdminAgentController;
+use App\Http\Controllers\Api\Admin\AdminMemoController;
+use App\Http\Controllers\Api\Admin\AdminAssignmentController;
+use App\Http\Controllers\Api\Admin\AdminAdditionalContractController;
+use App\Http\Controllers\Api\Admin\AdminPerformanceController;
+use App\Http\Controllers\Api\Admin\AdminDashboardController;
 
 /*
 |--------------------------------------------------------------------------
@@ -62,6 +70,9 @@ Route::middleware('auth:sanctum')->group(function () {
 
     // 관리자 API
     Route::prefix('admin')->middleware('role:ADMIN')->group(function () {
+        // 대시보드
+        Route::get('/dashboard', [AdminDashboardController::class, 'index']);
+
         // 보험사 관리
         Route::apiResource('insurance-companies', InsuranceCompanyController::class);
 
@@ -90,6 +101,33 @@ Route::middleware('auth:sanctum')->group(function () {
         // 청구 관리 (관리자용)
         Route::get('/claims', [ClaimController::class, 'adminIndex']);
         Route::put('/claims/{id}/status', [ClaimController::class, 'updateStatus']);
+
+        // 공지사항 관리 (SFR-044)
+        Route::apiResource('notices', AdminNoticeController::class);
+
+        // 고객 관리 (SFR-032~038)
+        Route::apiResource('customers', AdminCustomerController::class);
+        Route::get('/customers/{customerId}/memos', [AdminMemoController::class, 'index']);
+        Route::post('/customers/{customerId}/memos', [AdminMemoController::class, 'store']);
+        Route::put('/memos/{memoId}', [AdminMemoController::class, 'update']);
+        Route::delete('/memos/{memoId}', [AdminMemoController::class, 'destroy']);
+
+        // 설계사 관리 (SFR-042)
+        Route::apiResource('agents', AdminAgentController::class);
+
+        // DB 배분 (SFR-039)
+        Route::get('/assignments', [AdminAssignmentController::class, 'index']);
+        Route::post('/assignments', [AdminAssignmentController::class, 'store']);
+        Route::post('/assignments/bulk', [AdminAssignmentController::class, 'bulkStore']);
+        Route::delete('/assignments/{id}', [AdminAssignmentController::class, 'destroy']);
+
+        // 추가계약 발굴 (SFR-040, 041)
+        Route::get('/additional-contracts', [AdminAdditionalContractController::class, 'index']);
+
+        // 실적 현황 (SFR-043)
+        Route::get('/performance/summary', [AdminPerformanceController::class, 'summary']);
+        Route::get('/performance/agents', [AdminPerformanceController::class, 'agents']);
+        Route::get('/performance/agents/{id}', [AdminPerformanceController::class, 'agentDetail']);
     });
 
     // 설계사 API

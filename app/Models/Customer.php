@@ -70,4 +70,9 @@ class Customer extends Model
     {
         return $this->hasMany(DisclosureObligation::class, 'customer_id', 'customer_id');
     }
+
+    public function medicalRecords()
+    {
+        return $this->hasMany(MedicalRecord::class, 'customer_id', 'customer_id');
+    }
 }
