@@ -8,6 +8,7 @@ use Illuminate\Support\Facades\Storage;
 class InsuranceClaim extends Model
 {
     // 상태 상수 (물리설계 기준)
+    const STATUS_DRAFT = 'draft';
     const STATUS_PENDING = 'pending';
     const STATUS_PROCESSING = 'processing';
     const STATUS_APPROVED = 'approved';
@@ -15,6 +16,7 @@ class InsuranceClaim extends Model
     const STATUS_PAID = 'paid';
 
     const VALID_STATUSES = [
+        self::STATUS_DRAFT,
         self::STATUS_PENDING,
         self::STATUS_PROCESSING,
         self::STATUS_APPROVED,
@@ -24,6 +26,7 @@ class InsuranceClaim extends Model
 
     // 허용되는 상태 전이 규칙
     const ALLOWED_TRANSITIONS = [
+        self::STATUS_DRAFT => [self::STATUS_PENDING],
         self::STATUS_PENDING => [self::STATUS_PROCESSING, self::STATUS_REJECTED],
         self::STATUS_PROCESSING => [self::STATUS_APPROVED, self::STATUS_REJECTED],
         self::STATUS_APPROVED => [self::STATUS_PAID],
@@ -36,6 +39,7 @@ class InsuranceClaim extends Model
 
     protected $fillable = [
         'customer_id',
+        'batch_claim_id',
         'insurance_id',
         'company_id',
         'agent_id',
@@ -74,6 +78,7 @@ class InsuranceClaim extends Model
     public function getStatusLabelAttribute(): string
     {
         return match($this->claim_status) {
+            self::STATUS_DRAFT => '임시저장',
             self::STATUS_PENDING => '접수 대기',
             self::STATUS_PROCESSING => '처리중',
             self::STATUS_APPROVED => '승인',
@@ -125,6 +130,11 @@ class InsuranceClaim extends Model
         usort($imageUrls, fn($a, $b) => $a['page_number'] - $b['page_number']);
 
         return $imageUrls;
+    }
+
+    public function batchClaim()
+    {
+        return $this->belongsTo(BatchClaim::class, 'batch_claim_id', 'batch_claim_id');
     }
 
     public function customer()

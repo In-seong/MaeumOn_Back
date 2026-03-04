@@ -13,6 +13,7 @@ class FormField extends Model
         'claim_form_id',
         'form_page_id',
         'field_name',
+        'standard_field_code',
         'field_label',
         'field_type',
         'field_order',

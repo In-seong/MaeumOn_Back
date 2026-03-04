@@ -51,6 +51,11 @@ class Customer extends Model
         return $this->hasMany(InsuranceClaim::class, 'customer_id', 'customer_id');
     }
 
+    public function batchClaims()
+    {
+        return $this->hasMany(BatchClaim::class, 'customer_id', 'customer_id');
+    }
+
     public function contracts()
     {
         return $this->hasMany(Contract::class, 'customer_id', 'customer_id');

@@ -201,6 +201,25 @@
 
 ## 3. 보험청구
 
+### batch_claim
+
+다중 보험 청구 묶음. 여러 보험사에 동시 청구 시 N건의 insurance_claim을 하나로 그룹핑.
+
+| 컬럼 | 타입 | NULL | Key | Default | 비고 |
+|------|------|------|-----|---------|------|
+| batch_claim_id | int(11) | NO | PRI | auto_increment | |
+| customer_id | char(8) | YES | MUL | | → customer FK (임시저장 시 NULL 가능) |
+| agent_id | char(8) | YES | MUL | | → agent FK |
+| batch_status | varchar(20) | NO | MUL | pending | draft/pending/processing/completed/partial_failed |
+| total_count | int(11) | NO | | 0 | 총 청구 건수 |
+| completed_count | int(11) | NO | | 0 | 완료 건수 |
+| notes | text | YES | | | |
+| created_at | datetime | NO | | CURRENT_TIMESTAMP | |
+| updated_at | datetime | YES | | CURRENT_TIMESTAMP ON UPDATE | |
+
+**Model**: `App\Models\BatchClaim` (구현 완료)
+**관계**: customer(belongsTo), agent(belongsTo), claims(hasMany → InsuranceClaim)
+
 ### insurance_claim
 
 보험금 청구.
@@ -208,7 +227,8 @@
 | 컬럼 | 타입 | NULL | Key | Default | 비고 |
 |------|------|------|-----|---------|------|
 | claim_id | int(11) | NO | PRI | auto_increment | |
-| customer_id | char(8) | NO | MUL | | → customer FK |
+| batch_claim_id | int(11) | YES | MUL | | → batch_claim FK (NULL이면 단건 청구) |
+| customer_id | char(8) | YES | MUL | | → customer FK (임시저장 시 NULL 가능) |
 | insurance_id | int(11) | YES | MUL | | → insurance FK (직접청구 시 NULL) |
 | company_id | int(11) | NO | MUL | | → insurance_company FK |
 | claim_form_id | int(11) | YES | MUL | | → claim_form FK |
@@ -276,6 +296,7 @@
 | claim_form_id | int(11) | NO | MUL | | → claim_form FK |
 | form_page_id | int(11) | YES | MUL | | → form_page FK |
 | field_name | varchar(100) | NO | | | 필드 식별명 |
+| standard_field_code | varchar(50) | YES | | NULL | 표준 필드 코드 (CONTRACTOR_NAME 등). NULL이면 커스텀 필드 |
 | field_label | varchar(200) | NO | | | 표시 라벨 |
 | field_type | varchar(50) | NO | | | text/date/number/resident_number/phone/textarea/checkbox/radio/consent/signature |
 | field_order | int(11) | NO | MUL | | 정렬 순서 |
@@ -772,3 +793,8 @@ FaxClientNC 연동용 테이블. **테이블명 반드시 대문자 유지**.
 | 2026-02-23 | claim_document: Model 미구현 → `ClaimDocument` 모델 구현 완료 |
 | 2026-02-23 | form_field.field_type 허용값 목록 업데이트: checkbox, radio, consent, signature 추가 |
 | 2026-02-24 | 바로청구 기능 추가: 폼 필드에서 고객 정보 추출 → 자동 고객 생성 후 청구 (customer_id NOT NULL 유지) |
+| 2026-03-01 | insurance_claim.customer_id: NOT NULL → NULL 허용 변경 (임시저장 draft 기능 지원) |
+| 2026-03-01 | insurance_claim.claim_status: 'draft' 값 추가 (임시저장 상태, DDL 변경 없음 varchar(20)) |
+| 2026-03-03 | form_field: standard_field_code VARCHAR(50) NULL 컬럼 추가 (다중 보험 청구 표준 필드 매칭 키) |
+| 2026-03-03 | batch_claim 테이블 신규 생성 (다중 보험 청구 묶음) |
+| 2026-03-03 | insurance_claim: batch_claim_id INT NULL 컬럼 추가 (배치 FK, NULL이면 단건) |
