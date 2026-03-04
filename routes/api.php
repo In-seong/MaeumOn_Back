@@ -26,6 +26,8 @@ use App\Http\Controllers\Api\Admin\AdminAssignmentController;
 use App\Http\Controllers\Api\Admin\AdminAdditionalContractController;
 use App\Http\Controllers\Api\Admin\AdminPerformanceController;
 use App\Http\Controllers\Api\Admin\AdminDashboardController;
+use App\Http\Controllers\Api\Agent\AgentBatchClaimController;
+use App\Http\Controllers\Api\StandardFieldController;
 
 /*
 |--------------------------------------------------------------------------
@@ -64,6 +66,7 @@ Route::prefix('customer-auth')->group(function () {
 Route::get('/insurance-companies', [InsuranceCompanyController::class, 'publicIndex']);
 Route::get('/claim-forms', [ClaimFormController::class, 'publicIndex']);
 Route::get('/claim-forms/{id}', [ClaimFormController::class, 'publicShow']);
+Route::get('/standard-fields', [StandardFieldController::class, 'index']);
 
 // 인증 필요 API
 Route::middleware('auth:sanctum')->group(function () {
@@ -155,6 +158,11 @@ Route::middleware('auth:sanctum')->group(function () {
         // 보험 청구 조회 + 대리 청구
         Route::get('/claims', [AgentClaimController::class, 'index']);
         Route::post('/claims', [AgentClaimController::class, 'store']);
+        // 임시저장 (Draft) — {id} 라우트보다 먼저 등록
+        Route::post('/claims/draft', [AgentClaimController::class, 'saveDraft']);
+        Route::put('/claims/{id}/draft', [AgentClaimController::class, 'updateDraft']);
+        Route::post('/claims/{id}/submit', [AgentClaimController::class, 'submitDraft']);
+        Route::delete('/claims/{id}/draft', [AgentClaimController::class, 'deleteDraft']);
         Route::get('/claims/{id}', [AgentClaimController::class, 'show']);
         Route::put('/claims/{id}', [AgentClaimController::class, 'update']);
         Route::post('/claims/{id}/send-fax', [AgentClaimController::class, 'sendFax']);
@@ -180,6 +188,16 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/satisfaction-surveys', [AgentSatisfactionController::class, 'index']);
         Route::post('/satisfaction-surveys', [AgentSatisfactionController::class, 'store']);
         Route::get('/satisfaction-surveys/{id}', [AgentSatisfactionController::class, 'show']);
+
+        // 다중 청구 (배치)
+        Route::get('/batch-claims', [AgentBatchClaimController::class, 'index']);
+        Route::post('/batch-claims', [AgentBatchClaimController::class, 'store']);
+        Route::post('/batch-claims/draft', [AgentBatchClaimController::class, 'saveDraft']);
+        Route::put('/batch-claims/{id}/draft', [AgentBatchClaimController::class, 'updateDraft']);
+        Route::post('/batch-claims/{id}/submit', [AgentBatchClaimController::class, 'submitDraft']);
+        Route::delete('/batch-claims/{id}/draft', [AgentBatchClaimController::class, 'deleteDraft']);
+        Route::get('/batch-claims/{id}', [AgentBatchClaimController::class, 'show']);
+        Route::post('/batch-claims/{id}/send-fax', [AgentBatchClaimController::class, 'sendFax']);
 
         // DB배분 수신
         Route::get('/assignments', [AgentDbDistributionController::class, 'index']);

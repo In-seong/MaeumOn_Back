@@ -50,6 +50,7 @@ class FormFieldController extends Controller
         $validated = $request->validate([
             'form_page_id' => 'nullable|exists:form_page,form_page_id',
             'field_name' => 'required|string|max:50|unique:form_field,field_name,NULL,form_field_id,claim_form_id,' . $templateId,
+            'standard_field_code' => 'nullable|string|max:50',
             'field_label' => 'required|string|max:100',
             'field_type' => 'required|in:text,date,number,resident_number,phone,textarea,checkbox,radio,consent,signature',
             'x_position' => 'required|integer|min:0',
@@ -64,6 +65,29 @@ class FormFieldController extends Controller
             'default_value' => 'nullable|string|max:255',
             'field_options' => 'nullable',
         ]);
+
+        // 표준 필드 코드 유효성 검증
+        if (!empty($validated['standard_field_code'])) {
+            $standardFields = config('standard_fields', []);
+            $validCodes = array_column($standardFields, 'code');
+            if (!in_array($validated['standard_field_code'], $validCodes)) {
+                return response()->json([
+                    'success' => false,
+                    'message' => '유효하지 않은 표준 필드 코드입니다.',
+                ], 422);
+            }
+
+            // 같은 양식 내 동일 표준 필드 코드 중복 방지
+            $exists = FormField::where('claim_form_id', $templateId)
+                ->where('standard_field_code', $validated['standard_field_code'])
+                ->exists();
+            if ($exists) {
+                return response()->json([
+                    'success' => false,
+                    'message' => '이 양식에 이미 동일한 표준 필드가 존재합니다.',
+                ], 422);
+            }
+        }
 
         $validated['claim_form_id'] = $templateId;
 
@@ -99,6 +123,7 @@ class FormFieldController extends Controller
 
         $validated = $request->validate([
             'field_name' => 'required|string|max:50|unique:form_field,field_name,NULL,form_field_id,claim_form_id,' . $templateId,
+            'standard_field_code' => 'nullable|string|max:50',
             'field_label' => 'required|string|max:100',
             'field_type' => 'required|in:text,date,number,resident_number,phone,textarea,checkbox,radio,consent,signature',
             'x_position' => 'required|integer|min:0',
@@ -113,6 +138,28 @@ class FormFieldController extends Controller
             'default_value' => 'nullable|string|max:255',
             'field_options' => 'nullable',
         ]);
+
+        // 표준 필드 코드 유효성 검증
+        if (!empty($validated['standard_field_code'])) {
+            $standardFields = config('standard_fields', []);
+            $validCodes = array_column($standardFields, 'code');
+            if (!in_array($validated['standard_field_code'], $validCodes)) {
+                return response()->json([
+                    'success' => false,
+                    'message' => '유효하지 않은 표준 필드 코드입니다.',
+                ], 422);
+            }
+
+            $exists = FormField::where('claim_form_id', $templateId)
+                ->where('standard_field_code', $validated['standard_field_code'])
+                ->exists();
+            if ($exists) {
+                return response()->json([
+                    'success' => false,
+                    'message' => '이 양식에 이미 동일한 표준 필드가 존재합니다.',
+                ], 422);
+            }
+        }
 
         $validated['claim_form_id'] = $templateId;
         $validated['form_page_id'] = $pageId;
@@ -137,6 +184,14 @@ class FormFieldController extends Controller
     public function update(Request $request, int $id): JsonResponse
     {
         $field = FormField::findOrFail($id);
+
+        // 표준 필드는 field_name, field_label, field_type 수정 불가
+        if ($field->standard_field_code && $request->hasAny(['field_name', 'field_label', 'field_type'])) {
+            return response()->json([
+                'success' => false,
+                'message' => '표준 필드의 이름, 라벨, 타입은 수정할 수 없습니다.',
+            ], 422);
+        }
 
         $validated = $request->validate([
             'form_page_id' => 'sometimes|nullable|exists:form_page,form_page_id',

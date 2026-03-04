@@ -1,0 +1,44 @@
+<?php
+
+/**
+ * 표준 필드 정의
+ *
+ * 보험 청구서에 공통적으로 들어가는 항목을 상수로 정의합니다.
+ * - code: 양식 간 매칭 키 (form_field.standard_field_code)
+ * - label: 관리자/설계사에게 보이는 표시명
+ * - type: 필드 타입 (text, date, number, resident_number, phone 등)
+ * - category: 분류 (계약자 정보, 피보험자 정보, 수익자 정보, 사고/청구 정보, 계좌 정보)
+ * - customer_field: Customer 테이블 컬럼명 (고객 선택 시 자동 채움, null이면 수동 입력)
+ */
+
+return [
+    // ── 계약자 정보 ──
+    ['code' => 'CONTRACTOR_NAME',    'label' => '계약자 성명',     'type' => 'text',            'category' => '계약자 정보', 'customer_field' => 'name'],
+    ['code' => 'CONTRACTOR_RRN',     'label' => '계약자 주민번호',  'type' => 'resident_number', 'category' => '계약자 정보', 'customer_field' => 'resident_number'],
+    ['code' => 'CONTRACTOR_PHONE',   'label' => '계약자 전화번호',  'type' => 'phone',           'category' => '계약자 정보', 'customer_field' => 'phone'],
+    ['code' => 'CONTRACTOR_ADDRESS', 'label' => '계약자 주소',     'type' => 'text',            'category' => '계약자 정보', 'customer_field' => 'address'],
+    ['code' => 'CONTRACTOR_EMAIL',   'label' => '계약자 이메일',   'type' => 'text',            'category' => '계약자 정보', 'customer_field' => 'email'],
+
+    // ── 피보험자 정보 ──
+    ['code' => 'INSURED_NAME',       'label' => '피보험자 성명',    'type' => 'text',            'category' => '피보험자 정보', 'customer_field' => null],
+    ['code' => 'INSURED_RRN',        'label' => '피보험자 주민번호', 'type' => 'resident_number', 'category' => '피보험자 정보', 'customer_field' => null],
+    ['code' => 'INSURED_PHONE',      'label' => '피보험자 전화번호', 'type' => 'phone',           'category' => '피보험자 정보', 'customer_field' => null],
+    ['code' => 'INSURED_ADDRESS',    'label' => '피보험자 주소',    'type' => 'text',            'category' => '피보험자 정보', 'customer_field' => null],
+
+    // ── 수익자 정보 ──
+    ['code' => 'BENEFICIARY_NAME',     'label' => '수익자 성명',     'type' => 'text',            'category' => '수익자 정보', 'customer_field' => null],
+    ['code' => 'BENEFICIARY_RRN',      'label' => '수익자 주민번호',  'type' => 'resident_number', 'category' => '수익자 정보', 'customer_field' => null],
+    ['code' => 'BENEFICIARY_PHONE',    'label' => '수익자 전화번호',  'type' => 'phone',           'category' => '수익자 정보', 'customer_field' => null],
+    ['code' => 'BENEFICIARY_RELATION', 'label' => '수익자 관계',     'type' => 'text',            'category' => '수익자 정보', 'customer_field' => null],
+
+    // ── 사고/청구 정보 ──
+    ['code' => 'ACCIDENT_DATE',  'label' => '사고일자', 'type' => 'date',   'category' => '사고/청구 정보', 'customer_field' => null],
+    ['code' => 'DIAGNOSIS',      'label' => '진단명',   'type' => 'text',   'category' => '사고/청구 정보', 'customer_field' => null],
+    ['code' => 'HOSPITAL_NAME',  'label' => '병원명',   'type' => 'text',   'category' => '사고/청구 정보', 'customer_field' => null],
+    ['code' => 'CLAIM_AMOUNT',   'label' => '청구금액', 'type' => 'number', 'category' => '사고/청구 정보', 'customer_field' => null],
+
+    // ── 계좌 정보 ──
+    ['code' => 'BANK_NAME',       'label' => '은행명',   'type' => 'text', 'category' => '계좌 정보', 'customer_field' => null],
+    ['code' => 'ACCOUNT_NUMBER',  'label' => '계좌번호', 'type' => 'text', 'category' => '계좌 정보', 'customer_field' => null],
+    ['code' => 'ACCOUNT_HOLDER',  'label' => '예금주',   'type' => 'text', 'category' => '계좌 정보', 'customer_field' => null],
+];
