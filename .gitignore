@@ -48,3 +48,6 @@ _ide_helper*.php
 # 디버그/임시
 *.cache
 .tinker_history
+
+# Firebase credentials
+storage/firebase-credentials.json

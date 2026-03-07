@@ -1,14 +1,14 @@
 # MaeumOn DB 스키마 (운영 기준)
 
-> **최종 업데이트**: 2026-02-26
+> **최종 업데이트**: 2026-03-07
 > **DB**: MySQL (MariaDB)
-> **총 테이블**: 43개 (비즈니스 35개 + Laravel 시스템 8개)
+> **총 테이블**: 46개 (비즈니스 38개 + Laravel 시스템 8개)
 
 ---
 
 ## 목차
 
-1. [인증/사용자](#1-인증사용자) — account, admin, agent, customer, device_token
+1. [인증/사용자](#1-인증사용자) — account, admin, agent, customer, device_token, fcm_token
 2. [보험/계약](#2-보험계약) — insurance_company, insurance, contract
 3. [보험청구](#3-보험청구) — insurance_claim, claim_form, form_page, form_field, claim_field_value, supporting_document, claim_document
 4. [건강/의료](#4-건강의료) — medical_record, health_checkup, disclosure_obligation
@@ -17,8 +17,9 @@
 7. [실적/통계](#7-실적통계) — performance
 8. [병원 혜택](#8-병원-혜택) — partner_hospital, hospital_benefit, benefit_usage
 9. [공통](#9-공통) — common_code
-10. [팩스](#10-팩스-faxclientnc) — FC_META_TRAN, FC_MSG_TRAN, FC_RECV_TRAN
-11. [Laravel 시스템](#11-laravel-시스템-테이블) — sessions, cache, jobs 등
+10. [캘린더/일정](#10-캘린더일정) — agent_calendar_event, agent_reminder
+11. [팩스](#11-팩스-faxclientnc) — FC_META_TRAN, FC_MSG_TRAN, FC_RECV_TRAN
+12. [Laravel 시스템](#12-laravel-시스템-테이블) — sessions, cache, jobs 등
 
 ---
 
@@ -98,7 +99,7 @@
 | account_id | int(11) | YES | MUL | | → account FK (고객앱 미가입 시 NULL) |
 | agent_id | char(8) | YES | MUL | | → agent FK (담당 설계사) |
 | name | varchar(50) | NO | MUL | | |
-| resident_number | char(13) | YES | | | 주민등록번호 |
+| resident_number | text | YES | | | 주민등록번호 (AES-256 암호화 저장) |
 | gender | enum('M','F','OTHER') | YES | | | |
 | birth_date | date | YES | | | |
 | phone | varchar(20) | YES | MUL | | |
@@ -128,6 +129,22 @@
 | last_used_at | timestamp | YES | | | |
 | created_at | timestamp | YES | | | |
 | updated_at | timestamp | YES | | | |
+
+### fcm_token
+
+FCM 푸시 알림 토큰. **Model: `FcmToken`** (`app/Models/FcmToken.php`, 2026-03-07 구현).
+
+| 컬럼 | 타입 | NULL | Key | Default | 비고 |
+|------|------|------|-----|---------|------|
+| id | bigint(20) unsigned | NO | PRI | auto_increment | |
+| user_type | varchar(20) | NO | MUL | | AGENT/CUSTOMER/ADMIN |
+| user_id | char(8) | NO | MUL | | 사용자 ID |
+| fcm_token | varchar(500) | NO | | | Firebase Cloud Messaging 토큰 |
+| device_info | varchar(500) | YES | | | 기기 정보 |
+| created_at | timestamp | YES | | | |
+| updated_at | timestamp | YES | | | |
+
+- UNIQUE KEY: `(user_type, user_id, fcm_token)`
 
 ---
 
@@ -191,6 +208,7 @@
 | customer_name | varchar(50) | YES | | | 비정규화 (조회 성능) |
 | customer_phone | varchar(20) | YES | | | 비정규화 |
 | insurance_product | varchar(200) | YES | | | 보험상품명 |
+| expiration_date | date | YES | | | 만기일 |
 | payment_method | varchar(20) | YES | | | 납입 방식 |
 | notes | text | YES | | | |
 | created_by_id | char(8) | YES | | | |
@@ -712,7 +730,55 @@ DB 배분 (고객 배정).
 
 ---
 
-## 10. 팩스 (FaxClientNC)
+## 10. 캘린더/일정
+
+### agent_calendar_event
+
+설계사 캘린더 일정. 수동 등록 또는 시스템 자동 생성 (생일, 계약 만기 등).
+
+| 컬럼 | 타입 | NULL | Key | Default | 비고 |
+|------|------|------|-----|---------|------|
+| event_id | int(11) | NO | PRI | auto_increment | |
+| agent_id | char(8) | NO | MUL | | → agent FK |
+| customer_id | char(8) | YES | MUL | | → customer FK |
+| contract_id | int(11) | YES | MUL | | → contract FK |
+| event_type | varchar(30) | NO | MUL | manual | manual/birthday/contract_expiry/insurance_expiry |
+| title | varchar(200) | NO | | | |
+| memo | text | YES | | | |
+| event_date | date | NO | MUL | | |
+| start_time | time | YES | | | |
+| end_time | time | YES | | | |
+| is_all_day | tinyint(1) | NO | | 1 | |
+| is_recurring | tinyint(1) | NO | | 0 | |
+| is_completed | tinyint(1) | NO | | 0 | |
+| source | varchar(20) | NO | MUL | manual | manual/system |
+| created_at | datetime | NO | | CURRENT_TIMESTAMP | |
+| updated_at | datetime | YES | | CURRENT_TIMESTAMP ON UPDATE | |
+
+**Model**: `App\Models\CalendarEvent` (구현 완료)
+**관계**: agent(belongsTo), customer(belongsTo), contract(belongsTo), reminders(hasMany → Reminder)
+
+### agent_reminder
+
+일정 사전 알림. D-N일 전 알림 설정.
+
+| 컬럼 | 타입 | NULL | Key | Default | 비고 |
+|------|------|------|-----|---------|------|
+| reminder_id | int(11) | NO | PRI | auto_increment | |
+| event_id | int(11) | NO | MUL | | → agent_calendar_event FK |
+| agent_id | char(8) | NO | MUL | | → agent FK |
+| remind_before_days | int(11) | NO | | 1 | D-N일 전 |
+| is_sent | tinyint(1) | NO | | 0 | 발송 여부 |
+| sent_at | datetime | YES | | | |
+| created_at | datetime | NO | | CURRENT_TIMESTAMP | |
+| updated_at | datetime | YES | | CURRENT_TIMESTAMP ON UPDATE | |
+
+**Model**: `App\Models\Reminder` (구현 완료)
+**관계**: event(belongsTo → CalendarEvent), agent(belongsTo)
+
+---
+
+## 11. 팩스 (FaxClientNC)
 
 FaxClientNC 연동용 테이블. **테이블명 반드시 대문자 유지**.
 
@@ -768,7 +834,7 @@ FaxClientNC 연동용 테이블. **테이블명 반드시 대문자 유지**.
 
 ---
 
-## 11. Laravel 시스템 테이블
+## 12. Laravel 시스템 테이블
 
 프레임워크 자동 생성 테이블. 직접 수정하지 않음.
 
@@ -804,3 +870,8 @@ FaxClientNC 연동용 테이블. **테이블명 반드시 대문자 유지**.
 | 2026-03-03 | form_field: standard_field_code VARCHAR(50) NULL 컬럼 추가 (다중 보험 청구 표준 필드 매칭 키) |
 | 2026-03-03 | batch_claim 테이블 신규 생성 (다중 보험 청구 묶음) |
 | 2026-03-03 | insurance_claim: batch_claim_id INT NULL 컬럼 추가 (배치 FK, NULL이면 단건) |
+| 2026-03-07 | customer.resident_number: char(13) → TEXT 변경 (AES-256 암호화 저장, Laravel encrypted cast) |
+| 2026-03-07 | contract: expiration_date DATE NULL 컬럼 추가 (보험 만기일) |
+| 2026-03-07 | agent_calendar_event 테이블 신규 생성 (설계사 캘린더 일정, 수동+시스템 자동 생성) |
+| 2026-03-07 | agent_reminder 테이블 신규 생성 (일정 사전 알림, D-N일 전 리마인더) |
+| 2026-03-07 | fcm_token 테이블 신규 생성 (FCM 푸시 알림 토큰 저장, FcmToken 모델 구현) |

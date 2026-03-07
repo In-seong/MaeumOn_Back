@@ -27,6 +27,9 @@ use App\Http\Controllers\Api\Admin\AdminAdditionalContractController;
 use App\Http\Controllers\Api\Admin\AdminPerformanceController;
 use App\Http\Controllers\Api\Admin\AdminDashboardController;
 use App\Http\Controllers\Api\Agent\AgentBatchClaimController;
+use App\Http\Controllers\Api\Agent\AgentScheduleController;
+use App\Http\Controllers\Api\Agent\AgentFcmTokenController;
+use App\Http\Controllers\Api\Admin\AdminNotificationController;
 use App\Http\Controllers\Api\StandardFieldController;
 
 /*
@@ -47,6 +50,7 @@ Route::prefix('auth')->group(function () {
 
     Route::middleware('auth:sanctum')->group(function () {
         Route::post('/logout', [AuthController::class, 'logout']);
+        Route::put('/change-password', [AuthController::class, 'changePassword']);
         Route::get('/me', [AuthController::class, 'me']);
     });
 });
@@ -131,6 +135,10 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/performance/summary', [AdminPerformanceController::class, 'summary']);
         Route::get('/performance/agents', [AdminPerformanceController::class, 'agents']);
         Route::get('/performance/agents/{id}', [AdminPerformanceController::class, 'agentDetail']);
+
+        // 알림 발송 (관리자 → 설계사)
+        Route::get('/notifications', [AdminNotificationController::class, 'index']);
+        Route::post('/notifications', [AdminNotificationController::class, 'store']);
     });
 
     // 설계사 API
@@ -143,6 +151,9 @@ Route::middleware('auth:sanctum')->group(function () {
         // 고객 관리 (SFR-019~022)
         Route::apiResource('customers', AgentCustomerController::class);
         Route::get('/customers/{id}/contracts', [AgentCustomerController::class, 'contracts']);
+        Route::post('/customers/{id}/contracts', [AgentCustomerController::class, 'storeContract']);
+        Route::put('/customers/{id}/contracts/{contractId}', [AgentCustomerController::class, 'updateContract']);
+        Route::delete('/customers/{id}/contracts/{contractId}', [AgentCustomerController::class, 'destroyContract']);
 
         // 메모 (SFR-025)
         Route::get('/customers/{customerId}/memos', [AgentMemoController::class, 'index']);
@@ -166,6 +177,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/claims/{id}', [AgentClaimController::class, 'show']);
         Route::put('/claims/{id}', [AgentClaimController::class, 'update']);
         Route::post('/claims/{id}/send-fax', [AgentClaimController::class, 'sendFax']);
+        Route::get('/claims/{id}/fax-status', [AgentClaimController::class, 'refreshFaxStatus']);
         Route::post('/claims/{id}/documents', [AgentClaimController::class, 'uploadDocument']);
         Route::delete('/claims/{id}/documents/{docId}', [AgentClaimController::class, 'deleteDocument']);
         Route::get('/claims/{id}/download/pdf', [AgentClaimController::class, 'downloadPdf']);
@@ -198,6 +210,20 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::delete('/batch-claims/{id}/draft', [AgentBatchClaimController::class, 'deleteDraft']);
         Route::get('/batch-claims/{id}', [AgentBatchClaimController::class, 'show']);
         Route::post('/batch-claims/{id}/send-fax', [AgentBatchClaimController::class, 'sendFax']);
+
+        // 일정/캘린더 (SFR-캘린더)
+        Route::get('/schedules', [AgentScheduleController::class, 'index']);
+        Route::get('/schedules/month/{year}/{month}', [AgentScheduleController::class, 'month']);
+        Route::get('/schedules/upcoming', [AgentScheduleController::class, 'upcoming']);
+        Route::post('/schedules', [AgentScheduleController::class, 'store']);
+        Route::get('/schedules/{id}', [AgentScheduleController::class, 'show']);
+        Route::put('/schedules/{id}', [AgentScheduleController::class, 'update']);
+        Route::delete('/schedules/{id}', [AgentScheduleController::class, 'destroy']);
+        Route::put('/schedules/{id}/toggle-complete', [AgentScheduleController::class, 'toggleComplete']);
+
+        // FCM 토큰 등록
+        Route::post('/fcm-token', [AgentFcmTokenController::class, 'store']);
+        Route::delete('/fcm-token', [AgentFcmTokenController::class, 'destroy']);
 
         // DB배분 수신
         Route::get('/assignments', [AgentDbDistributionController::class, 'index']);

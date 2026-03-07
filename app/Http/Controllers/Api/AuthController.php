@@ -89,6 +89,34 @@ class AuthController extends Controller
     }
 
     /**
+     * 비밀번호 변경
+     */
+    public function changePassword(Request $request): JsonResponse
+    {
+        $request->validate([
+            'current_password' => 'required|string',
+            'new_password' => 'required|string|min:6|confirmed',
+        ]);
+
+        $account = $request->user();
+
+        if (!Hash::check($request->current_password, $account->password_hash)) {
+            throw ValidationException::withMessages([
+                'current_password' => ['현재 비밀번호가 올바르지 않습니다.'],
+            ]);
+        }
+
+        $account->update([
+            'password_hash' => Hash::make($request->new_password),
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'message' => '비밀번호가 변경되었습니다.',
+        ]);
+    }
+
+    /**
      * 현재 사용자 정보
      */
     public function me(Request $request): JsonResponse

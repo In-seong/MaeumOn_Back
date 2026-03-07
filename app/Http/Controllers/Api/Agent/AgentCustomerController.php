@@ -115,7 +115,8 @@ class AgentCustomerController extends Controller
             ->with([
                 'contracts.insuranceCompany:company_id,company_name',
                 'insuranceClaims' => function ($query) {
-                    $query->orderBy('created_at', 'desc')->limit(10);
+                    $query->with('claimForm.insuranceCompany:company_id,company_name')
+                        ->orderBy('created_at', 'desc')->limit(10);
                 },
                 'memos' => function ($query) {
                     $query->orderBy('memo_date', 'desc')->limit(10);
@@ -212,6 +213,110 @@ class AgentCustomerController extends Controller
         return response()->json([
             'success' => true,
             'data' => $contracts,
+        ]);
+    }
+
+    /**
+     * 계약 등록
+     */
+    public function storeContract(Request $request, string $customerId): JsonResponse
+    {
+        $agentId = $request->user()->agent->agent_id;
+
+        Customer::where('agent_id', $agentId)
+            ->where('customer_id', $customerId)
+            ->firstOrFail();
+
+        $validated = $request->validate([
+            'company_id' => 'required|integer|exists:insurance_company,company_id',
+            'insurance_product' => 'required|string|max:200',
+            'contract_number' => 'nullable|string|max:50',
+            'contract_amount' => 'nullable|numeric|min:0',
+            'contract_date' => 'nullable|date',
+            'expiration_date' => 'nullable|date',
+            'contract_status' => 'nullable|string|in:active,expired,cancelled',
+            'payment_method' => 'nullable|string|max:50',
+            'notes' => 'nullable|string|max:500',
+        ]);
+
+        $contract = Contract::create([
+            ...$validated,
+            'customer_id' => $customerId,
+            'agent_id' => $agentId,
+            'contract_status' => $validated['contract_status'] ?? 'active',
+            'created_by_id' => $request->user()->account_id,
+        ]);
+
+        $contract->load('insuranceCompany:company_id,company_name');
+
+        return response()->json([
+            'success' => true,
+            'data' => $contract,
+            'message' => '계약이 등록되었습니다.',
+        ], 201);
+    }
+
+    /**
+     * 계약 수정
+     */
+    public function updateContract(Request $request, string $customerId, int $contractId): JsonResponse
+    {
+        $agentId = $request->user()->agent->agent_id;
+
+        Customer::where('agent_id', $agentId)
+            ->where('customer_id', $customerId)
+            ->firstOrFail();
+
+        $contract = Contract::where('customer_id', $customerId)
+            ->where('contract_id', $contractId)
+            ->firstOrFail();
+
+        $validated = $request->validate([
+            'company_id' => 'sometimes|integer|exists:insurance_company,company_id',
+            'insurance_product' => 'sometimes|string|max:200',
+            'contract_number' => 'nullable|string|max:50',
+            'contract_amount' => 'nullable|numeric|min:0',
+            'contract_date' => 'nullable|date',
+            'expiration_date' => 'nullable|date',
+            'contract_status' => 'nullable|string|in:active,expired,cancelled',
+            'payment_method' => 'nullable|string|max:50',
+            'notes' => 'nullable|string|max:500',
+        ]);
+
+        $contract->update([
+            ...$validated,
+            'updated_by_id' => $request->user()->account_id,
+        ]);
+
+        $contract->load('insuranceCompany:company_id,company_name');
+
+        return response()->json([
+            'success' => true,
+            'data' => $contract,
+            'message' => '계약이 수정되었습니다.',
+        ]);
+    }
+
+    /**
+     * 계약 삭제
+     */
+    public function destroyContract(Request $request, string $customerId, int $contractId): JsonResponse
+    {
+        $agentId = $request->user()->agent->agent_id;
+
+        Customer::where('agent_id', $agentId)
+            ->where('customer_id', $customerId)
+            ->firstOrFail();
+
+        $contract = Contract::where('customer_id', $customerId)
+            ->where('contract_id', $contractId)
+            ->firstOrFail();
+
+        $contract->delete();
+
+        return response()->json([
+            'success' => true,
+            'message' => '계약이 삭제되었습니다.',
         ]);
     }
 }

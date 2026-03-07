@@ -22,6 +22,7 @@ class Contract extends Model
         'customer_phone',
         'insurance_product',
         'payment_method',
+        'expiration_date',
         'notes',
         'created_by_id',
         'updated_by_id',
@@ -29,6 +30,7 @@ class Contract extends Model
 
     protected $casts = [
         'contract_date' => 'date',
+        'expiration_date' => 'date',
         'contract_amount' => 'decimal:2',
     ];
 

@@ -85,4 +85,9 @@ class Agent extends Model
     {
         return $this->hasMany(InsuranceClaim::class, 'agent_id', 'agent_id');
     }
+
+    public function calendarEvents(): HasMany
+    {
+        return $this->hasMany(CalendarEvent::class, 'agent_id', 'agent_id');
+    }
 }

@@ -375,6 +375,64 @@ class AgentClaimController extends Controller
     }
 
     /**
+     * 팩스 발송 상태 새로고침 (FC 테이블 즉시 조회)
+     */
+    public function refreshFaxStatus(Request $request, int $id): JsonResponse
+    {
+        $agentId = $request->user()->agent->agent_id;
+        $claim = InsuranceClaim::where('agent_id', $agentId)->findOrFail($id);
+
+        if (!$claim->fax_batch_id) {
+            return response()->json([
+                'success' => false,
+                'message' => '팩스 발송 기록이 없습니다.',
+            ], 400);
+        }
+
+        $batchId = (int) $claim->fax_batch_id;
+        $msg = \App\Models\FcMsgTran::where('tr_batchid', $batchId)
+            ->where('tr_serialno', 1)
+            ->first();
+
+        if (!$msg) {
+            return response()->json([
+                'success' => true,
+                'data' => ['fax_status' => $claim->fax_status, 'result_message' => '발송 정보 조회 중'],
+            ]);
+        }
+
+        $sendStat = trim($msg->tr_sendstat);
+        $resultStat = trim($msg->tr_rsltstat ?? '');
+        $updated = false;
+
+        if ($sendStat === '1' && $claim->fax_status === 'pending') {
+            $claim->update(['fax_status' => 'sending']);
+            $updated = true;
+        } elseif ($sendStat === '2') {
+            if ($resultStat === '0') {
+                $claim->update(['fax_status' => 'sent', 'fax_result_code' => $resultStat]);
+                $updated = true;
+            } elseif ($resultStat !== '-' && $resultStat !== '') {
+                $claim->update(['fax_status' => 'failed', 'fax_result_code' => $resultStat]);
+                $updated = true;
+            }
+        }
+
+        $claim->refresh();
+
+        return response()->json([
+            'success' => true,
+            'data' => [
+                'fax_status' => $claim->fax_status,
+                'result_message' => $this->faxService->getResultMessage($resultStat ?: '-'),
+                'send_stat' => $sendStat,
+                'result_stat' => $resultStat,
+                'updated' => $updated,
+            ],
+        ]);
+    }
+
+    /**
      * 설계사 대리 첨부파일 업로드
      */
     public function uploadDocument(Request $request, int $id): JsonResponse

@@ -36,6 +36,44 @@ class Customer extends Model
         'last_contact_date' => 'date',
     ];
 
+    /**
+     * 주민등록번호 조회 시 복호화 (평문이면 그대로 반환)
+     */
+    public function getResidentNumberAttribute(?string $value): ?string
+    {
+        if ($value === null || $value === '') return $value;
+
+        try {
+            return \Illuminate\Support\Facades\Crypt::decryptString($value);
+        } catch (\Exception $e) {
+            // 아직 암호화 안 된 평문 데이터
+            return $value;
+        }
+    }
+
+    /**
+     * 주민등록번호 저장 시 암호화
+     * ※ DB 컬럼을 TEXT로 변경한 후에만 암호화 저장됨
+     */
+    public function setResidentNumberAttribute(?string $value): void
+    {
+        if ($value === null || $value === '') {
+            $this->attributes['resident_number'] = $value;
+            return;
+        }
+
+        // 이미 암호화된 값이면 그대로
+        try {
+            \Illuminate\Support\Facades\Crypt::decryptString($value);
+            $this->attributes['resident_number'] = $value;
+            return;
+        } catch (\Exception $e) {
+            // 평문 → 암호화 시도
+        }
+
+        $this->attributes['resident_number'] = \Illuminate\Support\Facades\Crypt::encryptString($value);
+    }
+
     public function account()
     {
         return $this->belongsTo(Account::class, 'account_id', 'account_id');
