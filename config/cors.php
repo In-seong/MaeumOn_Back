@@ -30,6 +30,9 @@ return [
         'https://devagent.podo-life.co.kr',
         'https://devadmin.podo-life.co.kr',
         'https://staginguser.podo-life.co.kr',
+        'https://user.bohumon.co.kr',
+        'https://agent.bohumon.co.kr',
+        'https://admin.bohumon.co.kr',
     ],
 
     'allowed_origins_patterns' => [],

@@ -113,7 +113,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::apiResource('notices', AdminNoticeController::class);
 
         // 고객 관리 (SFR-032~038)
-        Route::apiResource('customers', AdminCustomerController::class);
+        Route::apiResource('customers', AdminCustomerController::class)->names('admin.customers');
         Route::get('/customers/{customerId}/memos', [AdminMemoController::class, 'index']);
         Route::post('/customers/{customerId}/memos', [AdminMemoController::class, 'store']);
         Route::put('/memos/{memoId}', [AdminMemoController::class, 'update']);
@@ -149,7 +149,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::put('/profile', [AgentDashboardController::class, 'updateProfile']);
 
         // 고객 관리 (SFR-019~022)
-        Route::apiResource('customers', AgentCustomerController::class);
+        Route::apiResource('customers', AgentCustomerController::class)->names('agent.customers');
         Route::get('/customers/{id}/contracts', [AgentCustomerController::class, 'contracts']);
         Route::post('/customers/{id}/contracts', [AgentCustomerController::class, 'storeContract']);
         Route::put('/customers/{id}/contracts/{contractId}', [AgentCustomerController::class, 'updateContract']);
