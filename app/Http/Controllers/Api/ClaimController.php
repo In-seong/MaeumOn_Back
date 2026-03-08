@@ -511,6 +511,7 @@ class ClaimController extends Controller
         $validStatuses = implode(',', InsuranceClaim::VALID_STATUSES);
         $validated = $request->validate([
             'claim_status' => "required|in:{$validStatuses}",
+            'approved_amount' => 'nullable|numeric|min:0',
             'notes' => 'nullable|string',
         ]);
 
@@ -519,6 +520,11 @@ class ClaimController extends Controller
                 'success' => false,
                 'message' => "'{$claim->status_label}' 상태에서 '{$validated['claim_status']}' 상태로 변경할 수 없습니다.",
             ], 422);
+        }
+
+        // approved 상태로 전환 시 승인일 자동 설정
+        if ($validated['claim_status'] === InsuranceClaim::STATUS_APPROVED) {
+            $validated['approval_date'] = now()->toDateString();
         }
 
         $claim->update($validated);
