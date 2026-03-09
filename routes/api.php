@@ -31,6 +31,7 @@ use App\Http\Controllers\Api\Agent\AgentScheduleController;
 use App\Http\Controllers\Api\Agent\AgentFcmTokenController;
 use App\Http\Controllers\Api\Admin\AdminNotificationController;
 use App\Http\Controllers\Api\StandardFieldController;
+use App\Http\Controllers\Api\Admin\AdminConsentTemplateController;
 
 /*
 |--------------------------------------------------------------------------
@@ -71,6 +72,7 @@ Route::get('/insurance-companies', [InsuranceCompanyController::class, 'publicIn
 Route::get('/claim-forms', [ClaimFormController::class, 'publicIndex']);
 Route::get('/claim-forms/{id}', [ClaimFormController::class, 'publicShow']);
 Route::get('/standard-fields', [StandardFieldController::class, 'index']);
+Route::get('/consent-templates', [AdminConsentTemplateController::class, 'index']);
 
 // 인증 필요 API
 Route::middleware('auth:sanctum')->group(function () {
@@ -139,6 +141,10 @@ Route::middleware('auth:sanctum')->group(function () {
         // 알림 발송 (관리자 → 설계사)
         Route::get('/notifications', [AdminNotificationController::class, 'index']);
         Route::post('/notifications', [AdminNotificationController::class, 'store']);
+
+        // 동의서 관리
+        Route::get('/consent-templates', [AdminConsentTemplateController::class, 'index']);
+        Route::put('/consent-templates/{id}', [AdminConsentTemplateController::class, 'update']);
     });
 
     // 설계사 API

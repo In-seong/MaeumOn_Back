@@ -1,8 +1,8 @@
 # MaeumOn DB 스키마 (운영 기준)
 
-> **최종 업데이트**: 2026-03-07
+> **최종 업데이트**: 2026-03-09
 > **DB**: MySQL (MariaDB)
-> **총 테이블**: 46개 (비즈니스 38개 + Laravel 시스템 8개)
+> **총 테이블**: 47개 (비즈니스 39개 + Laravel 시스템 8개)
 
 ---
 
@@ -16,7 +16,7 @@
 6. [커뮤니케이션](#6-커뮤니케이션) — message, notification, notice, satisfaction_survey
 7. [실적/통계](#7-실적통계) — performance
 8. [병원 혜택](#8-병원-혜택) — partner_hospital, hospital_benefit, benefit_usage
-9. [공통](#9-공통) — common_code
+9. [공통](#9-공통) — common_code, consent_template
 10. [캘린더/일정](#10-캘린더일정) — agent_calendar_event, agent_reminder
 11. [팩스](#11-팩스-faxclientnc) — FC_META_TRAN, FC_MSG_TRAN, FC_RECV_TRAN
 12. [Laravel 시스템](#12-laravel-시스템-테이블) — sessions, cache, jobs 등
@@ -728,6 +728,24 @@ DB 배분 (고객 배정).
 | created_at | datetime | NO | | CURRENT_TIMESTAMP | |
 | updated_at | datetime | YES | | CURRENT_TIMESTAMP ON UPDATE | |
 
+### consent_template
+
+동의서 템플릿 관리 (고유식별정보, 민감정보, 개인신용정보). 관리자가 전역 편집, 모든 청구서에 공통 적용.
+
+**Model**: `ConsentTemplate` ✅
+
+| 컬럼 | 타입 | NULL | Key | Default | 비고 |
+|------|------|------|-----|---------|------|
+| consent_template_id | int(11) | NO | PRI | auto_increment | |
+| consent_type | varchar(20) | NO | UNI | | unique_id / sensitive / credit |
+| title | varchar(100) | NO | | | 동의서 제목 |
+| content | text | NO | | | 동의서 본문 |
+| is_active | tinyint(1) | NO | | 1 | 활성 여부 |
+| created_at | datetime | NO | | CURRENT_TIMESTAMP | |
+| updated_at | datetime | YES | | CURRENT_TIMESTAMP ON UPDATE | |
+
+**기본 데이터**: unique_id(고유식별정보), sensitive(민감정보), credit(개인신용정보) 3건
+
 ---
 
 ## 10. 캘린더/일정
@@ -875,3 +893,4 @@ FaxClientNC 연동용 테이블. **테이블명 반드시 대문자 유지**.
 | 2026-03-07 | agent_calendar_event 테이블 신규 생성 (설계사 캘린더 일정, 수동+시스템 자동 생성) |
 | 2026-03-07 | agent_reminder 테이블 신규 생성 (일정 사전 알림, D-N일 전 리마인더) |
 | 2026-03-07 | fcm_token 테이블 신규 생성 (FCM 푸시 알림 토큰 저장, FcmToken 모델 구현) |
+| 2026-03-09 | consent_template 테이블 신규 생성 (동의서 관리: 고유식별정보/민감정보/개인신용정보, ConsentTemplate 모델 구현) |
