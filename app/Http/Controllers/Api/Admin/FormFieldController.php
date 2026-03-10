@@ -77,16 +77,6 @@ class FormFieldController extends Controller
                 ], 422);
             }
 
-            // 같은 양식 내 동일 표준 필드 코드 중복 방지
-            $exists = FormField::where('claim_form_id', $templateId)
-                ->where('standard_field_code', $validated['standard_field_code'])
-                ->exists();
-            if ($exists) {
-                return response()->json([
-                    'success' => false,
-                    'message' => '이 양식에 이미 동일한 표준 필드가 존재합니다.',
-                ], 422);
-            }
         }
 
         $validated['claim_form_id'] = $templateId;
