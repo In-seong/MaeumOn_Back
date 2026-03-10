@@ -69,6 +69,9 @@ class ClaimGeneratorService
                     case 'signature':
                         $this->drawSignature($image, $field, $fieldValue->field_value);
                         break;
+                    case 'date':
+                        $this->drawDateField($image, $field, $fieldValue->field_value);
+                        break;
                     default:
                         $formattedValue = $this->formatFieldValue($field->field_type, $fieldValue->field_value);
                         $this->drawText(
@@ -131,6 +134,9 @@ class ClaimGeneratorService
                     break;
                 case 'signature':
                     $this->drawSignature($image, $field, $fieldValue->field_value);
+                    break;
+                case 'date':
+                    $this->drawDateField($image, $field, $fieldValue->field_value);
                     break;
                 default:
                     $formattedValue = $this->formatFieldValue($field->field_type, $fieldValue->field_value);
@@ -281,6 +287,45 @@ class ClaimGeneratorService
             return $date->format('Y년 m월 d일');
         } catch (\Exception $e) {
             return $value;
+        }
+    }
+
+    /**
+     * 날짜 필드 그리기 (date_parts가 있으면 분리 렌더링)
+     */
+    private function drawDateField($image, $field, string $value): void
+    {
+        $options = $field->field_options;
+
+        // date_parts가 없으면 기존 방식 (한 덩어리 텍스트)
+        if (!$options || empty($options['date_parts'])) {
+            $formattedValue = $this->formatDate($value);
+            $this->drawText($image, $formattedValue, $field->x_position, $field->y_position, $field->font_size, $field->font_color);
+            return;
+        }
+
+        // 날짜 파싱
+        try {
+            $date = new \DateTime($value);
+        } catch (\Exception $e) {
+            $this->drawText($image, $value, $field->x_position, $field->y_position, $field->font_size, $field->font_color);
+            return;
+        }
+
+        $dateFormat = $options['date_format'] ?? 'full_year';
+        $fontColor = $field->font_color ?: '#000000';
+
+        foreach ($options['date_parts'] as $part) {
+            $text = match ($part['part']) {
+                'year' => $dateFormat === 'short_year' ? $date->format('y') : $date->format('Y'),
+                'month' => $date->format('m'),
+                'day' => $date->format('d'),
+                default => '',
+            };
+
+            if ($text && isset($part['x']) && isset($part['y'])) {
+                $this->drawText($image, $text, (int)$part['x'], (int)$part['y'], $field->font_size, $fontColor);
+            }
         }
     }
 
