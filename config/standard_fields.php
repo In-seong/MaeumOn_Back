@@ -49,4 +49,9 @@ return [
     ['code' => 'BANK_NAME',       'label' => '은행명',   'type' => 'text', 'category' => '계좌 정보', 'customer_field' => null],
     ['code' => 'ACCOUNT_NUMBER',  'label' => '계좌번호', 'type' => 'text', 'category' => '계좌 정보', 'customer_field' => null],
     ['code' => 'ACCOUNT_HOLDER',  'label' => '예금주',   'type' => 'text', 'category' => '계좌 정보', 'customer_field' => null],
+
+    // ── 동의 ──
+    ['code' => 'CONSENT_UNIQUE_ID', 'label' => '고유식별정보 처리 동의', 'type' => 'consent', 'category' => '동의', 'customer_field' => null],
+    ['code' => 'CONSENT_SENSITIVE', 'label' => '민감정보 처리 동의',     'type' => 'consent', 'category' => '동의', 'customer_field' => null],
+    ['code' => 'CONSENT_CREDIT',    'label' => '개인(신용)정보 처리 동의', 'type' => 'consent', 'category' => '동의', 'customer_field' => null],
 ];
