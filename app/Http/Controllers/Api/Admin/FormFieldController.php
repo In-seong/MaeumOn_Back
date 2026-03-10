@@ -49,7 +49,7 @@ class FormFieldController extends Controller
 
         $validated = $request->validate([
             'form_page_id' => 'nullable|exists:form_page,form_page_id',
-            'field_name' => 'required|string|max:50|unique:form_field,field_name,NULL,form_field_id,claim_form_id,' . $templateId,
+            'field_name' => 'required|string|max:50',
             'standard_field_code' => 'nullable|string|max:50',
             'field_label' => 'required|string|max:100',
             'field_type' => 'required|in:text,date,number,resident_number,resident_number_front,resident_number_back,phone,textarea,checkbox,radio,consent,signature',
@@ -122,7 +122,7 @@ class FormFieldController extends Controller
         $templateId = $page->claim_form_id;
 
         $validated = $request->validate([
-            'field_name' => 'required|string|max:50|unique:form_field,field_name,NULL,form_field_id,claim_form_id,' . $templateId,
+            'field_name' => 'required|string|max:50',
             'standard_field_code' => 'nullable|string|max:50',
             'field_label' => 'required|string|max:100',
             'field_type' => 'required|in:text,date,number,resident_number,resident_number_front,resident_number_back,phone,textarea,checkbox,radio,consent,signature',
@@ -195,7 +195,7 @@ class FormFieldController extends Controller
 
         $validated = $request->validate([
             'form_page_id' => 'sometimes|nullable|exists:form_page,form_page_id',
-            'field_name' => 'sometimes|required|string|max:50|unique:form_field,field_name,' . $id . ',form_field_id,claim_form_id,' . $field->claim_form_id,
+            'field_name' => 'sometimes|required|string|max:50',
             'field_label' => 'sometimes|required|string|max:100',
             'field_type' => 'sometimes|required|in:text,date,number,resident_number,resident_number_front,resident_number_back,phone,textarea,checkbox,radio,consent,signature',
             'x_position' => 'sometimes|required|integer|min:0',
