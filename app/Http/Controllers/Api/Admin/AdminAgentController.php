@@ -18,6 +18,7 @@ class AdminAgentController extends Controller
     public function index(Request $request): JsonResponse
     {
         $query = Agent::query()
+            ->where('is_active', true)
             ->withCount(['customers', 'contracts']);
 
         // 검색 (이름, 사번, 전화번호)
@@ -147,12 +148,15 @@ class AdminAgentController extends Controller
         $agent = Agent::where('agent_id', $id)->firstOrFail();
 
         $validated = $request->validate([
+            'username' => 'sometimes|string|max:50|unique:account,username,' . $agent->account_id . ',account_id',
+            'password' => 'sometimes|string|min:6|max:100',
             'name' => 'sometimes|string|max:50',
             'employee_number' => 'nullable|string|max:20',
             'phone' => 'nullable|string|max:20',
             'email' => 'nullable|email|max:100',
             'office_location' => 'nullable|string|max:100',
             'specialization' => 'nullable|string|max:100',
+            'hire_date' => 'nullable|date',
         ]);
 
         // 전화번호 하이픈 제거
@@ -160,11 +164,29 @@ class AdminAgentController extends Controller
             $validated['phone'] = preg_replace('/\D/', '', $validated['phone']);
         }
 
-        $agent->update($validated);
+        DB::transaction(function () use ($agent, $validated) {
+            // Account 정보 수정 (username, password)
+            if ($agent->account_id && (isset($validated['username']) || isset($validated['password']))) {
+                $accountUpdate = [];
+                if (isset($validated['username'])) {
+                    $accountUpdate['username'] = $validated['username'];
+                }
+                if (isset($validated['password'])) {
+                    $accountUpdate['password_hash'] = Hash::make($validated['password']);
+                }
+                Account::where('account_id', $agent->account_id)->update($accountUpdate);
+            }
+
+            // Agent 정보 수정 (username, password 제외)
+            $agentData = array_diff_key($validated, array_flip(['username', 'password']));
+            if (!empty($agentData)) {
+                $agent->update($agentData);
+            }
+        });
 
         return response()->json([
             'success' => true,
-            'data' => $agent->fresh(),
+            'data' => $agent->fresh()->load('account:account_id,username,role,is_active'),
             'message' => '설계사 정보가 수정되었습니다.',
         ]);
     }
