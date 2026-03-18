@@ -59,8 +59,10 @@ class AuthController extends Controller
         $account->update(['last_login_at' => now()]);
 
         // role에 맞는 관계 로드
-        if ($account->isAgent()) {
+        if ($account->role === 'AGENT') {
             $account->load('agent');
+        } elseif ($account->role === 'ADMIN') {
+            $account->load('admin');
         } else {
             $account->load('customer');
         }
@@ -122,7 +124,13 @@ class AuthController extends Controller
     public function me(Request $request): JsonResponse
     {
         $account = $request->user();
-        $account->load('customer');
+        if ($account->role === 'AGENT') {
+            $account->load('agent');
+        } elseif ($account->role === 'ADMIN') {
+            $account->load('admin');
+        } else {
+            $account->load('customer');
+        }
 
         return response()->json([
             'success' => true,

@@ -380,8 +380,17 @@ class ClaimController extends Controller
         $customerId = $request->user()->customer->customer_id;
         $claim = InsuranceClaim::where('customer_id', $customerId)->findOrFail($id);
 
+        // 청구건당 최대 첨부파일 수 제한
+        $currentCount = ClaimDocument::where('claim_id', $claim->claim_id)->count();
+        if ($currentCount >= 20) {
+            return response()->json([
+                'success' => false,
+                'message' => '첨부파일은 최대 20장까지 가능합니다.',
+            ], 422);
+        }
+
         $request->validate([
-            'document' => 'required|file|mimes:jpeg,jpg,png,gif,heic,heif,webp,pdf|max:10240',
+            'document' => 'required|file|mimes:jpeg,jpg,png,gif,heic,heif,webp,pdf|max:20480',
             'supporting_document_id' => 'nullable|integer',
         ]);
 
@@ -495,9 +504,32 @@ class ClaimController extends Controller
         $claims = $query->orderBy('created_at', 'desc')
             ->paginate($request->get('per_page', 15));
 
+        // 목록에서 S3 접근하는 appends 제거 (성능 최적화)
+        $claims->getCollection()->each(fn($c) => $c->setAppends([]));
+
         return response()->json([
             'success' => true,
             'data' => $claims,
+        ]);
+    }
+
+    /**
+     * 관리자: 청구 상세
+     */
+    public function adminShow(int $id): JsonResponse
+    {
+        $claim = InsuranceClaim::with([
+            'customer:customer_id,name,phone,email',
+            'agent:agent_id,name,phone',
+            'claimForm:claim_form_id,form_name,company_id',
+            'claimForm.insuranceCompany:company_id,company_name,company_code',
+            'fieldValues.formField:form_field_id,field_name,field_label,field_type,standard_field_code',
+            'documents',
+        ])->findOrFail($id);
+
+        return response()->json([
+            'success' => true,
+            'data' => $claim,
         ]);
     }
 
@@ -512,6 +544,7 @@ class ClaimController extends Controller
         $validated = $request->validate([
             'claim_status' => "required|in:{$validStatuses}",
             'approved_amount' => 'nullable|numeric|min:0',
+            'paid_amount' => 'nullable|numeric|min:0',
             'notes' => 'nullable|string',
         ]);
 
@@ -525,6 +558,15 @@ class ClaimController extends Controller
         // approved 상태로 전환 시 승인일 자동 설정
         if ($validated['claim_status'] === InsuranceClaim::STATUS_APPROVED) {
             $validated['approval_date'] = now()->toDateString();
+        }
+
+        // paid 상태로 전환 시 지급일 자동 설정
+        if ($validated['claim_status'] === InsuranceClaim::STATUS_PAID) {
+            $validated['paid_date'] = now()->toDateString();
+            // paid_amount가 없으면 approved_amount를 기본값으로
+            if (empty($validated['paid_amount'])) {
+                $validated['paid_amount'] = $claim->approved_amount;
+            }
         }
 
         $claim->update($validated);

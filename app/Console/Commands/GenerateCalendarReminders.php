@@ -7,6 +7,7 @@ use App\Models\Contract;
 use App\Models\Customer;
 use App\Models\Notification;
 use App\Models\Reminder;
+use App\Services\FcmService;
 use Illuminate\Console\Command;
 use Illuminate\Support\Carbon;
 
@@ -200,6 +201,14 @@ class GenerateCalendarReminders extends Command
                 'is_read' => false,
                 'sent_at' => now(),
             ]);
+
+            // FCM 푸시 알림 발송
+            try {
+                $fcm = app(FcmService::class);
+                $fcm->sendToUsers('AGENT', [$reminder->agent_id], $event->title, "{$event->title} ({$timeLabel})");
+            } catch (\Exception $e) {
+                // FCM 실패해도 리마인더 처리는 계속
+            }
 
             $reminder->update([
                 'is_sent' => true,

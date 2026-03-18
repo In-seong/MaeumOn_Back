@@ -49,6 +49,8 @@ class InsuranceClaim extends Model
         'accident_date',
         'claim_amount',
         'approved_amount',
+        'paid_date',
+        'paid_amount',
         'claim_status',
         'claim_date',
         'approval_date',
@@ -70,9 +72,11 @@ class InsuranceClaim extends Model
         'accident_date' => 'date',
         'claim_date' => 'date',
         'approval_date' => 'date',
+        'paid_date' => 'date',
         'fax_sent_at' => 'datetime',
         'claim_amount' => 'decimal:2',
         'approved_amount' => 'decimal:2',
+        'paid_amount' => 'decimal:2',
     ];
 
     public function getStatusLabelAttribute(): string

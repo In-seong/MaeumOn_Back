@@ -33,9 +33,26 @@ class AgentConsultationController extends Controller
         $consultations = $query->orderBy('created_at', 'desc')
             ->paginate(min(max((int) $request->get('per_page', 15), 1), 100));
 
+        // 상태별 전체 건수
+        $statusCounts = Consultation::where('assignee_id', $agentId)
+            ->where('assignee_type', 'AGENT')
+            ->selectRaw("
+                COUNT(*) as total,
+                SUM(consultation_status = 'pending') as pending,
+                SUM(consultation_status = 'in_progress') as in_progress,
+                SUM(consultation_status = 'completed') as completed
+            ")
+            ->first();
+
         return response()->json([
             'success' => true,
             'data' => $consultations,
+            'status_counts' => [
+                'all' => (int) $statusCounts->total,
+                'pending' => (int) $statusCounts->pending,
+                'in_progress' => (int) $statusCounts->in_progress,
+                'completed' => (int) $statusCounts->completed,
+            ],
         ]);
     }
 
@@ -73,6 +90,7 @@ class AgentConsultationController extends Controller
         ]);
 
         $consultation->update([
+            'consultation_answer' => $validated['answer'],
             'consultation_status' => 'completed',
         ]);
 

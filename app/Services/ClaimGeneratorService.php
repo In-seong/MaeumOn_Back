@@ -203,11 +203,42 @@ class ClaimGeneratorService
     private function drawCheckmarks($image, $field, string $value): void
     {
         $options = $field->field_options;
+
+        // consent 필드: choices 좌표가 없거나 (0,0)이면 필드 자체 좌표에 체크
+        if ($field->field_type === 'consent') {
+            if ($value === 'agree') {
+                $hasValidChoices = false;
+                if (!empty($options['choices'])) {
+                    foreach ($options['choices'] as $choice) {
+                        if (($choice['value'] ?? '') === 'agree' && ((int)($choice['x'] ?? 0) > 0 || (int)($choice['y'] ?? 0) > 0)) {
+                            $hasValidChoices = true;
+                            break;
+                        }
+                    }
+                }
+
+                if ($hasValidChoices) {
+                    // choices에 유효한 좌표가 있으면 해당 위치에 체크
+                    foreach ($options['choices'] as $choice) {
+                        if (($choice['value'] ?? '') === 'agree') {
+                            $checkFontSize = $options['check_font_size'] ?? 14;
+                            $this->drawText($image, 'V', (int)$choice['x'], (int)$choice['y'], $checkFontSize, $field->font_color ?: '#000000');
+                        }
+                    }
+                } else {
+                    // 좌표 없으면 필드 자체 x_position, y_position에 체크
+                    $checkFontSize = $options['check_font_size'] ?? 14;
+                    $this->drawText($image, 'V', $field->x_position, $field->y_position, $checkFontSize, $field->font_color ?: '#000000');
+                }
+            }
+            return;
+        }
+
+        // checkbox/radio: 기존 로직
         if (!$options || empty($options['choices'])) {
             return;
         }
 
-        // 선택된 값 추출
         $selectedValues = ($field->field_type === 'checkbox')
             ? (json_decode($value, true) ?: [])
             : [$value];

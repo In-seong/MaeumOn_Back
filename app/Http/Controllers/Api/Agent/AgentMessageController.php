@@ -49,7 +49,8 @@ class AgentMessageController extends Controller
             'receiver_id' => 'required|exists:customer,customer_id',
             'message_type' => 'required|string',
             'message_content' => 'required|string',
-            'phone_number' => 'required|string|max:20',
+            'phone_number' => 'nullable|string|max:20',
+            'image' => 'nullable|file|mimes:jpeg,jpg,png,gif,webp|max:10240',
             'image_url' => 'nullable|string|max:500',
             'scheduled_at' => 'nullable|date|after:now',
         ]);
@@ -67,14 +68,25 @@ class AgentMessageController extends Controller
             ], 403);
         }
 
+        // phone_number: 명시적 전달 없으면 고객 전화번호 자동 사용
+        $phoneNumber = $validated['phone_number'] ?? $customer->phone;
+
+        // 이미지 파일 업로드 처리
+        $imageUrl = $validated['image_url'] ?? null;
+        if ($request->hasFile('image')) {
+            $file = $request->file('image');
+            $filename = 'msg_' . $agentId . '_' . time() . '.' . $file->getClientOriginalExtension();
+            $imageUrl = $file->storeAs('messages/' . $agentId, $filename, 's3');
+        }
+
         $messageData = [
             'receiver_id' => $validated['receiver_id'],
             'sender_id' => $agentId,
             'sender_type' => 'AGENT',
-            'phone_number' => $validated['phone_number'],
+            'phone_number' => $phoneNumber,
             'message_type' => $validated['message_type'],
             'message_content' => $validated['message_content'],
-            'image_url' => $validated['image_url'] ?? null,
+            'image_url' => $imageUrl,
         ];
 
         if (!empty($validated['scheduled_at'])) {

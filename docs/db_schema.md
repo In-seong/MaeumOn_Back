@@ -257,9 +257,11 @@ FCM 푸시 알림 토큰. **Model: `FcmToken`** (`app/Models/FcmToken.php`, 2026
 | accident_date | date | YES | | | 사고일 |
 | claim_amount | decimal(12,2) | YES | | | 청구 금액 |
 | approved_amount | decimal(12,2) | YES | | | 승인 금액 |
-| claim_status | varchar(20) | NO | MUL | pending | pending/reviewing/approved/rejected/completed |
+| claim_status | varchar(20) | NO | MUL | pending | draft/pending/processing/approved/rejected/paid |
 | claim_date | date | NO | MUL | | 청구일 |
 | approval_date | date | YES | | | 승인일 |
+| paid_date | date | YES | | | 실제 지급일 |
+| paid_amount | decimal(12,2) | YES | | | 실제 지급 금액 |
 | rejection_reason | text | YES | | | 거절 사유 |
 | generated_pdf_path | varchar(255) | YES | | | S3 PDF 경로 |
 | fax_sent_at | datetime | YES | | | 팩스 발송 시각 |
@@ -510,6 +512,7 @@ DB 배분 (고객 배정).
 | consultation_type | varchar(50) | YES | | | 상담 유형 |
 | consultation_date | datetime | YES | MUL | | 상담일시 |
 | consultation_content | text | YES | | | 상담 내용 |
+| consultation_answer | text | YES | | | 설계사 답변 내용 |
 | consultation_status | varchar(20) | NO | MUL | pending | pending/in_progress/completed |
 | customer_name | varchar(50) | YES | | | 비정규화 |
 | customer_phone | varchar(20) | YES | | | 비정규화 |
@@ -894,3 +897,6 @@ FaxClientNC 연동용 테이블. **테이블명 반드시 대문자 유지**.
 | 2026-03-07 | agent_reminder 테이블 신규 생성 (일정 사전 알림, D-N일 전 리마인더) |
 | 2026-03-07 | fcm_token 테이블 신규 생성 (FCM 푸시 알림 토큰 저장, FcmToken 모델 구현) |
 | 2026-03-09 | consent_template 테이블 신규 생성 (동의서 관리: 고유식별정보/민감정보/개인신용정보, ConsentTemplate 모델 구현) |
+| 2026-03-13 | consultation: consultation_answer TEXT NULL 컬럼 추가 (설계사 답변 내용 저장) |
+| 2026-03-13 | insurance_claim.claim_status 문서 오류 수정: reviewing→processing, completed→paid (코드 기준으로 통일) |
+| 2026-03-16 | insurance_claim: paid_date DATE NULL, paid_amount DECIMAL(12,2) NULL 컬럼 추가 (보험금 지급 정보) |

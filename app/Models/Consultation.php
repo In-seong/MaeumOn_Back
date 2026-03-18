@@ -17,6 +17,7 @@ class Consultation extends Model
         'consultation_type',
         'consultation_date',
         'consultation_content',
+        'consultation_answer',
         'consultation_status',
         'customer_name',
         'customer_phone',

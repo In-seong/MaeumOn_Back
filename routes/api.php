@@ -32,6 +32,8 @@ use App\Http\Controllers\Api\Agent\AgentFcmTokenController;
 use App\Http\Controllers\Api\Admin\AdminNotificationController;
 use App\Http\Controllers\Api\StandardFieldController;
 use App\Http\Controllers\Api\Admin\AdminConsentTemplateController;
+use App\Http\Controllers\Api\Admin\AdminConsultationController;
+use App\Http\Controllers\Api\Admin\AdminBatchClaimController;
 
 /*
 |--------------------------------------------------------------------------
@@ -109,6 +111,7 @@ Route::middleware('auth:sanctum')->group(function () {
 
         // 청구 관리 (관리자용)
         Route::get('/claims', [ClaimController::class, 'adminIndex']);
+        Route::get('/claims/{id}', [ClaimController::class, 'adminShow']);
         Route::put('/claims/{id}/status', [ClaimController::class, 'updateStatus']);
 
         // 공지사항 관리 (SFR-044)
@@ -145,12 +148,19 @@ Route::middleware('auth:sanctum')->group(function () {
         // 동의서 관리
         Route::get('/consent-templates', [AdminConsentTemplateController::class, 'index']);
         Route::put('/consent-templates/{id}', [AdminConsentTemplateController::class, 'update']);
+
+        // 상담 관리
+        Route::get('/consultations', [AdminConsultationController::class, 'index']);
+
+        // 배치 청구 관리
+        Route::get('/batch-claims', [AdminBatchClaimController::class, 'index']);
     });
 
     // 설계사 API
     Route::prefix('agent')->middleware('role:AGENT')->group(function () {
         // 대시보드
         Route::get('/dashboard', [AgentDashboardController::class, 'index']);
+        Route::get('/dashboard/today-tasks', [AgentDashboardController::class, 'todayTasks']);
         Route::get('/profile', [AgentDashboardController::class, 'profile']);
         Route::put('/profile', [AgentDashboardController::class, 'updateProfile']);
 
@@ -187,6 +197,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('/claims/{id}/documents', [AgentClaimController::class, 'uploadDocument']);
         Route::delete('/claims/{id}/documents/{docId}', [AgentClaimController::class, 'deleteDocument']);
         Route::get('/claims/{id}/download/pdf', [AgentClaimController::class, 'downloadPdf']);
+        Route::put('/claims/{id}/beneficiary', [AgentClaimController::class, 'updateBeneficiary']);
 
         // 발송 (SFR-026~028)
         Route::get('/messages', [AgentMessageController::class, 'index']);

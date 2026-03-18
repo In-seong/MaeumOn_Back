@@ -312,11 +312,11 @@ class AgentCustomerController extends Controller
             ->where('contract_id', $contractId)
             ->firstOrFail();
 
-        $contract->delete();
+        $contract->update(['contract_status' => 'cancelled']);
 
         return response()->json([
             'success' => true,
-            'message' => '계약이 삭제되었습니다.',
+            'message' => '계약이 해지 처리되었습니다.',
         ]);
     }
 }

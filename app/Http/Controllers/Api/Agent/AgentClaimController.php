@@ -51,6 +51,20 @@ class AgentClaimController extends Controller
             $query->where('claim_status', $request->claim_status);
         }
 
+        // 검색 (고객명, 청구번호, 양식명)
+        if ($request->filled('search')) {
+            $search = $request->search;
+            $query->where(function ($q) use ($search) {
+                $q->whereHas('customer', function ($cq) use ($search) {
+                    $cq->where('name', 'like', "%{$search}%");
+                })
+                ->orWhere('claim_number', 'like', "%{$search}%")
+                ->orWhereHas('claimForm', function ($fq) use ($search) {
+                    $fq->where('form_name', 'like', "%{$search}%");
+                });
+            });
+        }
+
         // 날짜 필터
         if ($request->has('date_from')) {
             $query->whereDate('created_at', '>=', $request->date_from);
@@ -62,9 +76,34 @@ class AgentClaimController extends Controller
         $claims = $query->orderBy('created_at', 'desc')
             ->paginate(min(max((int) $request->get('per_page', 15), 1), 100));
 
+        // 목록에서 S3 접근하는 appends 제거 (성능 최적화)
+        $claims->getCollection()->each(fn($c) => $c->setAppends([]));
+
+        // 상태별 전체 건수 (필터/검색 무관, 해당 설계사 전체)
+        $statusCounts = InsuranceClaim::where('agent_id', $agentId)
+            ->selectRaw("
+                COUNT(*) as total,
+                SUM(claim_status = 'draft') as draft,
+                SUM(claim_status = 'pending') as pending,
+                SUM(claim_status = 'processing') as processing,
+                SUM(claim_status = 'approved') as approved,
+                SUM(claim_status = 'rejected') as rejected,
+                SUM(claim_status = 'paid') as paid
+            ")
+            ->first();
+
         return response()->json([
             'success' => true,
             'data' => $claims,
+            'status_counts' => [
+                'all' => (int) $statusCounts->total,
+                'draft' => (int) $statusCounts->draft,
+                'pending' => (int) $statusCounts->pending,
+                'processing' => (int) $statusCounts->processing,
+                'approved' => (int) $statusCounts->approved,
+                'rejected' => (int) $statusCounts->rejected,
+                'paid' => (int) $statusCounts->paid,
+            ],
         ]);
     }
 
@@ -162,7 +201,7 @@ class AgentClaimController extends Controller
         DB::beginTransaction();
         try {
             // claim_number 자동 생성
-            $claimNumber = 'CLM-' . date('Ymd') . '-' . str_pad((string) random_int(0, 9999), 4, '0', STR_PAD_LEFT);
+            $claimNumber = 'CLM-' . date('Ymd') . '-' . substr((string) time(), -4) . str_pad((string) random_int(0, 999), 3, '0', STR_PAD_LEFT);
 
             // 청구 레코드 생성 (agent_id 포함, claim_type '대리청구')
             $claim = InsuranceClaim::create([
@@ -441,8 +480,17 @@ class AgentClaimController extends Controller
 
         $claim = InsuranceClaim::where('agent_id', $agentId)->findOrFail($id);
 
+        // 청구건당 최대 첨부파일 수 제한
+        $currentCount = ClaimDocument::where('claim_id', $claim->claim_id)->count();
+        if ($currentCount >= 20) {
+            return response()->json([
+                'success' => false,
+                'message' => '첨부파일은 최대 20장까지 가능합니다.',
+            ], 422);
+        }
+
         $request->validate([
-            'document' => 'required|file|mimes:jpeg,jpg,png,gif,heic,heif,webp,pdf|max:10240',
+            'document' => 'required|file|mimes:jpeg,jpg,png,gif,heic,heif,webp,pdf|max:20480',
             'supporting_document_id' => 'nullable|integer',
         ]);
 
@@ -545,6 +593,90 @@ class AgentClaimController extends Controller
     }
 
     /**
+     * 수익자 정보 변경 (pending/processing 상태에서 가능)
+     */
+    public function updateBeneficiary(Request $request, int $id): JsonResponse
+    {
+        $agentId = $request->user()->agent->agent_id;
+
+        $claim = InsuranceClaim::where('agent_id', $agentId)
+            ->whereIn('claim_status', [
+                InsuranceClaim::STATUS_PENDING,
+                InsuranceClaim::STATUS_PROCESSING,
+            ])
+            ->findOrFail($id);
+
+        $validated = $request->validate([
+            'fields' => 'required|array|min:1',
+            'fields.*.form_field_id' => 'required|integer|exists:form_field,form_field_id',
+            'fields.*.field_value' => 'nullable|string',
+        ]);
+
+        // 수익자 관련 standard_field_code만 허용
+        $beneficiaryCodes = ['BENEFICIARY_NAME', 'BENEFICIARY_RRN_FRONT', 'BENEFICIARY_RRN_BACK', 'BENEFICIARY_PHONE', 'BENEFICIARY_RELATION'];
+        $allowedFieldIds = DB::table('form_field')
+            ->where('claim_form_id', $claim->claim_form_id)
+            ->whereIn('standard_field_code', $beneficiaryCodes)
+            ->pluck('form_field_id')
+            ->toArray();
+
+        foreach ($validated['fields'] as $fieldData) {
+            if (!in_array($fieldData['form_field_id'], $allowedFieldIds)) {
+                return response()->json([
+                    'success' => false,
+                    'message' => '수익자 관련 필드만 변경할 수 있습니다.',
+                ], 422);
+            }
+        }
+
+        DB::beginTransaction();
+        try {
+            foreach ($validated['fields'] as $fieldData) {
+                ClaimFieldValue::updateOrCreate(
+                    [
+                        'claim_id' => $claim->claim_id,
+                        'form_field_id' => $fieldData['form_field_id'],
+                    ],
+                    [
+                        'field_value' => $fieldData['field_value'] ?? '',
+                    ]
+                );
+            }
+
+            // PDF 재생성
+            if ($claim->generated_pdf_path) {
+                Storage::disk('s3')->delete($claim->generated_pdf_path);
+            }
+            $this->deletePageImages($claim);
+
+            $imageBinaries = $this->claimGenerator->generateClaimImages($claim);
+            $pdfPath = $this->pdfGenerator->generateClaimPdf($claim, $imageBinaries);
+            $claim->update([
+                'generated_pdf_path' => $pdfPath,
+                'updated_by_id' => $agentId,
+            ]);
+            $this->savePageImages($claim, $imageBinaries);
+
+            DB::commit();
+
+            return response()->json([
+                'success' => true,
+                'data' => $claim->load([
+                    'customer:customer_id,name,phone',
+                    'fieldValues.formField:form_field_id,field_label,field_type',
+                ]),
+                'message' => '수익자 정보가 변경되었습니다.',
+            ]);
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return response()->json([
+                'success' => false,
+                'message' => '수익자 정보 변경 중 오류가 발생했습니다.',
+            ], 500);
+        }
+    }
+
+    /**
      * 임시저장 생성
      */
     public function saveDraft(Request $request): JsonResponse
@@ -563,7 +695,7 @@ class AgentClaimController extends Controller
 
         DB::beginTransaction();
         try {
-            $claimNumber = 'CLM-' . date('Ymd') . '-' . str_pad((string) random_int(0, 9999), 4, '0', STR_PAD_LEFT);
+            $claimNumber = 'CLM-' . date('Ymd') . '-' . substr((string) time(), -4) . str_pad((string) random_int(0, 999), 3, '0', STR_PAD_LEFT);
 
             $claim = InsuranceClaim::create([
                 'customer_id' => $validated['customer_id'] ?? null,
@@ -969,6 +1101,6 @@ class AgentClaimController extends Controller
             'resident_number' => $customerData['resident_number'],
             'email' => $customerData['email'],
             'is_active' => true,
-        ]));
+        ], fn($v) => $v !== null));
     }
 }
