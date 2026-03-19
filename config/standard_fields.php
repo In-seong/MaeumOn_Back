@@ -39,6 +39,27 @@ return [
     ['code' => 'DIAGNOSIS',      'label' => '진단명',   'type' => 'text',   'category' => '사고/청구 정보', 'customer_field' => null],
     ['code' => 'HOSPITAL_NAME',  'label' => '병원명',   'type' => 'text',   'category' => '사고/청구 정보', 'customer_field' => null],
     ['code' => 'CLAIM_AMOUNT',   'label' => '청구금액', 'type' => 'number', 'category' => '사고/청구 정보', 'customer_field' => null],
+    ['code' => 'ACCIDENT_TYPE', 'label' => '사고유형', 'type' => 'checkbox', 'category' => '사고/청구 정보', 'customer_field' => null,
+        'default_choices' => [
+            ['label' => '질병', 'value' => 'disease'],
+            ['label' => '상해', 'value' => 'injury'],
+            ['label' => '재물', 'value' => 'property'],
+            ['label' => '배상', 'value' => 'liability'],
+        ],
+    ],
+    ['code' => 'ACCIDENT_DETAIL_TYPE', 'label' => '세부유형', 'type' => 'checkbox', 'category' => '사고/청구 정보', 'customer_field' => null,
+        'default_choices' => [
+            ['label' => '입원', 'value' => 'hospitalization'],
+            ['label' => '통원', 'value' => 'outpatient'],
+            ['label' => '수술', 'value' => 'surgery'],
+            ['label' => '진단', 'value' => 'diagnosis'],
+            ['label' => '사망', 'value' => 'death'],
+            ['label' => '장해', 'value' => 'disability'],
+            ['label' => '운전자', 'value' => 'driver'],
+            ['label' => '치과 치료', 'value' => 'dental'],
+        ],
+    ],
+    ['code' => 'ACCIDENT_DESCRIPTION', 'label' => '사고경위', 'type' => 'textarea', 'category' => '사고/청구 정보', 'customer_field' => null],
 
     // ── 서명 ──
     ['code' => 'INSURED_SIGNATURE',        'label' => '피보험자 서명',   'type' => 'signature', 'category' => '서명', 'customer_field' => null],
