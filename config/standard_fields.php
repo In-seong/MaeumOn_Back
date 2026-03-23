@@ -33,6 +33,12 @@ return [
     ['code' => 'BENEFICIARY_RRN_BACK',  'label' => '수익자 주민번호 뒷자리', 'type' => 'resident_number_back',  'category' => '수익자 정보', 'customer_field' => null],
     ['code' => 'BENEFICIARY_PHONE',    'label' => '수익자 전화번호',  'type' => 'phone',           'category' => '수익자 정보', 'customer_field' => null],
     ['code' => 'BENEFICIARY_RELATION', 'label' => '수익자 관계',     'type' => 'text',            'category' => '수익자 정보', 'customer_field' => null],
+    ['code' => 'BENEFICIARY_REAL_OWNER', 'label' => '실제소유자 여부', 'type' => 'checkbox', 'category' => '수익자 정보', 'customer_field' => null,
+        'default_choices' => [
+            ['label' => '예', 'value' => 'Y'],
+            ['label' => '아니오', 'value' => 'N'],
+        ],
+    ],
 
     // ── 청구자 정보 ──
     ['code' => 'CLAIMANT_NAME',      'label' => '청구자 성명',           'type' => 'text',                  'category' => '청구자 정보', 'customer_field' => null],
