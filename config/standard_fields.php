@@ -78,6 +78,13 @@ return [
         ],
     ],
 
+    ['code' => 'AUTO_TRANSFER', 'label' => '자동이체계좌 지급 여부', 'type' => 'checkbox', 'category' => '사고/청구 정보', 'customer_field' => null,
+        'default_choices' => [
+            ['label' => '예', 'value' => 'Y'],
+            ['label' => '아니오', 'value' => 'N'],
+        ],
+    ],
+
     // ── 서명 ──
     ['code' => 'INSURED_SIGNATURE',        'label' => '피보험자 서명',   'type' => 'signature', 'category' => '서명', 'customer_field' => null],
     ['code' => 'BENEFICIARY_SIGNATURE',    'label' => '수익자 서명',     'type' => 'signature', 'category' => '서명', 'customer_field' => null],
