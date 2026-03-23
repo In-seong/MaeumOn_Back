@@ -70,6 +70,13 @@ return [
             ['label' => '기타', 'value' => 'other'],
         ],
     ],
+    ['code' => 'COMPENSATION_RECIPIENT', 'label' => '보상안내받으실분', 'type' => 'checkbox', 'category' => '사고/청구 정보', 'customer_field' => null,
+        'default_choices' => [
+            ['label' => '계약자', 'value' => 'contractor'],
+            ['label' => '피보험자', 'value' => 'insured'],
+            ['label' => '기타', 'value' => 'other'],
+        ],
+    ],
 
     // ── 서명 ──
     ['code' => 'INSURED_SIGNATURE',        'label' => '피보험자 서명',   'type' => 'signature', 'category' => '서명', 'customer_field' => null],
