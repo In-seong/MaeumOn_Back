@@ -60,6 +60,16 @@ return [
         ],
     ],
     ['code' => 'ACCIDENT_DESCRIPTION', 'label' => '사고경위', 'type' => 'textarea', 'category' => '사고/청구 정보', 'customer_field' => null],
+    ['code' => 'INSURED_RELATION', 'label' => '피보험자와의관계', 'type' => 'checkbox', 'category' => '사고/청구 정보', 'customer_field' => null,
+        'default_choices' => [
+            ['label' => '본인', 'value' => 'self'],
+            ['label' => '배우자', 'value' => 'spouse'],
+            ['label' => '부모', 'value' => 'parent'],
+            ['label' => '자녀', 'value' => 'child'],
+            ['label' => '형제/자매', 'value' => 'sibling'],
+            ['label' => '기타', 'value' => 'other'],
+        ],
+    ],
 
     // ── 서명 ──
     ['code' => 'INSURED_SIGNATURE',        'label' => '피보험자 서명',   'type' => 'signature', 'category' => '서명', 'customer_field' => null],
