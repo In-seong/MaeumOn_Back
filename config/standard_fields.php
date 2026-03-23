@@ -34,6 +34,14 @@ return [
     ['code' => 'BENEFICIARY_PHONE',    'label' => '수익자 전화번호',  'type' => 'phone',           'category' => '수익자 정보', 'customer_field' => null],
     ['code' => 'BENEFICIARY_RELATION', 'label' => '수익자 관계',     'type' => 'text',            'category' => '수익자 정보', 'customer_field' => null],
 
+    // ── 청구자 정보 ──
+    ['code' => 'CLAIMANT_NAME',      'label' => '청구자 성명',           'type' => 'text',                  'category' => '청구자 정보', 'customer_field' => null],
+    ['code' => 'CLAIMANT_RRN_FRONT', 'label' => '청구자 생년월일',       'type' => 'resident_number_front', 'category' => '청구자 정보', 'customer_field' => null],
+    ['code' => 'CLAIMANT_RRN_BACK',  'label' => '청구자 주민번호 뒷자리', 'type' => 'resident_number_back',  'category' => '청구자 정보', 'customer_field' => null],
+    ['code' => 'CLAIMANT_PHONE',     'label' => '청구자 전화번호',        'type' => 'phone',                 'category' => '청구자 정보', 'customer_field' => null],
+    ['code' => 'CLAIMANT_ADDRESS',   'label' => '청구자 주소',           'type' => 'text',                  'category' => '청구자 정보', 'customer_field' => null],
+    ['code' => 'CLAIMANT_SIGNATURE', 'label' => '청구자 서명',           'type' => 'signature',             'category' => '청구자 정보', 'customer_field' => null],
+
     // ── 사고/청구 정보 ──
     ['code' => 'ACCIDENT_DATE',  'label' => '사고일자', 'type' => 'date',   'category' => '사고/청구 정보', 'customer_field' => null],
     ['code' => 'DIAGNOSIS',      'label' => '진단명',   'type' => 'text',   'category' => '사고/청구 정보', 'customer_field' => null],
