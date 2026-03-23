@@ -63,6 +63,7 @@ return [
 
     // ── 서명 ──
     ['code' => 'INSURED_SIGNATURE',        'label' => '피보험자 서명',   'type' => 'signature', 'category' => '서명', 'customer_field' => null],
+    ['code' => 'BENEFICIARY_SIGNATURE',    'label' => '수익자 서명',     'type' => 'signature', 'category' => '서명', 'customer_field' => null],
     ['code' => 'RECIPIENT_SIGNATURE',      'label' => '수령인 서명',     'type' => 'signature', 'category' => '서명', 'customer_field' => null],
     ['code' => 'LEGAL_GUARDIAN_SIGNATURE', 'label' => '법정대리인 서명', 'type' => 'signature', 'category' => '서명', 'customer_field' => null],
 
