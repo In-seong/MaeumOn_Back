@@ -115,4 +115,5 @@ return [
     ['code' => 'CONSENT_UNIQUE_ID', 'label' => '고유식별정보 처리 동의', 'type' => 'consent', 'category' => '동의', 'customer_field' => null],
     ['code' => 'CONSENT_SENSITIVE', 'label' => '민감정보 처리 동의',     'type' => 'consent', 'category' => '동의', 'customer_field' => null],
     ['code' => 'CONSENT_CREDIT',    'label' => '개인(신용)정보 처리 동의', 'type' => 'consent', 'category' => '동의', 'customer_field' => null],
+    ['code' => 'CONSENT_AUTO',      'label' => '자동동의',               'type' => 'consent', 'category' => '동의', 'customer_field' => null],
 ];
