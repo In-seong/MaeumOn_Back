@@ -53,6 +53,7 @@ return [
     ['code' => 'DIAGNOSIS',      'label' => '진단명',   'type' => 'text',   'category' => '사고/청구 정보', 'customer_field' => null],
     ['code' => 'HOSPITAL_NAME',  'label' => '병원명',   'type' => 'text',   'category' => '사고/청구 정보', 'customer_field' => null],
     ['code' => 'CLAIM_AMOUNT',   'label' => '청구금액', 'type' => 'number', 'category' => '사고/청구 정보', 'customer_field' => null],
+    ['code' => 'CLAIM_DATE',    'label' => '청구일자', 'type' => 'date',   'category' => '사고/청구 정보', 'customer_field' => null],
     ['code' => 'ACCIDENT_TYPE', 'label' => '사고유형', 'type' => 'checkbox', 'category' => '사고/청구 정보', 'customer_field' => null,
         'default_choices' => [
             ['label' => '질병', 'value' => 'disease'],
