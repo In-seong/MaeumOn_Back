@@ -34,6 +34,8 @@ use App\Http\Controllers\Api\StandardFieldController;
 use App\Http\Controllers\Api\Admin\AdminConsentTemplateController;
 use App\Http\Controllers\Api\Admin\AdminConsultationController;
 use App\Http\Controllers\Api\Admin\AdminBatchClaimController;
+use App\Http\Controllers\Api\Credit4uController;
+use App\Http\Controllers\Api\InsuranceController;
 
 /*
 |--------------------------------------------------------------------------
@@ -258,5 +260,23 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('/{id}/send-fax', [ClaimController::class, 'sendFax']);
         Route::post('/{id}/documents', [ClaimController::class, 'uploadDocument']);
         Route::delete('/{id}/documents/{docId}', [ClaimController::class, 'deleteDocument']);
+    });
+
+    // 고객 - 보험정보 조회 (DB)
+    Route::prefix('insurances')->middleware('role:CUSTOMER')->group(function () {
+        Route::get('/statistics', [InsuranceController::class, 'statistics']);
+        Route::get('/', [InsuranceController::class, 'index']);
+        Route::get('/{id}', [InsuranceController::class, 'show']);
+    });
+
+    // 고객 - 내보험다보여 (Credit4U) 연동
+    Route::prefix('credit4u')->middleware('role:CUSTOMER')->group(function () {
+        Route::post('/consent', [Credit4uController::class, 'consent']);
+        Route::post('/check-registration', [Credit4uController::class, 'checkRegistration']);
+        Route::post('/register', [Credit4uController::class, 'register']);
+        Route::post('/fetch-contracts', [Credit4uController::class, 'fetchContracts']);
+        Route::post('/find-id', [Credit4uController::class, 'findId']);
+        Route::post('/change-password', [Credit4uController::class, 'changePassword']);
+        Route::post('/2way-confirm', [Credit4uController::class, 'twoWayConfirm']);
     });
 });
