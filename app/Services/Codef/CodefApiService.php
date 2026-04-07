@@ -171,20 +171,25 @@ class CodefApiService
         $cachedData['accumulatedInputs'] = $accumulatedInputs;
         Cache::put($cacheKey, $cachedData, config('codef.two_way_cache_ttl', 300));
 
-        // 디버깅: 민감 정보 마스킹 후 파라미터 키 로깅
-        $debugParams = $params;
-        foreach (['password', 'password1', 'identity'] as $sensitive) {
-            if (isset($debugParams[$sensitive])) {
-                $debugParams[$sensitive] = '[MASKED:' . strlen($debugParams[$sensitive]) . ']';
-            }
-        }
         Log::info('CODEF 2-Way 추가인증 요청', [
             'endpoint' => $endpoint,
             'customer_id' => $customerId,
             'api_type' => $apiType,
-            'param_keys' => array_keys($params),
-            'debug_params' => $debugParams,
         ]);
+
+        // 디버그 모드에서만 파라미터 상세 로깅 (민감 정보 마스킹)
+        if (config('app.debug')) {
+            $debugParams = $params;
+            foreach (['password', 'password1', 'identity'] as $sensitive) {
+                if (isset($debugParams[$sensitive])) {
+                    $debugParams[$sensitive] = '[MASKED:' . strlen($debugParams[$sensitive]) . ']';
+                }
+            }
+            Log::debug('CODEF 2-Way 파라미터 상세', [
+                'param_keys' => array_keys($params),
+                'debug_params' => $debugParams,
+            ]);
+        }
 
         $accessToken = $this->authService->getAccessToken();
         $url = rtrim($this->baseUrl, '/') . '/' . ltrim($endpoint, '/');
