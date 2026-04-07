@@ -118,4 +118,24 @@ class Customer extends Model
     {
         return $this->hasMany(MedicalRecord::class, 'customer_id', 'customer_id');
     }
+
+    public function insurances()
+    {
+        return $this->hasMany(Insurance::class, 'customer_id', 'customer_id');
+    }
+
+    public function credit4uAccount()
+    {
+        return $this->hasOne(Credit4uAccount::class, 'customer_id', 'customer_id');
+    }
+
+    public function insuranceStatistics()
+    {
+        return $this->hasMany(InsuranceStatistics::class, 'customer_id', 'customer_id');
+    }
+
+    public function insurancePaymentHistories()
+    {
+        return $this->hasMany(InsurancePaymentHistory::class, 'customer_id', 'customer_id');
+    }
 }
