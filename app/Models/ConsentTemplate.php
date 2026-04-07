@@ -12,6 +12,7 @@ class ConsentTemplate extends Model
     const TYPE_UNIQUE_ID = 'unique_id';
     const TYPE_SENSITIVE = 'sensitive';
     const TYPE_CREDIT = 'credit';
+    const TYPE_CREDIT4U = 'credit4u';
 
     protected $fillable = [
         'consent_type',
