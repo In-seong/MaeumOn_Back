@@ -101,11 +101,15 @@ class Credit4uService
             'organization' => $this->organization,
             'userName' => $data['userName'],
             'identity' => $data['identity'],
-            'birthDate' => $data['birthDate'] ?? '',
             'phoneNo' => $data['phoneNo'],
             'telecom' => $data['telecom'],
             'type' => $type,
         ];
+
+        // birthDate는 값이 있을 때만 전송 (identityEncYn=Y 시 필수, N 시 불필요)
+        if (!empty($data['birthDate'])) {
+            $params['birthDate'] = $data['birthDate'];
+        }
 
         // type=0: 1차 요청에서 가입정보도 함께 전달
         if ($type === '0') {
@@ -245,10 +249,13 @@ class Credit4uService
             'organization' => $this->organization,
             'userName' => $data['userName'],
             'identity' => $data['identity'],
-            'birthDate' => $data['birthDate'] ?? '',
             'phoneNo' => $data['phoneNo'],
             'telecom' => $data['telecom'],
         ];
+
+        if (!empty($data['birthDate'])) {
+            $params['birthDate'] = $data['birthDate'];
+        }
 
         $result = $this->apiService->callApi(
             self::ENDPOINT_FIND_ID,
@@ -305,11 +312,14 @@ class Credit4uService
             'id' => $data['id'],
             'userName' => $data['userName'],
             'identity' => $data['identity'],
-            'birthDate' => $data['birthDate'] ?? '',
             'phoneNo' => $data['phoneNo'],
             'telecom' => $data['telecom'],
             'type' => $type,
         ];
+
+        if (!empty($data['birthDate'])) {
+            $params['birthDate'] = $data['birthDate'];
+        }
 
         // type=0: 1차 요청에서 변경할 비밀번호 전달
         if ($type === '0' && isset($data['password'])) {
@@ -337,6 +347,13 @@ class Credit4uService
 
     /**
      * 비밀번호 변경 2-Way 확인
+     *
+     * CODEF 스펙 (비밀번호변경 가이드 추가인증 입력부):
+     * - password: type="1"일 때만 필수, type="0"일 때는 미사용
+     * - password1: 임시비밀번호 평문 (이메일 수신)
+     *
+     * type="0"의 경우 원본 request에 포함된 암호화된 password가 계속 전송되면
+     * CODEF가 "비밀번호 복호화 에러"를 발생시키므로, 2-Way 단계에서는 제거.
      */
     public function changePasswordConfirm(array $twoWayInput, string $customerId): array
     {
@@ -349,17 +366,28 @@ class Credit4uService
             ];
         }
 
-        // 비밀번호 입력이 있으면 RSA 암호화
+        $originalParams = $context['originalParams'] ?? [];
+        $type = $originalParams['type'] ?? '0';
+
+        // type="0" + password1 단계: PDF 스펙상 password는 "그외 미사용"이므로 제거
+        if ($type === '0' && isset($twoWayInput['password1'])) {
+            unset($originalParams['password']);
+        }
+
+        // password1(임시비밀번호)도 CODEF가 RSA 복호화를 시도하므로 암호화 필요
+        // (CF-04020 에러 방지)
+        if (isset($twoWayInput['password1'])) {
+            $twoWayInput['password1'] = $this->encryptor->encrypt($twoWayInput['password1']);
+        }
+
+        // 새 비밀번호 입력(password)이 있으면 RSA 암호화 (type="1" 마지막 단계)
         if (isset($twoWayInput['password'])) {
             $twoWayInput['password'] = $this->encryptor->encrypt($twoWayInput['password']);
-        }
-        if (isset($twoWayInput['password1'])) {
-            // 임시비밀번호(password1)는 평문 전달 (사용자가 이메일에서 받은 값)
         }
 
         return $this->apiService->callApi2Way(
             $context['endpoint'] ?? self::ENDPOINT_CHANGE_PWD,
-            $context['originalParams'] ?? [],
+            $originalParams,
             $twoWayInput,
             $customerId,
             self::API_TYPE_CHANGE_PWD

@@ -63,6 +63,14 @@ class Insurance extends Model
         return $this->belongsTo(InsuranceCompany::class, 'company_id', 'company_id');
     }
 
+    /**
+     * Frontend 호환성을 위한 alias (insurance_company 키로도 접근 가능)
+     */
+    public function insuranceCompany()
+    {
+        return $this->belongsTo(InsuranceCompany::class, 'company_id', 'company_id');
+    }
+
     public function coverages()
     {
         return $this->hasMany(InsuranceCoverage::class, 'insurance_id', 'insurance_id');

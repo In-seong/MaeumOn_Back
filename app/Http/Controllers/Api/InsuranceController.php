@@ -28,7 +28,7 @@ class InsuranceController extends Controller
 
         $query = Insurance::where('customer_id', $customerId)
             ->where('is_active', true)
-            ->with(['company:company_id,company_name,company_code,logo_path']);
+            ->with(['insuranceCompany:company_id,company_name,company_code,logo_path']);
 
         // 계약 유형 필터
         if ($request->has('contract_type')) {
@@ -62,7 +62,7 @@ class InsuranceController extends Controller
         $customerId = $request->user()->customer->customer_id;
 
         $insurance = Insurance::where('customer_id', $customerId)
-            ->with(['coverages', 'company', 'paymentHistories'])
+            ->with(['coverages', 'insuranceCompany', 'paymentHistories'])
             ->find($id);
 
         if (!$insurance) {

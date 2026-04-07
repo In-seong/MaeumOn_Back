@@ -154,15 +154,36 @@ class CodefApiService
         // 캐시에서 twoWayInfo 복원
         $twoWayInfo = $cachedData['twoWayInfo'] ?? [];
 
-        // 2차 요청 파라미터 구성: 원래 파라미터 + 사용자 입력 + twoWayInfo + is2Way 플래그
-        $params = array_merge($originalParams, $twoWayInput);
+        // 보안: 사용자 입력에서 민감 필드 제거 (twoWayInfo, is2Way는 서버에서만 세팅)
+        unset($twoWayInput['twoWayInfo'], $twoWayInput['is2Way']);
+
+        // CODEF 스펙: N단계 요청은 1~N-1단계의 입력값을 누적 포함해야 함
+        // (예: SMS 단계 = 기본 + 보안문자 + SMS)
+        $accumulatedInputs = $cachedData['accumulatedInputs'] ?? [];
+        $accumulatedInputs = array_merge($accumulatedInputs, $twoWayInput);
+
+        // 2차 요청 파라미터 구성: 원래 파라미터 + 누적 입력 + twoWayInfo + is2Way 플래그
+        $params = array_merge($originalParams, $accumulatedInputs);
         $params['is2Way'] = true;
         $params['twoWayInfo'] = $twoWayInfo;
 
+        // 누적 입력을 캐시에 저장 (다음 단계에서 사용)
+        $cachedData['accumulatedInputs'] = $accumulatedInputs;
+        Cache::put($cacheKey, $cachedData, config('codef.two_way_cache_ttl', 300));
+
+        // 디버깅: 민감 정보 마스킹 후 파라미터 키 로깅
+        $debugParams = $params;
+        foreach (['password', 'password1', 'identity'] as $sensitive) {
+            if (isset($debugParams[$sensitive])) {
+                $debugParams[$sensitive] = '[MASKED:' . strlen($debugParams[$sensitive]) . ']';
+            }
+        }
         Log::info('CODEF 2-Way 추가인증 요청', [
             'endpoint' => $endpoint,
             'customer_id' => $customerId,
             'api_type' => $apiType,
+            'param_keys' => array_keys($params),
+            'debug_params' => $debugParams,
         ]);
 
         $accessToken = $this->authService->getAccessToken();
@@ -302,7 +323,7 @@ class CodefApiService
 
         // twoWayInfo를 서버 캐시에 저장 (jti, twoWayTimestamp 등 민감 정보)
         $twoWayInfo = [];
-        $twoWayFields = ['jti', 'twoWayTimestamp', 'jobIndex', 'threadIndex', 'secureNoImage'];
+        $twoWayFields = ['jti', 'twoWayTimestamp', 'jobIndex', 'threadIndex'];
         foreach ($twoWayFields as $field) {
             if (isset($responseData[$field])) {
                 $twoWayInfo[$field] = $responseData[$field];
@@ -311,10 +332,10 @@ class CodefApiService
 
         if ($customerId && $apiType) {
             $cacheKey = $this->getTwoWayCacheKey($customerId, $apiType);
-            Cache::put($cacheKey, [
-                'twoWayInfo' => $twoWayInfo,
-                'endpoint' => null, // 호출한 엔드포인트 (Controller에서 추가 저장 가능)
-            ], config('codef.two_way_cache_ttl', 300));
+            // 기존 캐시의 endpoint, originalParams는 유지하고 twoWayInfo만 업데이트
+            $existing = Cache::get($cacheKey, []);
+            $existing['twoWayInfo'] = $twoWayInfo;
+            Cache::put($cacheKey, $existing, config('codef.two_way_cache_ttl', 300));
         }
 
         // Frontend에 필요한 extraInfo만 추출

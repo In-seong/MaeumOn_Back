@@ -256,7 +256,7 @@ class InsuranceContractService
     {
         return Insurance::where('customer_id', $customerId)
             ->where('is_active', true)
-            ->with(['coverages', 'company:company_id,company_name,company_code,logo_path'])
+            ->with(['coverages', 'insuranceCompany:company_id,company_name,company_code,logo_path'])
             ->orderBy('subscription_date', 'desc')
             ->get();
     }
@@ -266,7 +266,7 @@ class InsuranceContractService
      */
     public function getContractDetail(int $insuranceId): ?Insurance
     {
-        return Insurance::with(['coverages', 'company', 'paymentHistories'])
+        return Insurance::with(['coverages', 'insuranceCompany', 'paymentHistories'])
             ->find($insuranceId);
     }
 
