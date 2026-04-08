@@ -1,8 +1,8 @@
 # MaeumOn DB 스키마 (운영 기준)
 
-> **최종 업데이트**: 2026-03-09
+> **최종 업데이트**: 2026-04-07
 > **DB**: MySQL (MariaDB)
-> **총 테이블**: 47개 (비즈니스 39개 + Laravel 시스템 8개)
+> **총 테이블**: 51개 (비즈니스 43개 + Laravel 시스템 8개)
 
 ---
 
@@ -17,9 +17,10 @@
 7. [실적/통계](#7-실적통계) — performance
 8. [병원 혜택](#8-병원-혜택) — partner_hospital, hospital_benefit, benefit_usage
 9. [공통](#9-공통) — common_code, consent_template
-10. [캘린더/일정](#10-캘린더일정) — agent_calendar_event, agent_reminder
-11. [팩스](#11-팩스-faxclientnc) — FC_META_TRAN, FC_MSG_TRAN, FC_RECV_TRAN
-12. [Laravel 시스템](#12-laravel-시스템-테이블) — sessions, cache, jobs 등
+10. [CODEF 내보험다보여 연동](#10-codef-신용정보원-내보험다보여-연동) — credit4u_account, insurance_coverage, insurance_payment_history, insurance_statistics
+11. [캘린더/일정](#11-캘린더일정) — agent_calendar_event, agent_reminder
+12. [팩스](#12-팩스-faxclientnc) — FC_META_TRAN, FC_MSG_TRAN, FC_RECV_TRAN
+13. [Laravel 시스템](#13-laravel-시스템-테이블) — sessions, cache, jobs 등
 
 ---
 
@@ -172,7 +173,8 @@ FCM 푸시 알림 토큰. **Model: `FcmToken`** (`app/Models/FcmToken.php`, 2026
 
 ### insurance
 
-고객 가입보험 정보. **Model 미구현**.
+고객 가입보험 정보. CODEF 신용정보원 내보험다보여 연동 데이터 저장. **Model: `Insurance`** (2026-04-07 구현).
+- 관계: customer(belongsTo), insuranceCompany(belongsTo, alias of company), coverages(hasMany → InsuranceCoverage), paymentHistories(hasMany → InsurancePaymentHistory)
 
 | 컬럼 | 타입 | NULL | Key | Default | 비고 |
 |------|------|------|-----|---------|------|
@@ -187,6 +189,22 @@ FCM 푸시 알림 토큰. **Model: `FcmToken`** (`app/Models/FcmToken.php`, 2026
 | payment_period | varchar(50) | YES | | | 납입 주기 |
 | subscription_date | date | YES | MUL | | 가입일 |
 | expiration_date | date | YES | MUL | | 만기일 |
+| contract_type | varchar(20) | YES | | | savings/car/property/actual_loss/flat_rate |
+| contractor_name | varchar(50) | YES | | | 계약자명 (resContractor) |
+| contract_status | varchar(20) | YES | | | 계약상태 (resContractStatus, '정상'/'만기'/'해지' 등) |
+| company_phone | varchar(20) | YES | | | 보험사 전화번호 (resPhoneNo) |
+| company_homepage | varchar(255) | YES | | | 보험사 홈페이지 (resHomePage) |
+| payment_cycle | varchar(20) | YES | | | 납입주기 (resPaymentCycle) |
+| start_date | date | YES | | | 보장개시일 (commStartDate) |
+| end_date | date | YES | | | 보장종료일 (commEndDate) |
+| insured_person | varchar(50) | YES | | | 피보험자 (resInsuredPerson) |
+| res_number | varchar(20) | YES | | | 호수/순번 (resNumber) |
+| contract_date_of | date | YES | | | 계약일 (resDateOfContract, 화재특종용) |
+| car_name | varchar(100) | YES | | | 자동차명 (commCarName) |
+| car_number | varchar(20) | YES | | | 차량번호 (resCarNo) |
+| codef_synced | tinyint(1) | NO | | 0 | 0=수동입력, 1=CODEF동기화 |
+| codef_raw_data | longtext | YES | | | CODEF 원본 응답 (JSON, 디버깅용) |
+| synced_at | datetime | YES | | | CODEF 동기화 시각 |
 | is_active | tinyint(1) | NO | | 1 | |
 | created_at | datetime | NO | | CURRENT_TIMESTAMP | |
 | updated_at | datetime | YES | | CURRENT_TIMESTAMP ON UPDATE | |
@@ -733,25 +751,121 @@ DB 배분 (고객 배정).
 
 ### consent_template
 
-동의서 템플릿 관리 (고유식별정보, 민감정보, 개인신용정보). 관리자가 전역 편집, 모든 청구서에 공통 적용.
+동의서 템플릿 관리 (고유식별정보, 민감정보, 개인신용정보, 내보험다보여 정보이용). 관리자가 전역 편집.
 
 **Model**: `ConsentTemplate` ✅
+- 상수: `TYPE_UNIQUE_ID`, `TYPE_SENSITIVE`, `TYPE_CREDIT`, `TYPE_CREDIT4U`
 
 | 컬럼 | 타입 | NULL | Key | Default | 비고 |
 |------|------|------|-----|---------|------|
-| consent_template_id | int(11) | NO | PRI | auto_increment | |
-| consent_type | varchar(20) | NO | UNI | | unique_id / sensitive / credit |
+| consent_template_id | bigint(20) unsigned | NO | PRI | auto_increment | |
+| consent_type | varchar(30) | NO | UNI | | unique_id / sensitive / credit / credit4u |
 | title | varchar(100) | NO | | | 동의서 제목 |
 | content | text | NO | | | 동의서 본문 |
 | is_active | tinyint(1) | NO | | 1 | 활성 여부 |
-| created_at | datetime | NO | | CURRENT_TIMESTAMP | |
-| updated_at | datetime | YES | | CURRENT_TIMESTAMP ON UPDATE | |
+| created_at | timestamp | YES | | | |
+| updated_at | timestamp | YES | | | |
 
-**기본 데이터**: unique_id(고유식별정보), sensitive(민감정보), credit(개인신용정보) 3건
+**기본 데이터**: unique_id(고유식별정보), sensitive(민감정보), credit(개인신용정보), credit4u(내보험다보여 정보이용) 4건
 
 ---
 
-## 10. 캘린더/일정
+## 10. CODEF 신용정보원 내보험다보여 연동
+
+CODEF 플랫폼을 통해 한국신용정보원 "내보험다보여" 서비스에서 고객의 가입 보험 정보를 조회/저장.
+관련 테이블: `credit4u_account`, `insurance_coverage`, `insurance_payment_history`, `insurance_statistics`
+참고: 보험 상세 정보는 [`insurance` 테이블](#insurance) 확장 컬럼에 저장됨.
+
+### credit4u_account
+
+내보험다보여 계정 연동 정보. **Model: `Credit4uAccount`** (2026-04-07 구현).
+- 관계: customer(belongsTo), consentTemplate(belongsTo → ConsentTemplate)
+
+| 컬럼 | 타입 | NULL | Key | Default | 비고 |
+|------|------|------|-----|---------|------|
+| credit4u_account_id | int(10) unsigned | NO | PRI | auto_increment | |
+| customer_id | char(8) | NO | UNI | | → customer FK |
+| credit4u_login_id | varchar(100) | YES | | | 내보험다보여 ID (동의만 한 상태에선 NULL) |
+| registration_status | enum('consented','registered','needs_verify','temp_password') | NO | | consented | 가입 상태 |
+| consent_template_id | bigint(20) unsigned | YES | MUL | | → consent_template FK |
+| last_synced_at | datetime | YES | | | 마지막 동기화 시각 |
+| consent_agreed_at | datetime | YES | | | 정보이용 동의 시각 |
+| is_active | tinyint(1) | NO | | 1 | |
+| created_at | datetime | NO | | CURRENT_TIMESTAMP | |
+| updated_at | datetime | YES | | CURRENT_TIMESTAMP ON UPDATE | |
+
+> **비밀번호 저장 여부**: 보안상 내보험다보여 비밀번호는 저장하지 않음. 매번 사용자 입력 받아 RSA 암호화 후 CODEF로 전송.
+
+### insurance_coverage
+
+보험 보장내역. CODEF 계약정보 API의 `resCoverageLists` 데이터. **Model: `InsuranceCoverage`** (2026-04-07 구현).
+- 관계: insurance(belongsTo)
+
+| 컬럼 | 타입 | NULL | Key | Default | 비고 |
+|------|------|------|-----|---------|------|
+| coverage_id | int(10) unsigned | NO | PRI | auto_increment | |
+| insurance_id | int(11) | NO | MUL | | → insurance FK |
+| insured_person | varchar(50) | YES | | | 피보험자 (resInsuredPerson) |
+| coverage_name | varchar(200) | NO | | | 보장명 (resCoverageName) |
+| coverage_amount | decimal(15,2) | YES | | | 보장금액 (resCoverageAmount) |
+| coverage_status | varchar(20) | YES | | | 상태 (resCoverageStatus) |
+| agreement_type | varchar(20) | YES | | | 특약구분 (resAgreementType) |
+| coverage_type | varchar(20) | YES | | | 보장유형 - 실손형 (resType) |
+| object_info | varchar(200) | YES | | | 목적물 - 화재특종 (resObject) |
+| zip_code | varchar(10) | YES | | | 우편번호 - 화재특종 (resZipCode) |
+| created_at | datetime | NO | | CURRENT_TIMESTAMP | |
+| updated_at | datetime | YES | | CURRENT_TIMESTAMP ON UPDATE | |
+
+> **동기화 정책**: 계약정보 재동기화 시 해당 insurance_id의 기존 보장내역을 삭제 후 재생성.
+
+### insurance_payment_history
+
+실손형 보험 지급내역. CODEF 계약정보 API의 `resActualLossPaymentList`. **Model: `InsurancePaymentHistory`** (2026-04-07 구현).
+- 관계: customer(belongsTo), insurance(belongsTo, NULL 허용)
+
+| 컬럼 | 타입 | NULL | Key | Default | 비고 |
+|------|------|------|-----|---------|------|
+| payment_id | int(10) unsigned | NO | PRI | auto_increment | |
+| customer_id | char(8) | NO | MUL | | → customer FK (직접 참조, 매칭 실패해도 유지) |
+| insurance_id | int(11) | YES | MUL | | → insurance FK (증권번호 매칭 성공 시) |
+| company_name | varchar(100) | YES | | | 보험사명 (resCompanyNm, 비정규화) |
+| policy_number | varchar(50) | YES | | | 증권번호 (resPolicyNumber, 매칭 키) |
+| insurance_name | varchar(200) | YES | | | 보험명 (resInsuranceName) |
+| res_number | varchar(20) | YES | | | 호수/순번 (resNumber) |
+| occur_date_time | varchar(20) | YES | | | 원사고발생일시 (resOccurDateTime) |
+| total_amount | decimal(12,2) | YES | | | 총 지급금액 (resTotalAmount) |
+| payment_type | varchar(50) | YES | | | 지급유형 (resType) |
+| reason | varchar(200) | YES | | | 지급사유 (resReasonForPayment) |
+| paid_amount | decimal(12,2) | YES | | | 지급금액 (resPaidAmount) |
+| payment_date | date | YES | | | 지급일 (resPaymentDate) |
+| judge_result | varchar(50) | YES | | | 심사결과 (resJudgeResult) |
+| created_at | datetime | NO | | CURRENT_TIMESTAMP | |
+| updated_at | datetime | YES | | CURRENT_TIMESTAMP ON UPDATE | |
+
+> **FK 설계**: insurance와 1:1 매칭이 안 될 수 있으므로 customer_id를 직접 참조 (NOT NULL), insurance_id는 NULL 허용.
+
+### insurance_statistics
+
+분석통계자료. CODEF 계약정보 API의 `resFlatRateStatisticsList` / `resActualLossStatisticsList`. **Model: `InsuranceStatistics`** (2026-04-07 구현).
+- 관계: customer(belongsTo)
+
+| 컬럼 | 타입 | NULL | Key | Default | 비고 |
+|------|------|------|-----|---------|------|
+| stat_id | int(10) unsigned | NO | PRI | auto_increment | |
+| customer_id | char(8) | NO | MUL | | → customer FK |
+| stat_type | enum('flat_rate','actual_loss') | NO | | | 정액형/실손형 |
+| coverage_name | varchar(200) | NO | | | 보장명 (resCoverageName) |
+| self_coverage_amt | decimal(15,2) | YES | | | 본인 보장금액 (resSelfCoverageAmt) |
+| avg_group_coverage_amt | decimal(15,2) | YES | | | 동일그룹 평균 보장금액 (resAvgGroupCoverageAmt) |
+| self_reg_yn | varchar(1) | YES | | | 실손 가입여부 Y/N (resSelfRegYN) |
+| avg_group_reg_rate | varchar(10) | YES | | | 동일그룹 가입률 % (resAvgGroupRegRate) |
+| synced_at | datetime | NO | | | 동기화 시각 |
+| created_at | datetime | NO | | CURRENT_TIMESTAMP | |
+| updated_at | datetime | YES | | CURRENT_TIMESTAMP ON UPDATE | |
+
+---
+
+## 11. 캘린더/일정
 
 ### agent_calendar_event
 
@@ -799,7 +913,7 @@ DB 배분 (고객 배정).
 
 ---
 
-## 11. 팩스 (FaxClientNC)
+## 12. 팩스 (FaxClientNC)
 
 FaxClientNC 연동용 테이블. **테이블명 반드시 대문자 유지**.
 
@@ -855,7 +969,7 @@ FaxClientNC 연동용 테이블. **테이블명 반드시 대문자 유지**.
 
 ---
 
-## 12. Laravel 시스템 테이블
+## 13. Laravel 시스템 테이블
 
 프레임워크 자동 생성 테이블. 직접 수정하지 않음.
 
@@ -900,3 +1014,12 @@ FaxClientNC 연동용 테이블. **테이블명 반드시 대문자 유지**.
 | 2026-03-13 | consultation: consultation_answer TEXT NULL 컬럼 추가 (설계사 답변 내용 저장) |
 | 2026-03-13 | insurance_claim.claim_status 문서 오류 수정: reviewing→processing, completed→paid (코드 기준으로 통일) |
 | 2026-03-16 | insurance_claim: paid_date DATE NULL, paid_amount DECIMAL(12,2) NULL 컬럼 추가 (보험금 지급 정보) |
+| 2026-04-07 | CODEF 신용정보원 내보험다보여 연동 스키마 추가 (마이그레이션 5건, batch 8) |
+| 2026-04-07 | insurance 테이블에 CODEF 동기화용 16개 컬럼 추가 (contract_type, contractor_name, contract_status, company_phone, company_homepage, payment_cycle, start_date, end_date, insured_person, res_number, contract_date_of, car_name, car_number, codef_synced, codef_raw_data, synced_at) + Insurance 모델 신규 구현 |
+| 2026-04-07 | credit4u_account 테이블 신규 생성 (내보험다보여 계정 연동 정보, Credit4uAccount 모델 구현) |
+| 2026-04-07 | insurance_coverage 테이블 신규 생성 (보험 보장내역, InsuranceCoverage 모델 구현) |
+| 2026-04-07 | insurance_payment_history 테이블 신규 생성 (실손 지급내역, InsurancePaymentHistory 모델 구현) |
+| 2026-04-07 | insurance_statistics 테이블 신규 생성 (분석통계자료, InsuranceStatistics 모델 구현) |
+| 2026-04-07 | consent_template: PK 타입 문서 정정 (int(11) → 실제는 bigint(20) unsigned), Credit4U 동의 템플릿(consent_type='credit4u') 시드 추가, consent_type varchar(20) → varchar(30) |
+| 2026-04-07 | Customer 모델에 insurances/credit4uAccount/insuranceStatistics/insurancePaymentHistories 관계 추가 |
+| 2026-04-07 | ConsentTemplate 모델에 TYPE_CREDIT4U 상수 추가 |
