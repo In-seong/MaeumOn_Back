@@ -11,7 +11,7 @@
 1. [인증/사용자](#1-인증사용자) — account, admin, agent, customer, device_token, fcm_token
 2. [보험/계약](#2-보험계약) — insurance_company, insurance, contract
 3. [보험청구](#3-보험청구) — insurance_claim, claim_form, form_page, form_field, claim_field_value, supporting_document, claim_document
-4. [건강/의료](#4-건강의료) — medical_record, health_checkup, disclosure_obligation
+4. [건강/의료](#4-건강의료) — medical_record, health_checkup, health_external_account, health_prediction, disclosure_obligation
 5. [고객 관리](#5-고객-관리) — customer_status, customer_assignment, memo, consultation, complaint
 6. [커뮤니케이션](#6-커뮤니케이션) — message, notification, notice, satisfaction_survey
 7. [실적/통계](#7-실적통계) — performance
@@ -407,7 +407,10 @@ FCM 푸시 알림 토큰. **Model: `FcmToken`** (`app/Models/FcmToken.php`, 2026
 
 ### medical_record
 
-진료 기록.
+진료 기록. HIRA 내진료정보열람 동기화 시 `source='codef_hira'`로 저장. **Model: `MedicalRecord`** (2026-04-08 HIRA 확장).
+- 관계: customer(belongsTo), disclosureObligations(hasMany)
+- Scope: forCustomer, fromHira, manual
+- 상수: SOURCE_MANUAL='manual', SOURCE_CODEF_HIRA='codef_hira'
 
 | 컬럼 | 타입 | NULL | Key | Default | 비고 |
 |------|------|------|-----|---------|------|
@@ -415,31 +418,140 @@ FCM 푸시 알림 토큰. **Model: `FcmToken`** (`app/Models/FcmToken.php`, 2026
 | customer_id | char(8) | NO | MUL | | → customer FK |
 | treatment_date | date | NO | MUL | | 진료일 |
 | hospital_name | varchar(100) | YES | | | |
-| diagnosis_code | varchar(20) | YES | MUL | | 진단 코드 |
+| department | varchar(100) | YES | | | 진단과 (HIRA resDepartment) |
+| diagnosis_code | varchar(20) | YES | MUL | | 진단 코드 (KCD) |
 | diagnosis_name | varchar(200) | YES | | | 진단명 |
-| treatment_type | varchar(50) | YES | | | 진료 유형 |
+| treatment_type | varchar(50) | YES | | | 진료 유형 (외래/입원) |
 | medical_cost | decimal(10,2) | YES | | | 진료비 |
-| prescription | text | YES | | | 처방 내용 |
+| prescription | text | YES | | | 처방 내용 (수동 입력용) |
 | is_important | tinyint(1) | NO | MUL | 0 | 중요 표시 |
+| visit_days | int(11) | YES | | | 내원일수 (HIRA) |
+| total_amount | decimal(12,2) | YES | | | 총 진료비 (HIRA) |
+| public_charge | decimal(12,2) | YES | | | 공단부담금 (HIRA) |
+| deductible_amt | decimal(12,2) | YES | | | 본인부담금 (HIRA) |
+| hospital_code | varchar(50) | YES | | | HIRA 병원코드 |
+| detail_treat_list_json | longtext | YES | | | HIRA 세부진료/처치 JSON |
+| prescribe_drug_list_json | longtext | YES | | | HIRA 처방약 JSON |
+| codef_synced | tinyint(1) | NO | | 0 | CODEF 동기화 여부 |
+| synced_at | datetime | YES | | | 마지막 동기화 시각 |
+| source | varchar(20) | NO | | manual | manual / codef_hira |
+| codef_raw_data | longtext | YES | | | CODEF 원본 응답 JSON |
 | created_at | datetime | NO | | CURRENT_TIMESTAMP | |
 | updated_at | datetime | YES | | CURRENT_TIMESTAMP ON UPDATE | |
 
+- INDEX: idx_medical_record_cust_treat (customer_id, treatment_date)
+- INDEX: idx_medical_record_cust_source (customer_id, source)
+- INDEX: idx_medical_record_cust_diagnosis (customer_id, diagnosis_code)
+
 ### health_checkup
 
-건강검진 기록. **Model 미구현**.
+NHIS 건강검진결과 (resPreviewList 회차별). **Model: `HealthCheckup`** (2026-04-08 구현).
+- 관계: customer(belongsTo)
+- Scope: latestForCustomer
+- Accessor: `risk_summary` (KDCA 위험지표 평가, $appends)
+- Observer: HealthCheckupObserver (저장 시 risk 평가 → FCM 알림)
 
 | 컬럼 | 타입 | NULL | Key | Default | 비고 |
 |------|------|------|-----|---------|------|
 | checkup_id | int(11) | NO | PRI | auto_increment | |
 | customer_id | char(8) | NO | MUL | | → customer FK |
 | checkup_date | date | NO | MUL | | 검진일 |
-| checkup_type | varchar(50) | YES | | | 검진 유형 |
-| hospital_name | varchar(100) | YES | | | 검진 기관 |
-| checkup_results | text | YES | | | 검진 결과 (통합 텍스트) |
-| abnormal_findings | text | YES | | | 이상 소견 |
-| follow_up_required | tinyint(1) | YES | | | 추적 검사 필요 |
+| checkup_year | varchar(4) | YES | MUL | | 검진연도 (YYYY) |
+| checkup_type | varchar(50) | YES | | | 본인검진/영유아검진 |
+| hospital_name | varchar(100) | YES | | | 검진 장소 |
+| organization_name | varchar(100) | YES | | | NHIS 검진기관명 |
+| opinion | text | YES | | | 검진 소견 (resOpinion) |
+| judgement | varchar(50) | YES | | | 판정 (정A/정B/주의/이상...) |
+| height | varchar(10) | YES | | | 신장 cm |
+| weight | varchar(10) | YES | | | 체중 kg |
+| waist | varchar(10) | YES | | | 허리둘레 cm |
+| bmi | varchar(10) | YES | | | BMI |
+| sight | varchar(20) | YES | | | 시력 |
+| hearing | varchar(20) | YES | | | 청력 |
+| blood_pressure | varchar(20) | YES | | | 혈압 (예: "120/80") |
+| urinary_protein | varchar(20) | YES | | | 요단백 |
+| hemoglobin | varchar(10) | YES | | | 혈색소 g/dL |
+| fasting_blood_sugar | varchar(10) | YES | | | 공복혈당 mg/dL |
+| total_cholesterol | varchar(10) | YES | | | 총콜레스테롤 mg/dL |
+| hdl_cholesterol | varchar(10) | YES | | | HDL mg/dL |
+| ldl_cholesterol | varchar(10) | YES | | | LDL mg/dL |
+| triglyceride | varchar(10) | YES | | | 중성지방 mg/dL |
+| serum_creatinine | varchar(10) | YES | | | 혈청크레아티닌 mg/dL |
+| gfr | varchar(10) | YES | | | GFR mL/min |
+| ast | varchar(10) | YES | | | AST U/L |
+| alt | varchar(10) | YES | | | ALT U/L |
+| y_gtp | varchar(10) | YES | | | γGTP U/L |
+| tb_chest_disease | varchar(50) | YES | | | 폐결핵·흉부질환 |
+| osteoporosis | varchar(50) | YES | | | 골다공증 |
+| question_info_json | longtext | YES | | | 문진 JSON (resQuestionInfoList) |
+| checkup_results | text | YES | | | (레거시) 통합 텍스트 |
+| abnormal_findings | text | YES | | | (레거시) 이상 소견 |
+| follow_up_required | tinyint(1) | YES | | | (레거시) 추적 필요 |
+| codef_synced | tinyint(1) | NO | | 0 | CODEF 동기화 여부 |
+| synced_at | datetime | YES | | | 마지막 동기화 시각 |
+| codef_raw_data | longtext | YES | | | CODEF 원본 응답 JSON |
 | created_at | datetime | NO | | CURRENT_TIMESTAMP | |
 | updated_at | datetime | YES | | CURRENT_TIMESTAMP ON UPDATE | |
+
+- INDEX: idx_health_checkup_cust_date (customer_id, checkup_date)
+- INDEX: idx_health_checkup_cust_year (customer_id, checkup_year)
+
+### health_external_account
+
+NHIS 건강검진 + HIRA 내진료정보 동의/연동 상태. **Model: `HealthExternalAccount`** (2026-04-08 구현).
+- 관계: customer(belongsTo)
+- 메서드: hasCheckupConsent(), hasMedicalInfoConsent()
+
+| 컬럼 | 타입 | NULL | Key | Default | 비고 |
+|------|------|------|-----|---------|------|
+| health_external_account_id | int(10) unsigned | NO | PRI | auto_increment | |
+| customer_id | char(8) | NO | UNI | | → customer FK |
+| checkup_consent_at | datetime | YES | | | NHIS 건강검진 조회 동의 시각 |
+| medical_info_consent_at | datetime | YES | | | HIRA 내진료정보열람 동의 시각 |
+| health_in_linked | tinyint(1) | NO | | 0 | 건강iN 연동 여부 (예측 API용) |
+| health_in_linked_at | datetime | YES | | | 건강iN 연동 시각 |
+| last_checkup_sync_at | datetime | YES | | | NHIS 검진결과 마지막 동기화 |
+| last_medical_info_sync_at | datetime | YES | | | HIRA 진료정보 마지막 동기화 |
+| last_examination_sync_at | datetime | YES | | | NHIS 검진대상 마지막 동기화 |
+| last_health_age_sync_at | datetime | YES | | | NHIS 건강나이 마지막 동기화 |
+| last_prediction_sync_at | datetime | YES | | | NHIS 예측 5종 마지막 동기화 |
+| medical_info_range_start | date | YES | | | HIRA 마지막 호출 startDate (증분용) |
+| medical_info_range_end | date | YES | | | HIRA 마지막 호출 endDate |
+| is_active | tinyint(1) | NO | | 1 | |
+| created_at | datetime | NO | | CURRENT_TIMESTAMP | |
+| updated_at | datetime | YES | | CURRENT_TIMESTAMP ON UPDATE | |
+
+### health_prediction
+
+NHIS 건강나이 + 질환 예측 5종 (cardio/stroke/diabetes/kidney/mi/health_age). **Model: `HealthPrediction`** (2026-04-08 구현).
+- 관계: customer(belongsTo)
+- Scope: forCustomer, ofType, latest
+- 상수: TYPE_CARDIO/STROKE/DIABETES/KIDNEY/MI/HEALTH_AGE
+- Observer: HealthPredictionObserver (risk_grade>=4 → FCM 알림)
+
+| 컬럼 | 타입 | NULL | Key | Default | 비고 |
+|------|------|------|-----|---------|------|
+| prediction_id | int(10) unsigned | NO | PRI | auto_increment | |
+| customer_id | char(8) | NO | MUL | | → customer FK |
+| prediction_type | varchar(20) | NO | | | cardio/stroke/diabetes/kidney/mi/health_age |
+| checkup_date | date | YES | | | 예측 기준 검진일자 |
+| risk_grade | varchar(2) | YES | | | 1=잘하고있어요 ~ 5=관리필요 |
+| risk_ratio | varchar(20) | YES | | | 3년 내 발생 확률 % |
+| average_age | varchar(10) | YES | | | 나의 연령대 |
+| average_ratio | varchar(20) | YES | | | 유사집단 내 위치 (21/100) |
+| health_age | varchar(10) | YES | | | 건강나이 (health_age 전용) |
+| chronological_age | varchar(10) | YES | | | 실제나이 (health_age 전용) |
+| change_after_text | text | YES | | | 위험요인 조절 시 안내 문구 |
+| detail_list_json | longtext | YES | | | resDetailList JSON (위험요인) |
+| sub_detail_list_json | longtext | YES | | | resSubDetailList JSON (처방) |
+| compare_list_json | longtext | YES | | | resCompareList JSON (비교) |
+| codef_raw_data | longtext | YES | | | CODEF 원본 응답 |
+| predicted_at | datetime | NO | | | 예측 수행 시각 |
+| created_at | datetime | NO | | CURRENT_TIMESTAMP | |
+| updated_at | datetime | YES | | CURRENT_TIMESTAMP ON UPDATE | |
+
+- INDEX: idx_health_prediction_cust_type (customer_id, prediction_type)
+- INDEX: idx_health_prediction_predicted_at
 
 ### disclosure_obligation
 
@@ -754,19 +866,19 @@ DB 배분 (고객 배정).
 동의서 템플릿 관리 (고유식별정보, 민감정보, 개인신용정보, 내보험다보여 정보이용). 관리자가 전역 편집.
 
 **Model**: `ConsentTemplate` ✅
-- 상수: `TYPE_UNIQUE_ID`, `TYPE_SENSITIVE`, `TYPE_CREDIT`, `TYPE_CREDIT4U`
+- 상수: `TYPE_UNIQUE_ID`, `TYPE_SENSITIVE`, `TYPE_CREDIT`, `TYPE_CREDIT4U`, `TYPE_HEALTH_CHECKUP`, `TYPE_MEDICAL_INFO`
 
 | 컬럼 | 타입 | NULL | Key | Default | 비고 |
 |------|------|------|-----|---------|------|
 | consent_template_id | bigint(20) unsigned | NO | PRI | auto_increment | |
-| consent_type | varchar(30) | NO | UNI | | unique_id / sensitive / credit / credit4u |
+| consent_type | varchar(30) | NO | UNI | | unique_id / sensitive / credit / credit4u / health_checkup / medical_info |
 | title | varchar(100) | NO | | | 동의서 제목 |
 | content | text | NO | | | 동의서 본문 |
 | is_active | tinyint(1) | NO | | 1 | 활성 여부 |
 | created_at | timestamp | YES | | | |
 | updated_at | timestamp | YES | | | |
 
-**기본 데이터**: unique_id(고유식별정보), sensitive(민감정보), credit(개인신용정보), credit4u(내보험다보여 정보이용) 4건
+**기본 데이터**: unique_id(고유식별정보), sensitive(민감정보), credit(개인신용정보), credit4u(내보험다보여 정보이용), health_checkup(건강검진정보 조회 NHIS), medical_info(내진료정보열람 HIRA) 6건
 
 ---
 
@@ -1023,3 +1135,11 @@ FaxClientNC 연동용 테이블. **테이블명 반드시 대문자 유지**.
 | 2026-04-07 | consent_template: PK 타입 문서 정정 (int(11) → 실제는 bigint(20) unsigned), Credit4U 동의 템플릿(consent_type='credit4u') 시드 추가, consent_type varchar(20) → varchar(30) |
 | 2026-04-07 | Customer 모델에 insurances/credit4uAccount/insuranceStatistics/insurancePaymentHistories 관계 추가 |
 | 2026-04-07 | ConsentTemplate 모델에 TYPE_CREDIT4U 상수 추가 |
+| 2026-04-08 | NHIS 건강검진 + HIRA 내진료정보열람 통합 스키마 추가 (마이그레이션 5건, batch 9) |
+| 2026-04-08 | health_checkup 테이블 확장: 30+ 컬럼 추가 (height/weight/bmi/blood_pressure/공복혈당/콜레스테롤/AST/ALT/GFR 등 NHIS resPreviewList 매핑 + checkup_year/organization_name/opinion/judgement/question_info_json/codef_synced/synced_at/codef_raw_data) — `HealthCheckup` 모델 신규 구현 (risk_summary accessor 포함) |
+| 2026-04-08 | medical_record 테이블 확장: HIRA 필드 12개 추가 (department, visit_days, total_amount, public_charge, deductible_amt, hospital_code, detail_treat_list_json, prescribe_drug_list_json, codef_synced, synced_at, source, codef_raw_data) — `MedicalRecord` 모델에 fillable/scope/상수 추가 |
+| 2026-04-08 | health_external_account 테이블 신규 생성 (NHIS+HIRA 동의/연동 통합 추적, `HealthExternalAccount` 모델 구현) |
+| 2026-04-08 | health_prediction 테이블 신규 생성 (건강나이 + 5종 질환예측 통합 저장, `HealthPrediction` 모델 구현) |
+| 2026-04-08 | consent_template에 health_checkup, medical_info 2종 시드 추가 (NHIS/HIRA 동의서); ConsentTemplate 모델에 TYPE_HEALTH_CHECKUP/TYPE_MEDICAL_INFO 상수 추가 |
+| 2026-04-08 | Customer 모델에 healthExternalAccount/healthCheckups/healthPredictions 관계 추가 |
+| 2026-04-08 | HealthCheckupObserver/HealthPredictionObserver 추가 (저장 시 위험지표 평가 → FCM 알림); HealthRiskNotificationCommand 일일 배치(`health:notify-risks`, 매일 09:00) |

@@ -13,6 +13,8 @@ class ConsentTemplate extends Model
     const TYPE_SENSITIVE = 'sensitive';
     const TYPE_CREDIT = 'credit';
     const TYPE_CREDIT4U = 'credit4u';
+    const TYPE_HEALTH_CHECKUP = 'health_checkup';
+    const TYPE_MEDICAL_INFO = 'medical_info';
 
     protected $fillable = [
         'consent_type',

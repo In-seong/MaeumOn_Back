@@ -17,15 +17,17 @@ class OtpService
      */
     public function generate(string $phone): array
     {
-        // Rate limit 체크
-        $rateLimitKey = "otp_rate:{$phone}";
-        $attempts = (int) Cache::get($rateLimitKey, 0);
+        // Rate limit 체크 (local/testing 환경에서는 비활성화)
+        if (!app()->environment('local', 'testing')) {
+            $rateLimitKey = "otp_rate:{$phone}";
+            $attempts = (int) Cache::get($rateLimitKey, 0);
 
-        if ($attempts >= self::RATE_LIMIT_MAX) {
-            return [
-                'success' => false,
-                'message' => '인증번호 요청 한도를 초과했습니다. 1시간 후 다시 시도해주세요.',
-            ];
+            if ($attempts >= self::RATE_LIMIT_MAX) {
+                return [
+                    'success' => false,
+                    'message' => '인증번호 요청 한도를 초과했습니다. 1시간 후 다시 시도해주세요.',
+                ];
+            }
         }
 
         // OTP 생성
@@ -36,7 +38,11 @@ class OtpService
         Cache::put($cacheKey, $otp, self::OTP_TTL_SECONDS);
 
         // Rate limit 카운트 증가
-        Cache::put($rateLimitKey, $attempts + 1, self::RATE_LIMIT_WINDOW_SECONDS);
+        if (!app()->environment('local', 'testing')) {
+            $rateLimitKey = "otp_rate:{$phone}";
+            $attempts = (int) Cache::get($rateLimitKey, 0);
+            Cache::put($rateLimitKey, $attempts + 1, self::RATE_LIMIT_WINDOW_SECONDS);
+        }
 
         // SMS 발송 (개발환경: 로그 출력, 운영환경: 실제 SMS)
         $this->sendSms($phone, $otp);
