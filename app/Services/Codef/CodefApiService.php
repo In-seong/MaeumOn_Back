@@ -45,6 +45,21 @@ class CodefApiService
             'api_type' => $apiType,
         ]);
 
+        // 디버그 모드에서 1-Way 파라미터 상세 로깅 (민감 정보 마스킹)
+        if (config('app.debug')) {
+            $debugParams = $params;
+            foreach (['password', 'password1', 'identity', 'userPassword'] as $sensitive) {
+                if (isset($debugParams[$sensitive])) {
+                    $debugParams[$sensitive] = '[MASKED:' . strlen($debugParams[$sensitive]) . ']';
+                }
+            }
+            Log::debug('CODEF 1-Way 파라미터 상세', [
+                'endpoint' => $endpoint,
+                'param_keys' => array_keys($params),
+                'debug_params' => $debugParams,
+            ]);
+        }
+
         try {
             $response = Http::withToken($accessToken)
                 ->timeout($this->timeout)

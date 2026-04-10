@@ -138,4 +138,19 @@ class Customer extends Model
     {
         return $this->hasMany(InsurancePaymentHistory::class, 'customer_id', 'customer_id');
     }
+
+    public function healthExternalAccount()
+    {
+        return $this->hasOne(HealthExternalAccount::class, 'customer_id', 'customer_id');
+    }
+
+    public function healthCheckups()
+    {
+        return $this->hasMany(HealthCheckup::class, 'customer_id', 'customer_id');
+    }
+
+    public function healthPredictions()
+    {
+        return $this->hasMany(HealthPrediction::class, 'customer_id', 'customer_id');
+    }
 }

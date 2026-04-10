@@ -16,3 +16,6 @@ Schedule::command('fax:cleanup-files')->everyFiveMinutes();
 
 // 캘린더 리마인더 자동 생성 및 알림 발송 (매일 08:00)
 Schedule::command('calendar:generate-reminders')->dailyAt('08:00');
+
+// 건강 위험지표 알림 (매일 09:00)
+Schedule::command('health:notify-risks')->dailyAt('09:00');
