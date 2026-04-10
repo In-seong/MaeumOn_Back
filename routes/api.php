@@ -36,6 +36,14 @@ use App\Http\Controllers\Api\Admin\AdminConsultationController;
 use App\Http\Controllers\Api\Admin\AdminBatchClaimController;
 use App\Http\Controllers\Api\Credit4uController;
 use App\Http\Controllers\Api\InsuranceController;
+use App\Http\Controllers\Api\HealthConsentController;
+use App\Http\Controllers\Api\HealthCheckupController;
+use App\Http\Controllers\Api\HiraMedicalInfoController;
+use App\Http\Controllers\Api\HealthExaminationController;
+use App\Http\Controllers\Api\HealthAgeController;
+use App\Http\Controllers\Api\HealthPredictionController;
+use App\Http\Controllers\Api\HealthPredictionBatchController;
+use App\Http\Controllers\Api\HealthSummaryController;
 
 /*
 |--------------------------------------------------------------------------
@@ -278,5 +286,51 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('/find-id', [Credit4uController::class, 'findId']);
         Route::post('/change-password', [Credit4uController::class, 'changePassword']);
         Route::post('/2way-confirm', [Credit4uController::class, 'twoWayConfirm']);
+    });
+
+    // 고객 - 건강 (NHIS 건강검진 + HIRA 내진료정보)
+    Route::prefix('health')->middleware('role:CUSTOMER')->group(function () {
+        // 동의 관리
+        Route::get('/consent/status', [HealthConsentController::class, 'status']);
+        Route::post('/consent/agree', [HealthConsentController::class, 'agree']);
+        Route::post('/consent/revoke', [HealthConsentController::class, 'revoke']);
+
+        // NHIS 건강검진결과
+        Route::post('/checkup/request', [HealthCheckupController::class, 'request']);
+        Route::post('/checkup/confirm', [HealthCheckupController::class, 'confirm']);
+        Route::get('/checkup', [HealthCheckupController::class, 'index']);
+        Route::get('/checkup/latest', [HealthCheckupController::class, 'latest']);
+
+        // HIRA 내진료정보열람
+        Route::post('/medical-info/request', [HiraMedicalInfoController::class, 'request']);
+        Route::post('/medical-info/confirm', [HiraMedicalInfoController::class, 'confirm']);
+        Route::get('/medical-info', [HiraMedicalInfoController::class, 'index']);
+        Route::get('/medical-info/summary', [HiraMedicalInfoController::class, 'summary']);
+
+        // 검진대상 (Phase 2)
+        Route::post('/examination/request', [HealthExaminationController::class, 'request']);
+        Route::post('/examination/confirm', [HealthExaminationController::class, 'confirm']);
+        Route::get('/examination', [HealthExaminationController::class, 'latest']);
+
+        // 건강나이 (Phase 2)
+        Route::post('/health-age/request', [HealthAgeController::class, 'request']);
+        Route::post('/health-age/confirm', [HealthAgeController::class, 'confirm']);
+        Route::get('/health-age', [HealthAgeController::class, 'latest']);
+
+        // 예측 5종 (Phase 2)
+        Route::post('/prediction/{type}/request', [HealthPredictionController::class, 'request'])
+            ->where('type', 'cardio|stroke|diabetes|kidney|mi');
+        Route::post('/prediction/{type}/confirm', [HealthPredictionController::class, 'confirm'])
+            ->where('type', 'cardio|stroke|diabetes|kidney|mi');
+        Route::get('/prediction', [HealthPredictionController::class, 'all']);
+        Route::get('/prediction/{type}', [HealthPredictionController::class, 'latest'])
+            ->where('type', 'cardio|stroke|diabetes|kidney|mi');
+
+        // 배치: 건강나이 + 예측 5종 (1회 인증)
+        Route::post('/predictions/batch/request', [HealthPredictionBatchController::class, 'request']);
+        Route::post('/predictions/batch/confirm', [HealthPredictionBatchController::class, 'confirm']);
+
+        // 종합 요약 (대시보드용)
+        Route::get('/summary', [HealthSummaryController::class, 'summary']);
     });
 });
