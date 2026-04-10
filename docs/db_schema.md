@@ -1,8 +1,8 @@
 # MaeumOn DB 스키마 (운영 기준)
 
-> **최종 업데이트**: 2026-04-07
+> **최종 업데이트**: 2026-04-10
 > **DB**: MySQL (MariaDB)
-> **총 테이블**: 51개 (비즈니스 43개 + Laravel 시스템 8개)
+> **총 테이블**: 53개 (비즈니스 45개 + Laravel 시스템 8개)
 
 ---
 
@@ -1143,3 +1143,4 @@ FaxClientNC 연동용 테이블. **테이블명 반드시 대문자 유지**.
 | 2026-04-08 | consent_template에 health_checkup, medical_info 2종 시드 추가 (NHIS/HIRA 동의서); ConsentTemplate 모델에 TYPE_HEALTH_CHECKUP/TYPE_MEDICAL_INFO 상수 추가 |
 | 2026-04-08 | Customer 모델에 healthExternalAccount/healthCheckups/healthPredictions 관계 추가 |
 | 2026-04-08 | HealthCheckupObserver/HealthPredictionObserver 추가 (저장 시 위험지표 평가 → FCM 알림); HealthRiskNotificationCommand 일일 배치(`health:notify-risks`, 매일 09:00) |
+| 2026-04-10 | **운영 DB 반영**: 건강/의료 스키마 5건 마이그레이션 운영 DB 적용 (health_checkup 30컬럼 확장, medical_record 12컬럼 확장, health_external_account 신규, health_prediction 신규, consent_template health_checkup/medical_info 시드 2건) |
