@@ -36,6 +36,7 @@ use App\Http\Controllers\Api\Admin\AdminConsultationController;
 use App\Http\Controllers\Api\Admin\AdminBatchClaimController;
 use App\Http\Controllers\Api\Credit4uController;
 use App\Http\Controllers\Api\CustomerConsultationController;
+use App\Http\Controllers\Api\FcmTokenController;
 use App\Http\Controllers\Api\InsuranceController;
 use App\Http\Controllers\Api\HealthConsentController;
 use App\Http\Controllers\Api\HealthCheckupController;
@@ -168,6 +169,10 @@ Route::middleware('auth:sanctum')->group(function () {
 
         // 배치 청구 관리
         Route::get('/batch-claims', [AdminBatchClaimController::class, 'index']);
+
+        // FCM 토큰 등록/삭제 (관리자)
+        Route::post('/fcm-token', [FcmTokenController::class, 'store']);
+        Route::delete('/fcm-token', [FcmTokenController::class, 'destroy']);
     });
 
     // 설계사 API
@@ -279,6 +284,12 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/', [CustomerConsultationController::class, 'index']);
         Route::post('/', [CustomerConsultationController::class, 'store']);
         Route::get('/{id}', [CustomerConsultationController::class, 'show']);
+    });
+
+    // 고객 - FCM 토큰 등록/삭제
+    Route::middleware('role:CUSTOMER')->group(function () {
+        Route::post('/fcm-token', [FcmTokenController::class, 'store']);
+        Route::delete('/fcm-token', [FcmTokenController::class, 'destroy']);
     });
 
     // 고객 - 보험정보 조회 (DB)
