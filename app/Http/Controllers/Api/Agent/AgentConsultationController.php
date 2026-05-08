@@ -4,11 +4,16 @@ namespace App\Http\Controllers\Api\Agent;
 
 use App\Http\Controllers\Controller;
 use App\Models\Consultation;
+use App\Services\ConsultationNotifier;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
 class AgentConsultationController extends Controller
 {
+    public function __construct(private ConsultationNotifier $notifier)
+    {
+    }
+
     /**
      * 설계사에게 배정된 상담 목록
      */
@@ -83,6 +88,7 @@ class AgentConsultationController extends Controller
 
         $consultation = Consultation::where('assignee_id', $agentId)
             ->where('assignee_type', 'AGENT')
+            ->with('customer')
             ->findOrFail($id);
 
         $validated = $request->validate([
@@ -93,6 +99,10 @@ class AgentConsultationController extends Controller
             'consultation_answer' => $validated['answer'],
             'consultation_status' => 'completed',
         ]);
+
+        if ($consultation->customer) {
+            $this->notifier->onAnswered($consultation->refresh(), $consultation->customer, 'AGENT');
+        }
 
         return response()->json([
             'success' => true,

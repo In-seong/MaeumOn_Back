@@ -51,3 +51,6 @@ _ide_helper*.php
 
 # Firebase credentials
 storage/firebase-credentials.json
+
+# 로컬 점검용 스크립트 (커밋 제외)
+/scripts
