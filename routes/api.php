@@ -35,6 +35,8 @@ use App\Http\Controllers\Api\Admin\AdminConsentTemplateController;
 use App\Http\Controllers\Api\Admin\AdminConsultationController;
 use App\Http\Controllers\Api\Admin\AdminBatchClaimController;
 use App\Http\Controllers\Api\Credit4uController;
+use App\Http\Controllers\Api\CustomerConsultationController;
+use App\Http\Controllers\Api\FcmTokenController;
 use App\Http\Controllers\Api\InsuranceController;
 use App\Http\Controllers\Api\HealthConsentController;
 use App\Http\Controllers\Api\HealthCheckupController;
@@ -161,9 +163,16 @@ Route::middleware('auth:sanctum')->group(function () {
 
         // 상담 관리
         Route::get('/consultations', [AdminConsultationController::class, 'index']);
+        Route::get('/consultations/{id}', [AdminConsultationController::class, 'show']);
+        Route::put('/consultations/{id}/answer', [AdminConsultationController::class, 'answer']);
+        Route::put('/consultations/{id}/assign', [AdminConsultationController::class, 'assign']);
 
         // 배치 청구 관리
         Route::get('/batch-claims', [AdminBatchClaimController::class, 'index']);
+
+        // FCM 토큰 등록/삭제 (관리자)
+        Route::post('/fcm-token', [FcmTokenController::class, 'store']);
+        Route::delete('/fcm-token', [FcmTokenController::class, 'destroy']);
     });
 
     // 설계사 API
@@ -268,6 +277,19 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('/{id}/send-fax', [ClaimController::class, 'sendFax']);
         Route::post('/{id}/documents', [ClaimController::class, 'uploadDocument']);
         Route::delete('/{id}/documents/{docId}', [ClaimController::class, 'deleteDocument']);
+    });
+
+    // 고객 - 상담 요청 (SFR-008, SFR-017)
+    Route::prefix('consultations')->middleware('role:CUSTOMER')->group(function () {
+        Route::get('/', [CustomerConsultationController::class, 'index']);
+        Route::post('/', [CustomerConsultationController::class, 'store']);
+        Route::get('/{id}', [CustomerConsultationController::class, 'show']);
+    });
+
+    // 고객 - FCM 토큰 등록/삭제
+    Route::middleware('role:CUSTOMER')->group(function () {
+        Route::post('/fcm-token', [FcmTokenController::class, 'store']);
+        Route::delete('/fcm-token', [FcmTokenController::class, 'destroy']);
     });
 
     // 고객 - 보험정보 조회 (DB)
