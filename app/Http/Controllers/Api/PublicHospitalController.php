@@ -60,6 +60,13 @@ class PublicHospitalController extends Controller
 
         $date = $request->input('date');
 
+        $hospital = PartnerHospital::where('hospital_id', $id)
+            ->where('is_active', true)
+            ->firstOrFail();
+
+        // schedule_config 기반 시간 슬롯 생성
+        $allTimes = $hospital->generateTimeSlots($date);
+
         // 이미 예약된 시간 조회
         $bookedSlots = HospitalReservation::where('hospital_id', $id)
             ->where('reservation_date', $date)
@@ -67,23 +74,12 @@ class PublicHospitalController extends Controller
             ->pluck('reservation_time')
             ->toArray();
 
-        // 30분 단위 시간 슬롯 생성 (09:00 ~ 17:30)
-        $allSlots = [];
-        for ($hour = 9; $hour < 18; $hour++) {
-            $allSlots[] = sprintf('%02d:00', $hour);
-            if ($hour < 17 || ($hour === 17 && true)) {
-                $allSlots[] = sprintf('%02d:30', $hour);
-            }
-        }
-        // 17:30 제거 (마지막 슬롯은 17:00)
-        $allSlots = array_filter($allSlots, fn($s) => $s <= '17:00');
-
         $slots = array_map(function ($time) use ($bookedSlots) {
             return [
                 'time' => $time,
                 'available' => !in_array($time, $bookedSlots),
             ];
-        }, array_values($allSlots));
+        }, $allTimes);
 
         return response()->json([
             'success' => true,

@@ -121,6 +121,8 @@ Route::prefix('hospital-portal')->group(function () {
     Route::post('/login', [HospitalPortalController::class, 'login']);
     Route::get('/reservations', [HospitalPortalController::class, 'reservations']);
     Route::put('/reservations/{id}/status', [HospitalPortalController::class, 'updateStatus']);
+    Route::get('/schedule', [HospitalPortalController::class, 'getSchedule']);
+    Route::put('/schedule', [HospitalPortalController::class, 'updateSchedule']);
 });
 
 // 인증 필요 API

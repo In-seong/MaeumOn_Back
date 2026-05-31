@@ -5,6 +5,8 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\HospitalAccount;
 use App\Models\HospitalReservation;
+use App\Models\PartnerHospital;
+use App\Models\HealthCenter;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
@@ -110,6 +112,66 @@ class HospitalPortalController extends Controller
             'data' => $reservation,
             'message' => '예약 상태가 변경되었습니다.',
         ]);
+    }
+
+    /**
+     * 예약 스케줄 설정 조회
+     */
+    public function getSchedule(Request $request): JsonResponse
+    {
+        $portalAuth = $this->getPortalAuth($request);
+        if (!$portalAuth) {
+            return response()->json(['success' => false, 'message' => '인증이 필요합니다.'], 401);
+        }
+
+        $entity = $this->getPortalEntity($portalAuth);
+        if (!$entity) {
+            return response()->json(['success' => false, 'message' => '연결된 기관을 찾을 수 없습니다.'], 404);
+        }
+
+        return response()->json([
+            'success' => true,
+            'data' => $entity->schedule_config,
+        ]);
+    }
+
+    /**
+     * 예약 스케줄 설정 수정
+     */
+    public function updateSchedule(Request $request): JsonResponse
+    {
+        $portalAuth = $this->getPortalAuth($request);
+        if (!$portalAuth) {
+            return response()->json(['success' => false, 'message' => '인증이 필요합니다.'], 401);
+        }
+
+        $entity = $this->getPortalEntity($portalAuth);
+        if (!$entity) {
+            return response()->json(['success' => false, 'message' => '연결된 기관을 찾을 수 없습니다.'], 404);
+        }
+
+        $validated = $request->validate(
+            $entity::scheduleConfigValidationRules()
+        );
+
+        $entity->update(['schedule_config' => $validated['schedule_config'] ?? null]);
+
+        return response()->json([
+            'success' => true,
+            'data' => $entity->schedule_config,
+            'message' => '예약 시간 설정이 저장되었습니다.',
+        ]);
+    }
+
+    private function getPortalEntity(array $portalAuth): PartnerHospital|HealthCenter|null
+    {
+        if ($portalAuth['hospital_id']) {
+            return PartnerHospital::find($portalAuth['hospital_id']);
+        }
+        if ($portalAuth['center_id']) {
+            return HealthCenter::find($portalAuth['center_id']);
+        }
+        return null;
     }
 
     /**

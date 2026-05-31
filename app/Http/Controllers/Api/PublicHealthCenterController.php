@@ -58,24 +58,25 @@ class PublicHealthCenterController extends Controller
 
         $date = $request->input('date');
 
+        $center = HealthCenter::where('center_id', $id)
+            ->where('is_active', true)
+            ->firstOrFail();
+
+        // schedule_config 기반 시간 슬롯 생성
+        $allTimes = $center->generateTimeSlots($date);
+
         $bookedSlots = HospitalReservation::where('center_id', $id)
             ->where('reservation_date', $date)
             ->whereIn('status', ['pending', 'confirmed'])
             ->pluck('reservation_time')
             ->toArray();
 
-        $allSlots = [];
-        for ($hour = 9; $hour < 17; $hour++) {
-            $allSlots[] = sprintf('%02d:00', $hour);
-            $allSlots[] = sprintf('%02d:30', $hour);
-        }
-
         $slots = array_map(function ($time) use ($bookedSlots) {
             return [
                 'time' => $time,
                 'available' => !in_array($time, $bookedSlots),
             ];
-        }, $allSlots);
+        }, $allTimes);
 
         return response()->json([
             'success' => true,

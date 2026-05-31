@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\PartnerHospital;
 use App\Models\HospitalAccount;
+use App\Models\Traits\HasScheduleConfig;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
@@ -43,6 +44,7 @@ class AdminHospitalController extends Controller
             'business_hours' => 'nullable|string',
             'introduction' => 'nullable|string',
             'specialties' => 'nullable|string',
+            ...PartnerHospital::scheduleConfigValidationRules(),
             'portal_username' => 'nullable|string|max:50|unique:hospital_account,username',
             'portal_password' => 'nullable|string|min:4',
         ]);
@@ -90,6 +92,7 @@ class AdminHospitalController extends Controller
             'business_hours' => 'nullable|string',
             'introduction' => 'nullable|string',
             'specialties' => 'nullable|string',
+            ...PartnerHospital::scheduleConfigValidationRules(),
             'is_active' => 'sometimes|boolean',
         ]);
 

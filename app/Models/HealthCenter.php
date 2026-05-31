@@ -4,9 +4,12 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use App\Models\Traits\HasScheduleConfig;
 
 class HealthCenter extends Model
 {
+    use HasScheduleConfig;
+
     protected $table = 'health_center';
     protected $primaryKey = 'center_id';
 
@@ -19,6 +22,7 @@ class HealthCenter extends Model
         'contact_phone',
         'business_hours',
         'introduction',
+        'schedule_config',
         'is_active',
     ];
 
@@ -26,6 +30,7 @@ class HealthCenter extends Model
         'is_active' => 'boolean',
         'latitude' => 'decimal:8',
         'longitude' => 'decimal:8',
+        'schedule_config' => 'array',
     ];
 
     public function reservations(): HasMany

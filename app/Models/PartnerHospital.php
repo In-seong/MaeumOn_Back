@@ -4,9 +4,12 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use App\Models\Traits\HasScheduleConfig;
 
 class PartnerHospital extends Model
 {
+    use HasScheduleConfig;
+
     protected $table = 'partner_hospital';
     protected $primaryKey = 'hospital_id';
 
@@ -21,6 +24,7 @@ class PartnerHospital extends Model
         'business_hours',
         'introduction',
         'specialties',
+        'schedule_config',
         'is_active',
     ];
 
@@ -28,6 +32,7 @@ class PartnerHospital extends Model
         'is_active' => 'boolean',
         'latitude' => 'decimal:8',
         'longitude' => 'decimal:8',
+        'schedule_config' => 'array',
     ];
 
     public function reservations(): HasMany
