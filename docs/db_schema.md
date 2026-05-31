@@ -1,8 +1,8 @@
 # MaeumOn DB 스키마 (운영 기준)
 
-> **최종 업데이트**: 2026-05-07
+> **최종 업데이트**: 2026-05-31
 > **DB**: MySQL (MariaDB)
-> **총 테이블**: 54개 (비즈니스 46개 + Laravel 시스템 8개)
+> **총 테이블**: 59개 (비즈니스 51개 + Laravel 시스템 8개)
 
 ---
 
@@ -19,6 +19,7 @@
 9. [공통](#9-공통) — common_code, consent_template
 10. [CODEF 내보험다보여 연동](#10-codef-신용정보원-내보험다보여-연동) — credit4u_account, insurance_coverage, insurance_payment_history, insurance_statistics
 11. [캘린더/일정](#11-캘린더일정) — agent_calendar_event, agent_reminder
+14. [간편 청구/예약](#14-간편-청구예약) — claim_request, claim_request_file, health_center, hospital_reservation, hospital_account
 12. [팩스](#12-팩스-faxclientnc) — FC_META_TRAN, FC_MSG_TRAN, FC_RECV_TRAN
 13. [Laravel 시스템](#13-laravel-시스템-테이블) — sessions, cache, jobs 등
 
@@ -1098,6 +1099,98 @@ FaxClientNC 연동용 테이블. **테이블명 반드시 대문자 유지**.
 
 ---
 
+## 14. 간편 청구/예약
+
+### claim_request
+
+간편 청구 신청 (사용자 앱 리뉴얼). 로그인 없이 이름/전화번호로 접수. **Model: `ClaimRequest`** (2026-05-31 구현).
+- 관계: files(hasMany → ClaimRequestFile), assignedAgent(belongsTo → Agent), linkedClaim(belongsTo → InsuranceClaim)
+
+| 컬럼 | 타입 | NULL | Key | Default | 비고 |
+|------|------|------|-----|---------|------|
+| request_id | int(11) | NO | PRI | auto_increment | |
+| name | varchar(50) | NO | | | 신청자 이름 |
+| phone | varchar(20) | NO | | | 신청자 전화번호 |
+| memo | text | YES | | | 메모 |
+| status | enum('pending','assigned','completed','cancelled') | NO | MUL | pending | |
+| assigned_agent_id | varchar(20) | YES | MUL | | → agent FK |
+| linked_claim_id | int(11) | YES | | | → insurance_claim FK |
+| created_at | timestamp | NO | | CURRENT_TIMESTAMP | |
+| updated_at | timestamp | NO | | CURRENT_TIMESTAMP ON UPDATE | |
+
+### claim_request_file
+
+간편 청구 신청 첨부파일. **Model: `ClaimRequestFile`** (2026-05-31 구현).
+- 관계: claimRequest(belongsTo → ClaimRequest)
+
+| 컬럼 | 타입 | NULL | Key | Default | 비고 |
+|------|------|------|-----|---------|------|
+| file_id | int(11) | NO | PRI | auto_increment | |
+| request_id | int(11) | NO | MUL | | → claim_request FK |
+| file_url | varchar(500) | NO | | | S3 파일 경로 |
+| file_name | varchar(255) | YES | | | 원본 파일명 |
+| file_size | int(11) | YES | | | 바이트 |
+| created_at | timestamp | NO | | CURRENT_TIMESTAMP | |
+
+### health_center
+
+건강검진 센터 (partner_hospital과 별도). **Model: `HealthCenter`** (2026-05-31 구현).
+- 관계: reservations(hasMany → HospitalReservation), accounts(hasMany → HospitalAccount)
+
+| 컬럼 | 타입 | NULL | Key | Default | 비고 |
+|------|------|------|-----|---------|------|
+| center_id | int(11) | NO | PRI | auto_increment | |
+| center_name | varchar(100) | NO | MUL | | |
+| address | varchar(255) | NO | | | |
+| detailed_address | varchar(255) | YES | | | |
+| latitude | decimal(10,8) | YES | | | 위도 |
+| longitude | decimal(11,8) | YES | | | 경도 |
+| contact_phone | varchar(20) | YES | | | |
+| business_hours | text | YES | | | 영업시간 |
+| introduction | text | YES | | | 소개 |
+| is_active | tinyint(1) | NO | MUL | 1 | |
+| created_at | timestamp | NO | | CURRENT_TIMESTAMP | |
+| updated_at | timestamp | NO | | CURRENT_TIMESTAMP ON UPDATE | |
+
+### hospital_reservation
+
+병원/건강검진 센터 예약. **Model: `HospitalReservation`** (2026-05-31 구현).
+- 관계: hospital(belongsTo → PartnerHospital), healthCenter(belongsTo → HealthCenter)
+
+| 컬럼 | 타입 | NULL | Key | Default | 비고 |
+|------|------|------|-----|---------|------|
+| reservation_id | int(11) | NO | PRI | auto_increment | |
+| hospital_id | int(11) | YES | MUL | | → partner_hospital FK |
+| center_id | int(11) | YES | MUL | | → health_center FK |
+| reservation_type | enum('hospital','health_center') | NO | | | |
+| patient_name | varchar(50) | NO | | | |
+| patient_phone | varchar(20) | NO | | | |
+| reservation_date | date | NO | MUL | | |
+| reservation_time | varchar(10) | NO | | | "09:00" 등 |
+| memo | text | YES | | | |
+| status | enum('pending','confirmed','cancelled','completed') | NO | MUL | pending | |
+| created_at | timestamp | NO | | CURRENT_TIMESTAMP | |
+| updated_at | timestamp | NO | | CURRENT_TIMESTAMP ON UPDATE | |
+
+### hospital_account
+
+병원/센터 포털 로그인 계정. **Model: `HospitalAccount`** (2026-05-31 구현).
+- 관계: hospital(belongsTo → PartnerHospital), healthCenter(belongsTo → HealthCenter)
+
+| 컬럼 | 타입 | NULL | Key | Default | 비고 |
+|------|------|------|-----|---------|------|
+| account_id | int(11) | NO | PRI | auto_increment | |
+| hospital_id | int(11) | YES | | | → partner_hospital FK |
+| center_id | int(11) | YES | | | → health_center FK |
+| username | varchar(50) | NO | UNI | | 로그인 ID |
+| password | varchar(255) | NO | | | bcrypt 해시 |
+| account_name | varchar(50) | YES | | | 표시 이름 |
+| is_active | tinyint(1) | NO | | 1 | |
+| created_at | timestamp | NO | | CURRENT_TIMESTAMP | |
+| updated_at | timestamp | NO | | CURRENT_TIMESTAMP ON UPDATE | |
+
+---
+
 ## 변경 이력
 
 | 날짜 | 변경 내용 |
@@ -1145,3 +1238,4 @@ FaxClientNC 연동용 테이블. **테이블명 반드시 대문자 유지**.
 | 2026-04-08 | HealthCheckupObserver/HealthPredictionObserver 추가 (저장 시 위험지표 평가 → FCM 알림); HealthRiskNotificationCommand 일일 배치(`health:notify-risks`, 매일 09:00) |
 | 2026-04-10 | **운영 DB 반영**: 건강/의료 스키마 5건 마이그레이션 운영 DB 적용 (health_checkup 30컬럼 확장, medical_record 12컬럼 확장, health_external_account 신규, health_prediction 신규, consent_template health_checkup/medical_info 시드 2건) |
 | 2026-05-07 | 헤더 카운트 표기 정정: 총 53개→54개, 비즈니스 45개→46개 (DEV/PROD/문서 3자 비교 스크립트로 일치 확인, 컬럼·인덱스 차이 0건) |
+| 2026-05-31 | 사용자 앱 리뉴얼: 5개 테이블 신규 생성 (claim_request, claim_request_file, health_center, hospital_reservation, hospital_account) + 6개 Model 구현 (ClaimRequest, ClaimRequestFile, PartnerHospital, HealthCenter, HospitalReservation, HospitalAccount) + 공개 API/관리자 API/병원 포털 API 추가 |

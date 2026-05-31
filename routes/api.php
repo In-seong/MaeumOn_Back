@@ -46,6 +46,14 @@ use App\Http\Controllers\Api\HealthAgeController;
 use App\Http\Controllers\Api\HealthPredictionController;
 use App\Http\Controllers\Api\HealthPredictionBatchController;
 use App\Http\Controllers\Api\HealthSummaryController;
+use App\Http\Controllers\Api\ClaimRequestController;
+use App\Http\Controllers\Api\PublicHospitalController;
+use App\Http\Controllers\Api\PublicHealthCenterController;
+use App\Http\Controllers\Api\HospitalReservationController;
+use App\Http\Controllers\Api\HospitalPortalController;
+use App\Http\Controllers\Api\Admin\AdminHospitalController;
+use App\Http\Controllers\Api\Admin\AdminHealthCenterController;
+use App\Http\Controllers\Api\Admin\AdminClaimRequestController;
 
 /*
 |--------------------------------------------------------------------------
@@ -87,6 +95,32 @@ Route::get('/claim-forms', [ClaimFormController::class, 'publicIndex']);
 Route::get('/claim-forms/{id}', [ClaimFormController::class, 'publicShow']);
 Route::get('/standard-fields', [StandardFieldController::class, 'index']);
 Route::get('/consent-templates', [AdminConsentTemplateController::class, 'index']);
+
+// ========== 공개 API (사용자 앱 리뉴얼 - 인증 불필요) ==========
+Route::prefix('public')->group(function () {
+    // 간편 청구 신청
+    Route::post('/claim-requests', [ClaimRequestController::class, 'store']);
+
+    // 병원 목록/상세/슬롯
+    Route::get('/hospitals', [PublicHospitalController::class, 'index']);
+    Route::get('/hospitals/{id}', [PublicHospitalController::class, 'show']);
+    Route::get('/hospitals/{id}/slots', [PublicHospitalController::class, 'availableSlots']);
+
+    // 건강검진 센터 목록/상세/슬롯
+    Route::get('/health-centers', [PublicHealthCenterController::class, 'index']);
+    Route::get('/health-centers/{id}', [PublicHealthCenterController::class, 'show']);
+    Route::get('/health-centers/{id}/slots', [PublicHealthCenterController::class, 'availableSlots']);
+
+    // 예약 신청
+    Route::post('/reservations', [HospitalReservationController::class, 'store']);
+});
+
+// ========== 병원 포털 API ==========
+Route::prefix('hospital-portal')->group(function () {
+    Route::post('/login', [HospitalPortalController::class, 'login']);
+    Route::get('/reservations', [HospitalPortalController::class, 'reservations']);
+    Route::put('/reservations/{id}/status', [HospitalPortalController::class, 'updateStatus']);
+});
 
 // 인증 필요 API
 Route::middleware('auth:sanctum')->group(function () {
@@ -173,6 +207,18 @@ Route::middleware('auth:sanctum')->group(function () {
         // FCM 토큰 등록/삭제 (관리자)
         Route::post('/fcm-token', [FcmTokenController::class, 'store']);
         Route::delete('/fcm-token', [FcmTokenController::class, 'destroy']);
+
+        // 병원 관리
+        Route::apiResource('hospitals', AdminHospitalController::class);
+
+        // 건강검진 센터 관리
+        Route::apiResource('health-centers', AdminHealthCenterController::class);
+
+        // 청구 신청 관리
+        Route::get('/claim-requests', [AdminClaimRequestController::class, 'index']);
+        Route::get('/claim-requests/{id}', [AdminClaimRequestController::class, 'show']);
+        Route::put('/claim-requests/{id}/assign', [AdminClaimRequestController::class, 'assign']);
+        Route::put('/claim-requests/{id}/status', [AdminClaimRequestController::class, 'updateStatus']);
     });
 
     // 설계사 API
