@@ -54,6 +54,7 @@ use App\Http\Controllers\Api\HospitalPortalController;
 use App\Http\Controllers\Api\Admin\AdminHospitalController;
 use App\Http\Controllers\Api\Admin\AdminHealthCenterController;
 use App\Http\Controllers\Api\Admin\AdminClaimRequestController;
+use App\Http\Controllers\Api\Admin\AdminReservationController;
 
 /*
 |--------------------------------------------------------------------------
@@ -213,6 +214,10 @@ Route::middleware('auth:sanctum')->group(function () {
 
         // 건강검진 센터 관리
         Route::apiResource('health-centers', AdminHealthCenterController::class);
+
+        // 예약 관리
+        Route::get('/reservations', [AdminReservationController::class, 'index']);
+        Route::put('/reservations/{id}/status', [AdminReservationController::class, 'updateStatus']);
 
         // 청구 신청 관리
         Route::get('/claim-requests', [AdminClaimRequestController::class, 'index']);
