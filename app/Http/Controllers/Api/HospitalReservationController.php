@@ -10,6 +10,50 @@ use Illuminate\Http\Request;
 class HospitalReservationController extends Controller
 {
     /**
+     * 내 예약 조회 (전화번호 기반)
+     */
+    public function myReservations(Request $request): JsonResponse
+    {
+        $request->validate([
+            'phone' => 'required|string|max:20',
+        ]);
+
+        $reservations = HospitalReservation::where('patient_phone', $request->input('phone'))
+            ->with(['hospital:hospital_id,hospital_name,address,contact_phone', 'healthCenter:center_id,center_name,address,contact_phone'])
+            ->orderByDesc('reservation_date')
+            ->orderByDesc('reservation_time')
+            ->limit(50)
+            ->get();
+
+        return response()->json([
+            'success' => true,
+            'data' => $reservations,
+        ]);
+    }
+
+    /**
+     * 예약 취소 (본인 전화번호 확인)
+     */
+    public function cancel(Request $request, int $id): JsonResponse
+    {
+        $request->validate([
+            'phone' => 'required|string|max:20',
+        ]);
+
+        $reservation = HospitalReservation::where('reservation_id', $id)
+            ->where('patient_phone', $request->input('phone'))
+            ->whereIn('status', ['pending', 'confirmed'])
+            ->firstOrFail();
+
+        $reservation->update(['status' => 'cancelled']);
+
+        return response()->json([
+            'success' => true,
+            'message' => '예약이 취소되었습니다.',
+        ]);
+    }
+
+    /**
      * 예약 신청 (공개 API)
      */
     public function store(Request $request): JsonResponse

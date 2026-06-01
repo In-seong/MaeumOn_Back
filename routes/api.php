@@ -112,8 +112,10 @@ Route::prefix('public')->group(function () {
     Route::get('/health-centers/{id}', [PublicHealthCenterController::class, 'show']);
     Route::get('/health-centers/{id}/slots', [PublicHealthCenterController::class, 'availableSlots']);
 
-    // 예약 신청
+    // 예약 신청 / 내 예약 조회 / 취소
     Route::post('/reservations', [HospitalReservationController::class, 'store']);
+    Route::get('/my-reservations', [HospitalReservationController::class, 'myReservations']);
+    Route::put('/reservations/{id}/cancel', [HospitalReservationController::class, 'cancel']);
 });
 
 // ========== 병원 포털 API ==========
