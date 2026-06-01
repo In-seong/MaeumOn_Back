@@ -18,7 +18,9 @@ class HospitalReservationController extends Controller
             'phone' => 'required|string|max:20',
         ]);
 
-        $reservations = HospitalReservation::where('patient_phone', $request->input('phone'))
+        $phone = preg_replace('/[^0-9]/', '', $request->input('phone'));
+
+        $reservations = HospitalReservation::whereRaw("REPLACE(REPLACE(patient_phone, '-', ''), ' ', '') = ?", [$phone])
             ->with(['hospital:hospital_id,hospital_name,address,contact_phone', 'healthCenter:center_id,center_name,address,contact_phone'])
             ->orderByDesc('reservation_date')
             ->orderByDesc('reservation_time')
@@ -40,8 +42,10 @@ class HospitalReservationController extends Controller
             'phone' => 'required|string|max:20',
         ]);
 
+        $phone = preg_replace('/[^0-9]/', '', $request->input('phone'));
+
         $reservation = HospitalReservation::where('reservation_id', $id)
-            ->where('patient_phone', $request->input('phone'))
+            ->whereRaw("REPLACE(REPLACE(patient_phone, '-', ''), ' ', '') = ?", [$phone])
             ->whereIn('status', ['pending', 'confirmed'])
             ->firstOrFail();
 
