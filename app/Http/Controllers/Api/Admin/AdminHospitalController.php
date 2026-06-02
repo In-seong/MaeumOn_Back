@@ -14,7 +14,7 @@ class AdminHospitalController extends Controller
 {
     public function index(Request $request): JsonResponse
     {
-        $query = PartnerHospital::query();
+        $query = PartnerHospital::with('accounts');
 
         if ($search = $request->input('search')) {
             $query->where(function ($q) use ($search) {
@@ -94,13 +94,36 @@ class AdminHospitalController extends Controller
             'specialties' => 'nullable|string',
             ...PartnerHospital::scheduleConfigValidationRules(),
             'is_active' => 'sometimes|boolean',
+            'portal_username' => 'nullable|string|max:50',
+            'portal_password' => 'nullable|string|min:4',
         ]);
 
-        $hospital->update($validated);
+        $hospital->update(collect($validated)->except(['portal_username', 'portal_password'])->toArray());
+
+        // 포털 계정 생성 또는 수정
+        if (!empty($validated['portal_username'])) {
+            $account = $hospital->accounts()->first();
+            if ($account) {
+                $accountData = ['username' => $validated['portal_username']];
+                if (!empty($validated['portal_password'])) {
+                    $accountData['password'] = Hash::make($validated['portal_password']);
+                }
+                $account->update($accountData);
+            } else {
+                if (!empty($validated['portal_password'])) {
+                    HospitalAccount::create([
+                        'hospital_id' => $hospital->hospital_id,
+                        'username' => $validated['portal_username'],
+                        'password' => Hash::make($validated['portal_password']),
+                        'account_name' => $hospital->hospital_name,
+                    ]);
+                }
+            }
+        }
 
         return response()->json([
             'success' => true,
-            'data' => $hospital,
+            'data' => $hospital->load('accounts'),
             'message' => '병원 정보가 수정되었습니다.',
         ]);
     }

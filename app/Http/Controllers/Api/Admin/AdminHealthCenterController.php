@@ -14,7 +14,7 @@ class AdminHealthCenterController extends Controller
 {
     public function index(Request $request): JsonResponse
     {
-        $query = HealthCenter::query();
+        $query = HealthCenter::with('accounts');
 
         if ($search = $request->input('search')) {
             $query->where(function ($q) use ($search) {
@@ -91,13 +91,36 @@ class AdminHealthCenterController extends Controller
             'introduction' => 'nullable|string',
             ...HealthCenter::scheduleConfigValidationRules(),
             'is_active' => 'sometimes|boolean',
+            'portal_username' => 'nullable|string|max:50',
+            'portal_password' => 'nullable|string|min:4',
         ]);
 
-        $center->update($validated);
+        $center->update(collect($validated)->except(['portal_username', 'portal_password'])->toArray());
+
+        // 포털 계정 생성 또는 수정
+        if (!empty($validated['portal_username'])) {
+            $account = $center->accounts()->first();
+            if ($account) {
+                $accountData = ['username' => $validated['portal_username']];
+                if (!empty($validated['portal_password'])) {
+                    $accountData['password'] = Hash::make($validated['portal_password']);
+                }
+                $account->update($accountData);
+            } else {
+                if (!empty($validated['portal_password'])) {
+                    HospitalAccount::create([
+                        'center_id' => $center->center_id,
+                        'username' => $validated['portal_username'],
+                        'password' => Hash::make($validated['portal_password']),
+                        'account_name' => $center->center_name,
+                    ]);
+                }
+            }
+        }
 
         return response()->json([
             'success' => true,
-            'data' => $center,
+            'data' => $center->load('accounts'),
             'message' => '건강검진 센터 정보가 수정되었습니다.',
         ]);
     }
