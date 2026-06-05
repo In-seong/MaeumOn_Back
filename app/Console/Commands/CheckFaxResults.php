@@ -79,8 +79,9 @@ class CheckFaxResults extends Command
                     $claim->update([
                         'fax_status' => 'sent',
                         'fax_result_code' => $resultStat,
+                        'claim_status' => 'processing',
                     ]);
-                    $this->info("  → 발송 성공");
+                    $this->info("  → 발송 성공, 접수완료(processing)로 변경");
                 } else {
                     $this->line("  → 발송 완료, 결과 대기중 (tr_rsltstat='{$resultStat}')");
                     return;
