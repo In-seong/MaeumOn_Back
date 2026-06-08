@@ -39,7 +39,8 @@ class PublicHospitalController extends Controller
      */
     public function show(int $id): JsonResponse
     {
-        $hospital = PartnerHospital::where('is_active', true)
+        $hospital = PartnerHospital::with('images')
+            ->where('is_active', true)
             ->where('hospital_id', $id)
             ->firstOrFail();
 

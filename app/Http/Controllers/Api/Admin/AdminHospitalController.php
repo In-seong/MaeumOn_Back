@@ -15,7 +15,7 @@ class AdminHospitalController extends Controller
 {
     public function index(Request $request): JsonResponse
     {
-        $query = PartnerHospital::with('accounts');
+        $query = PartnerHospital::with(['accounts', 'images']);
 
         if ($search = $request->input('search')) {
             $query->where(function ($q) use ($search) {
@@ -71,12 +71,44 @@ class AdminHospitalController extends Controller
 
     public function show(int $id): JsonResponse
     {
-        $hospital = PartnerHospital::with('accounts')->findOrFail($id);
+        $hospital = PartnerHospital::with(['accounts', 'images'])->findOrFail($id);
 
         return response()->json([
             'success' => true,
             'data' => $hospital,
         ]);
+    }
+
+    public function addImage(Request $request, int $id): JsonResponse
+    {
+        $hospital = PartnerHospital::findOrFail($id);
+
+        $request->validate([
+            'image' => 'required|image|max:5120',
+        ]);
+
+        $path = $request->file('image')->store("hospitals/{$id}", 's3');
+        $maxOrder = $hospital->images()->max('sort_order') ?? -1;
+
+        $image = \App\Models\HospitalImage::create([
+            'hospital_id' => $id,
+            'image_path' => $path,
+            'sort_order' => $maxOrder + 1,
+        ]);
+
+        return response()->json(['success' => true, 'data' => $image], 201);
+    }
+
+    public function deleteImage(int $id, int $imageId): JsonResponse
+    {
+        $image = \App\Models\HospitalImage::where('hospital_id', $id)
+            ->where('image_id', $imageId)
+            ->firstOrFail();
+
+        Storage::disk('s3')->delete($image->image_path);
+        $image->delete();
+
+        return response()->json(['success' => true, 'message' => '이미지가 삭제되었습니다.']);
     }
 
     public function update(Request $request, int $id): JsonResponse

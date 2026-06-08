@@ -54,4 +54,9 @@ class PartnerHospital extends Model
     {
         return $this->hasMany(HospitalAccount::class, 'hospital_id', 'hospital_id');
     }
+
+    public function images(): HasMany
+    {
+        return $this->hasMany(HospitalImage::class, 'hospital_id', 'hospital_id')->orderBy('sort_order');
+    }
 }
