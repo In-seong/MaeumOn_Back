@@ -55,6 +55,7 @@ use App\Http\Controllers\Api\Admin\AdminHospitalController;
 use App\Http\Controllers\Api\Admin\AdminHealthCenterController;
 use App\Http\Controllers\Api\Admin\AdminClaimRequestController;
 use App\Http\Controllers\Api\Admin\AdminReservationController;
+use App\Http\Controllers\Api\Admin\AdminBannerController;
 
 /*
 |--------------------------------------------------------------------------
@@ -111,6 +112,13 @@ Route::prefix('public')->group(function () {
     Route::get('/health-centers', [PublicHealthCenterController::class, 'index']);
     Route::get('/health-centers/{id}', [PublicHealthCenterController::class, 'show']);
     Route::get('/health-centers/{id}/slots', [PublicHealthCenterController::class, 'availableSlots']);
+
+    // 배너 (활성만)
+    Route::get('/banners', function () {
+        return response()->json([
+            'data' => \App\Models\Banner::where('is_active', true)->orderBy('sort_order')->get(),
+        ]);
+    });
 
     // 예약 신청 / 내 예약 조회 / 취소
     Route::post('/reservations', [HospitalReservationController::class, 'store']);
@@ -222,6 +230,12 @@ Route::middleware('auth:sanctum')->group(function () {
         // 예약 관리
         Route::get('/reservations', [AdminReservationController::class, 'index']);
         Route::put('/reservations/{id}/status', [AdminReservationController::class, 'updateStatus']);
+
+        // 배너 관리
+        Route::get('/banners', [AdminBannerController::class, 'index']);
+        Route::post('/banners', [AdminBannerController::class, 'store']);
+        Route::post('/banners/{id}', [AdminBannerController::class, 'update']);
+        Route::delete('/banners/{id}', [AdminBannerController::class, 'destroy']);
 
         // 청구 신청 관리
         Route::get('/claim-requests', [AdminClaimRequestController::class, 'index']);
