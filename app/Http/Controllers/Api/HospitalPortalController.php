@@ -10,6 +10,7 @@ use App\Models\HealthCenter;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Storage;
 
 class HospitalPortalController extends Controller
 {
@@ -160,6 +161,36 @@ class HospitalPortalController extends Controller
             'success' => true,
             'data' => $entity->schedule_config,
             'message' => '예약 시간 설정이 저장되었습니다.',
+        ]);
+    }
+
+    public function uploadImage(Request $request): JsonResponse
+    {
+        $portalAuth = $this->getPortalAuth($request);
+        if (!$portalAuth) {
+            return response()->json(['success' => false, 'message' => '인증이 필요합니다.'], 401);
+        }
+
+        $entity = $this->getPortalEntity($portalAuth);
+        if (!$entity) {
+            return response()->json(['success' => false, 'message' => '연결된 기관을 찾을 수 없습니다.'], 404);
+        }
+
+        $request->validate(['image' => 'required|image|max:5120']);
+
+        if ($entity->image_path) {
+            Storage::disk('s3')->delete($entity->image_path);
+        }
+
+        $id = $entity->getKey();
+        $folder = $entity instanceof PartnerHospital ? "hospitals/{$id}" : "health-centers/{$id}";
+        $path = $request->file('image')->store($folder, 's3');
+        $entity->update(['image_path' => $path]);
+
+        return response()->json([
+            'success' => true,
+            'data' => $entity,
+            'message' => '이미지가 업로드되었습니다.',
         ]);
     }
 

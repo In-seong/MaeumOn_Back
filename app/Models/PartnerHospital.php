@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Support\Facades\Storage;
 use App\Models\Traits\HasScheduleConfig;
 
 class PartnerHospital extends Model
@@ -25,6 +26,7 @@ class PartnerHospital extends Model
         'introduction',
         'specialties',
         'schedule_config',
+        'image_path',
         'is_active',
     ];
 
@@ -34,6 +36,14 @@ class PartnerHospital extends Model
         'longitude' => 'decimal:8',
         'schedule_config' => 'array',
     ];
+
+    protected $appends = ['image_url'];
+
+    public function getImageUrlAttribute(): ?string
+    {
+        if (!$this->image_path) return null;
+        return Storage::disk('s3')->temporaryUrl($this->image_path, now()->addHours(24));
+    }
 
     public function reservations(): HasMany
     {

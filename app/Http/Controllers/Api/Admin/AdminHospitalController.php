@@ -9,6 +9,7 @@ use App\Models\Traits\HasScheduleConfig;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Storage;
 
 class AdminHospitalController extends Controller
 {
@@ -125,6 +126,28 @@ class AdminHospitalController extends Controller
             'success' => true,
             'data' => $hospital->load('accounts'),
             'message' => '병원 정보가 수정되었습니다.',
+        ]);
+    }
+
+    public function uploadImage(Request $request, int $id): JsonResponse
+    {
+        $hospital = PartnerHospital::findOrFail($id);
+
+        $request->validate([
+            'image' => 'required|image|max:5120',
+        ]);
+
+        if ($hospital->image_path) {
+            Storage::disk('s3')->delete($hospital->image_path);
+        }
+
+        $path = $request->file('image')->store("hospitals/{$id}", 's3');
+        $hospital->update(['image_path' => $path]);
+
+        return response()->json([
+            'success' => true,
+            'data' => $hospital,
+            'message' => '이미지가 업로드되었습니다.',
         ]);
     }
 

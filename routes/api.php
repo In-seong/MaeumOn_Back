@@ -133,6 +133,7 @@ Route::prefix('hospital-portal')->group(function () {
     Route::put('/reservations/{id}/status', [HospitalPortalController::class, 'updateStatus']);
     Route::get('/schedule', [HospitalPortalController::class, 'getSchedule']);
     Route::put('/schedule', [HospitalPortalController::class, 'updateSchedule']);
+    Route::post('/image', [HospitalPortalController::class, 'uploadImage']);
 });
 
 // 인증 필요 API
@@ -223,6 +224,7 @@ Route::middleware('auth:sanctum')->group(function () {
 
         // 병원 관리
         Route::apiResource('hospitals', AdminHospitalController::class);
+        Route::post('hospitals/{id}/image', [AdminHospitalController::class, 'uploadImage']);
 
         // 건강검진 센터 관리
         Route::apiResource('health-centers', AdminHealthCenterController::class);
