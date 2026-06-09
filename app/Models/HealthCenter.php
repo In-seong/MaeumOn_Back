@@ -42,4 +42,9 @@ class HealthCenter extends Model
     {
         return $this->hasMany(HospitalAccount::class, 'center_id', 'center_id');
     }
+
+    public function images(): HasMany
+    {
+        return $this->hasMany(HealthCenterImage::class, 'center_id', 'center_id')->orderBy('sort_order');
+    }
 }

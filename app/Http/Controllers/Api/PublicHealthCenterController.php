@@ -37,7 +37,8 @@ class PublicHealthCenterController extends Controller
      */
     public function show(int $id): JsonResponse
     {
-        $center = HealthCenter::where('is_active', true)
+        $center = HealthCenter::with('images')
+            ->where('is_active', true)
             ->where('center_id', $id)
             ->firstOrFail();
 

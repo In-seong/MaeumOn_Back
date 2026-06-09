@@ -9,12 +9,13 @@ use App\Models\Traits\HasScheduleConfig;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Storage;
 
 class AdminHealthCenterController extends Controller
 {
     public function index(Request $request): JsonResponse
     {
-        $query = HealthCenter::with('accounts');
+        $query = HealthCenter::with(['accounts', 'images']);
 
         if ($search = $request->input('search')) {
             $query->where(function ($q) use ($search) {
@@ -68,7 +69,7 @@ class AdminHealthCenterController extends Controller
 
     public function show(int $id): JsonResponse
     {
-        $center = HealthCenter::with('accounts')->findOrFail($id);
+        $center = HealthCenter::with(['accounts', 'images'])->findOrFail($id);
 
         return response()->json([
             'success' => true,
@@ -123,6 +124,36 @@ class AdminHealthCenterController extends Controller
             'data' => $center->load('accounts'),
             'message' => '건강검진 센터 정보가 수정되었습니다.',
         ]);
+    }
+
+    public function addImage(Request $request, int $id): JsonResponse
+    {
+        $center = HealthCenter::findOrFail($id);
+
+        $request->validate(['image' => 'required|image|max:5120']);
+
+        $path = $request->file('image')->store("health-centers/{$id}", 's3');
+        $maxOrder = $center->images()->max('sort_order') ?? -1;
+
+        $image = \App\Models\HealthCenterImage::create([
+            'center_id' => $id,
+            'image_path' => $path,
+            'sort_order' => $maxOrder + 1,
+        ]);
+
+        return response()->json(['success' => true, 'data' => $image], 201);
+    }
+
+    public function deleteImage(int $id, int $imageId): JsonResponse
+    {
+        $image = \App\Models\HealthCenterImage::where('center_id', $id)
+            ->where('image_id', $imageId)
+            ->firstOrFail();
+
+        Storage::disk('s3')->delete($image->image_path);
+        $image->delete();
+
+        return response()->json(['success' => true, 'message' => '이미지가 삭제되었습니다.']);
     }
 
     public function destroy(int $id): JsonResponse

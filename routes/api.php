@@ -230,6 +230,8 @@ Route::middleware('auth:sanctum')->group(function () {
 
         // 건강검진 센터 관리
         Route::apiResource('health-centers', AdminHealthCenterController::class);
+        Route::post('health-centers/{id}/images', [AdminHealthCenterController::class, 'addImage']);
+        Route::delete('health-centers/{id}/images/{imageId}', [AdminHealthCenterController::class, 'deleteImage']);
 
         // 예약 관리
         Route::get('/reservations', [AdminReservationController::class, 'index']);
