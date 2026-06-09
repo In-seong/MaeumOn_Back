@@ -18,6 +18,7 @@ class ClaimRequestController extends Controller
         $validated = $request->validate([
             'name' => 'required|string|max:50',
             'phone' => 'required|string|max:20',
+            'hospital_id' => 'nullable|integer|exists:partner_hospital,hospital_id',
             'memo' => 'nullable|string|max:2000',
             'files' => 'nullable|array|max:10',
             'files.*' => 'file|max:10240', // 10MB
@@ -26,6 +27,7 @@ class ClaimRequestController extends Controller
         $claimRequest = ClaimRequest::create([
             'name' => $validated['name'],
             'phone' => $validated['phone'],
+            'hospital_id' => $validated['hospital_id'] ?? null,
             'memo' => $validated['memo'] ?? null,
             'status' => 'pending',
         ]);

@@ -11,7 +11,7 @@ class AdminClaimRequestController extends Controller
 {
     public function index(Request $request): JsonResponse
     {
-        $query = ClaimRequest::with('files', 'assignedAgent');
+        $query = ClaimRequest::with('files', 'assignedAgent', 'hospital');
 
         if ($status = $request->input('status')) {
             $query->where('status', $status);

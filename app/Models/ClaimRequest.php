@@ -15,6 +15,7 @@ class ClaimRequest extends Model
         'name',
         'phone',
         'memo',
+        'hospital_id',
         'status',
         'assigned_agent_id',
         'linked_claim_id',
@@ -28,6 +29,11 @@ class ClaimRequest extends Model
     public function files(): HasMany
     {
         return $this->hasMany(ClaimRequestFile::class, 'request_id', 'request_id');
+    }
+
+    public function hospital(): BelongsTo
+    {
+        return $this->belongsTo(PartnerHospital::class, 'hospital_id', 'hospital_id');
     }
 
     public function assignedAgent(): BelongsTo
