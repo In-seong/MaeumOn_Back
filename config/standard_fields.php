@@ -119,7 +119,8 @@ return [
     ],
 
     // ── 서명 ──
-    ['code' => 'SELF_NAME_SIGNATURE',      'label' => '본인 성명/서명',  'type' => 'signature', 'category' => '서명', 'customer_field' => null],
+    ['code' => 'SELF_NAME',      'label' => '본인 성명',  'type' => 'text',      'category' => '서명', 'customer_field' => null],
+    ['code' => 'SELF_SIGNATURE', 'label' => '본인 서명',  'type' => 'signature', 'category' => '서명', 'customer_field' => null],
     ['code' => 'LEGAL_GUARDIAN_NAME',      'label' => '법정대리인 성명', 'type' => 'text',      'category' => '서명', 'customer_field' => null],
     ['code' => 'INSURED_SIGNATURE',        'label' => '피보험자 서명',   'type' => 'signature', 'category' => '서명', 'customer_field' => null],
     ['code' => 'BENEFICIARY_SIGNATURE',    'label' => '수익자 서명',     'type' => 'signature', 'category' => '서명', 'customer_field' => null],
