@@ -201,7 +201,7 @@ class AgentClaimController extends Controller
         DB::beginTransaction();
         try {
             // claim_number 자동 생성
-            $claimNumber = 'CLM-' . date('Ymd') . '-' . substr((string) time(), -4) . str_pad((string) random_int(0, 999), 3, '0', STR_PAD_LEFT);
+            $claimNumber = 'CLM-' . now()->format('Ymd') . '-' . substr((string) time(), -4) . str_pad((string) random_int(0, 999), 3, '0', STR_PAD_LEFT);
 
             // 청구 레코드 생성 (agent_id 포함, claim_type '대리청구')
             $claim = InsuranceClaim::create([
@@ -212,7 +212,7 @@ class AgentClaimController extends Controller
                 'claim_number' => $claimNumber,
                 'claim_type' => '대리청구',
                 'claim_status' => InsuranceClaim::STATUS_PENDING,
-                'claim_date' => now(),
+                'claim_date' => now()->toDateString(),
                 'created_by_id' => $agentId,
             ]);
 
@@ -585,7 +585,7 @@ class AgentClaimController extends Controller
             ], 404);
         }
 
-        $filename = '청구서_' . $claim->claim_id . '_' . date('Ymd') . '.pdf';
+        $filename = '청구서_' . $claim->claim_id . '_' . now()->format('Ymd') . '.pdf';
 
         return response()->streamDownload(function () use ($claim) {
             echo Storage::disk('s3')->get($claim->generated_pdf_path);
@@ -695,7 +695,7 @@ class AgentClaimController extends Controller
 
         DB::beginTransaction();
         try {
-            $claimNumber = 'CLM-' . date('Ymd') . '-' . substr((string) time(), -4) . str_pad((string) random_int(0, 999), 3, '0', STR_PAD_LEFT);
+            $claimNumber = 'CLM-' . now()->format('Ymd') . '-' . substr((string) time(), -4) . str_pad((string) random_int(0, 999), 3, '0', STR_PAD_LEFT);
 
             $claim = InsuranceClaim::create([
                 'customer_id' => $validated['customer_id'] ?? null,
@@ -705,7 +705,7 @@ class AgentClaimController extends Controller
                 'claim_number' => $claimNumber,
                 'claim_type' => '대리청구',
                 'claim_status' => InsuranceClaim::STATUS_DRAFT,
-                'claim_date' => now(),
+                'claim_date' => now()->toDateString(),
                 'created_by_id' => $agentId,
             ]);
 
@@ -870,7 +870,7 @@ class AgentClaimController extends Controller
             $claim->update([
                 'customer_id' => $customer->customer_id,
                 'claim_status' => InsuranceClaim::STATUS_PENDING,
-                'claim_date' => now(),
+                'claim_date' => now()->toDateString(),
                 'updated_by_id' => $agentId,
             ]);
 

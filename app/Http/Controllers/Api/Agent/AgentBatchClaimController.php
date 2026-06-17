@@ -161,7 +161,7 @@ class AgentBatchClaimController extends Controller
             foreach ($validated['claims'] as $idx => $claimData) {
                 $claimForm = $claimForms[$idx];
 
-                $claimNumber = 'CLM-' . date('Ymd') . '-' . substr((string) time(), -4) . str_pad((string) random_int(0, 999), 3, '0', STR_PAD_LEFT);
+                $claimNumber = 'CLM-' . now()->format('Ymd') . '-' . substr((string) time(), -4) . str_pad((string) random_int(0, 999), 3, '0', STR_PAD_LEFT);
 
                 $claim = InsuranceClaim::create([
                     'customer_id' => $customer->customer_id,
@@ -172,7 +172,7 @@ class AgentBatchClaimController extends Controller
                     'claim_number' => $claimNumber,
                     'claim_type' => '대리청구',
                     'claim_status' => InsuranceClaim::STATUS_PENDING,
-                    'claim_date' => now(),
+                    'claim_date' => now()->toDateString(),
                     'created_by_id' => $agentId,
                 ]);
 
@@ -272,7 +272,7 @@ class AgentBatchClaimController extends Controller
             foreach ($validated['claims'] as $claimData) {
                 $claimForm = ClaimForm::findOrFail($claimData['claim_form_id']);
 
-                $claimNumber = 'CLM-' . date('Ymd') . '-' . substr((string) time(), -4) . str_pad((string) random_int(0, 999), 3, '0', STR_PAD_LEFT);
+                $claimNumber = 'CLM-' . now()->format('Ymd') . '-' . substr((string) time(), -4) . str_pad((string) random_int(0, 999), 3, '0', STR_PAD_LEFT);
 
                 $claim = InsuranceClaim::create([
                     'customer_id' => $validated['customer_id'] ?? null,
@@ -283,7 +283,7 @@ class AgentBatchClaimController extends Controller
                     'claim_number' => $claimNumber,
                     'claim_type' => '대리청구',
                     'claim_status' => InsuranceClaim::STATUS_DRAFT,
-                    'claim_date' => now(),
+                    'claim_date' => now()->toDateString(),
                     'created_by_id' => $agentId,
                 ]);
 
@@ -373,7 +373,7 @@ class AgentBatchClaimController extends Controller
             foreach ($validated['claims'] as $claimData) {
                 $claimForm = ClaimForm::findOrFail($claimData['claim_form_id']);
 
-                $claimNumber = 'CLM-' . date('Ymd') . '-' . substr((string) time(), -4) . str_pad((string) random_int(0, 999), 3, '0', STR_PAD_LEFT);
+                $claimNumber = 'CLM-' . now()->format('Ymd') . '-' . substr((string) time(), -4) . str_pad((string) random_int(0, 999), 3, '0', STR_PAD_LEFT);
 
                 $claim = InsuranceClaim::create([
                     'customer_id' => $validated['customer_id'] ?? $batch->customer_id,
@@ -384,7 +384,7 @@ class AgentBatchClaimController extends Controller
                     'claim_number' => $claimNumber,
                     'claim_type' => '대리청구',
                     'claim_status' => InsuranceClaim::STATUS_DRAFT,
-                    'claim_date' => now(),
+                    'claim_date' => now()->toDateString(),
                     'created_by_id' => $agentId,
                 ]);
 
@@ -515,7 +515,7 @@ class AgentBatchClaimController extends Controller
                 $claim->update([
                     'customer_id' => $customer->customer_id,
                     'claim_status' => InsuranceClaim::STATUS_PENDING,
-                    'claim_date' => now(),
+                    'claim_date' => now()->toDateString(),
                     'updated_by_id' => $agentId,
                 ]);
 

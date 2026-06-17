@@ -115,7 +115,7 @@ class ClaimController extends Controller
         DB::beginTransaction();
         try {
             // claim_number 자동 생성
-            $claimNumber = 'CLM-' . date('Ymd') . '-' . str_pad((string) random_int(0, 9999), 4, '0', STR_PAD_LEFT);
+            $claimNumber = 'CLM-' . now()->format('Ymd') . '-' . str_pad((string) random_int(0, 9999), 4, '0', STR_PAD_LEFT);
 
             // 청구 레코드 생성
             $claim = InsuranceClaim::create([
@@ -125,7 +125,7 @@ class ClaimController extends Controller
                 'claim_number' => $claimNumber,
                 'claim_type' => '직접청구',
                 'claim_status' => InsuranceClaim::STATUS_PENDING,
-                'claim_date' => now(),
+                'claim_date' => now()->toDateString(),
             ]);
 
             // 필드 값 저장
@@ -316,7 +316,7 @@ class ClaimController extends Controller
             ], 404);
         }
 
-        $filename = '청구서_' . $claim->claim_id . '_' . date('Ymd') . '.pdf';
+        $filename = '청구서_' . $claim->claim_id . '_' . now()->format('Ymd') . '.pdf';
 
         return response()->streamDownload(function () use ($claim) {
             echo Storage::disk('s3')->get($claim->generated_pdf_path);
