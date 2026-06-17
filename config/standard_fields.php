@@ -58,8 +58,11 @@ return [
         'default_choices' => [
             ['label' => '질병', 'value' => 'disease'],
             ['label' => '상해', 'value' => 'injury'],
+            ['label' => '교통상해', 'value' => 'traffic_injury'],
+            ['label' => '자살', 'value' => 'suicide'],
             ['label' => '재물', 'value' => 'property'],
             ['label' => '배상', 'value' => 'liability'],
+            ['label' => '기타', 'value' => 'other'],
         ],
     ],
     ['code' => 'ACCIDENT_DETAIL_TYPE', 'label' => '세부유형', 'type' => 'checkbox', 'category' => '사고/청구 정보', 'customer_field' => null,
@@ -72,6 +75,21 @@ return [
             ['label' => '장해', 'value' => 'disability'],
             ['label' => '운전자', 'value' => 'driver'],
             ['label' => '치과 치료', 'value' => 'dental'],
+            ['label' => '골절', 'value' => 'fracture'],
+            ['label' => '치료', 'value' => 'treatment'],
+            ['label' => '기타', 'value' => 'other'],
+        ],
+    ],
+    ['code' => 'REPRESENTATIVE_EVENT', 'label' => '대표행사', 'type' => 'checkbox', 'category' => '사고/청구 정보', 'customer_field' => null,
+        'default_choices' => [
+            ['label' => '사망', 'value' => 'death'],
+            ['label' => '장해', 'value' => 'disability'],
+            ['label' => '진단', 'value' => 'diagnosis'],
+            ['label' => '입원', 'value' => 'hospitalization'],
+            ['label' => '통원', 'value' => 'outpatient'],
+            ['label' => '수술', 'value' => 'surgery'],
+            ['label' => '실손의료비', 'value' => 'actual_expense'],
+            ['label' => '기타', 'value' => 'other'],
         ],
     ],
     ['code' => 'ACCIDENT_DESCRIPTION', 'label' => '사고경위', 'type' => 'textarea', 'category' => '사고/청구 정보', 'customer_field' => null],
@@ -101,6 +119,8 @@ return [
     ],
 
     // ── 서명 ──
+    ['code' => 'SELF_NAME_SIGNATURE',      'label' => '본인 성명/서명',  'type' => 'signature', 'category' => '서명', 'customer_field' => null],
+    ['code' => 'LEGAL_GUARDIAN_NAME',      'label' => '법정대리인 성명', 'type' => 'text',      'category' => '서명', 'customer_field' => null],
     ['code' => 'INSURED_SIGNATURE',        'label' => '피보험자 서명',   'type' => 'signature', 'category' => '서명', 'customer_field' => null],
     ['code' => 'BENEFICIARY_SIGNATURE',    'label' => '수익자 서명',     'type' => 'signature', 'category' => '서명', 'customer_field' => null],
     ['code' => 'RECIPIENT_SIGNATURE',      'label' => '수령인 서명',     'type' => 'signature', 'category' => '서명', 'customer_field' => null],
@@ -175,10 +195,32 @@ return [
     ],
     ['code' => 'ACCOUNT_NUMBER',  'label' => '계좌번호', 'type' => 'text', 'category' => '계좌 정보', 'customer_field' => null],
     ['code' => 'ACCOUNT_HOLDER',  'label' => '예금주',   'type' => 'text', 'category' => '계좌 정보', 'customer_field' => null],
+    ['code' => 'ACCOUNT_HOLDER_RRN', 'label' => '예금주 주민번호', 'type' => 'resident_number', 'category' => '계좌 정보', 'customer_field' => null],
 
     // ── 동의 ──
     ['code' => 'CONSENT_UNIQUE_ID', 'label' => '고유식별정보 처리 동의', 'type' => 'consent', 'category' => '동의', 'customer_field' => null],
     ['code' => 'CONSENT_SENSITIVE', 'label' => '민감정보 처리 동의',     'type' => 'consent', 'category' => '동의', 'customer_field' => null],
     ['code' => 'CONSENT_CREDIT',    'label' => '개인(신용)정보 처리 동의', 'type' => 'consent', 'category' => '동의', 'customer_field' => null],
     ['code' => 'CONSENT_AUTO',      'label' => '자동동의',               'type' => 'consent', 'category' => '동의', 'customer_field' => null],
+    ['code' => 'CONSENT_THIRD_PARTY', 'label' => '제3자 제공 동의', 'type' => 'checkbox', 'category' => '동의', 'customer_field' => null,
+        'default_choices' => [
+            ['label' => '동의', 'value' => 'agree'],
+            ['label' => '동의안함', 'value' => 'disagree'],
+        ],
+    ],
+    ['code' => 'CONSENT_PAYMENT_PROCEDURE', 'label' => '보험금 지급절차 동의', 'type' => 'checkbox', 'category' => '동의', 'customer_field' => null,
+        'default_choices' => [
+            ['label' => '확인', 'value' => 'confirmed'],
+        ],
+    ],
+    ['code' => 'CONSENT_REQUIRED_CHECK', 'label' => '필수확인사항', 'type' => 'checkbox', 'category' => '동의', 'customer_field' => null,
+        'default_choices' => [
+            ['label' => '확인', 'value' => 'confirmed'],
+        ],
+    ],
+    ['code' => 'CONSENT_CLAIM_ASSIGNMENT', 'label' => '채권양도 동의', 'type' => 'checkbox', 'category' => '동의', 'customer_field' => null,
+        'default_choices' => [
+            ['label' => '확인', 'value' => 'confirmed'],
+        ],
+    ],
 ];
