@@ -15,7 +15,8 @@ class PublicHospitalController extends Controller
      */
     public function index(Request $request): JsonResponse
     {
-        $query = PartnerHospital::where('is_active', true)
+        $query = PartnerHospital::with('images')
+            ->where('is_active', true)
             ->where('is_deleted', true);
 
         // 키워드 검색
