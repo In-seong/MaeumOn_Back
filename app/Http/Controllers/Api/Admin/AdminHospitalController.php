@@ -15,7 +15,8 @@ class AdminHospitalController extends Controller
 {
     public function index(Request $request): JsonResponse
     {
-        $query = PartnerHospital::with(['accounts', 'images']);
+        $query = PartnerHospital::with(['accounts', 'images'])
+            ->where('is_deleted', true);
 
         if ($search = $request->input('search')) {
             $query->where(function ($q) use ($search) {
@@ -191,6 +192,18 @@ class AdminHospitalController extends Controller
         return response()->json([
             'success' => true,
             'message' => '병원이 비활성화되었습니다.',
+        ]);
+    }
+
+    public function forceDelete(int $id): JsonResponse
+    {
+        $hospital = PartnerHospital::findOrFail($id);
+        $hospital->update(['is_active' => false, 'is_deleted' => false]);
+        $hospital->accounts()->update(['is_active' => false]);
+
+        return response()->json([
+            'success' => true,
+            'message' => '병원이 삭제되었습니다.',
         ]);
     }
 }

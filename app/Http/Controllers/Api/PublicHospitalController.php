@@ -15,7 +15,8 @@ class PublicHospitalController extends Controller
      */
     public function index(Request $request): JsonResponse
     {
-        $query = PartnerHospital::where('is_active', true);
+        $query = PartnerHospital::where('is_active', true)
+            ->where('is_deleted', true);
 
         // 키워드 검색
         if ($search = $request->input('search')) {
@@ -41,6 +42,7 @@ class PublicHospitalController extends Controller
     {
         $hospital = PartnerHospital::with('images')
             ->where('is_active', true)
+            ->where('is_deleted', true)
             ->where('hospital_id', $id)
             ->firstOrFail();
 
@@ -63,6 +65,7 @@ class PublicHospitalController extends Controller
 
         $hospital = PartnerHospital::where('hospital_id', $id)
             ->where('is_active', true)
+            ->where('is_deleted', true)
             ->firstOrFail();
 
         // schedule_config 기반 시간 슬롯 생성

@@ -28,6 +28,16 @@ class HospitalPortalController extends Controller
             ->where('is_active', true)
             ->first();
 
+        if ($account && $account->hospital_id) {
+            $hospital = PartnerHospital::find($account->hospital_id);
+            if ($hospital && !$hospital->is_deleted) {
+                return response()->json([
+                    'success' => false,
+                    'message' => '삭제된 병원의 계정입니다.',
+                ], 401);
+            }
+        }
+
         if (!$account || !Hash::check($validated['password'], $account->password)) {
             return response()->json([
                 'success' => false,
