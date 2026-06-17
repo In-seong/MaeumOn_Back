@@ -79,8 +79,9 @@ class PublicHospitalController extends Controller
             ->pluck('reservation_time')
             ->toArray();
 
-        $isToday = $date === now()->format('Y-m-d');
-        $currentTime = now()->format('H:i');
+        $nowKst = now('Asia/Seoul');
+        $isToday = $date === $nowKst->format('Y-m-d');
+        $currentTime = $nowKst->format('H:i');
 
         if ($isToday) {
             $allTimes = array_filter($allTimes, fn ($time) => $time > $currentTime);
