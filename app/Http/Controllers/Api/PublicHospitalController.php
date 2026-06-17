@@ -82,16 +82,18 @@ class PublicHospitalController extends Controller
         $isToday = $date === now()->format('Y-m-d');
         $currentTime = now()->format('H:i');
 
-        $slots = array_map(function ($time) use ($bookedSlots, $isToday, $currentTime) {
-            $available = !in_array($time, $bookedSlots);
-            if ($isToday && $time <= $currentTime) {
-                $available = false;
-            }
+        if ($isToday) {
+            $allTimes = array_filter($allTimes, fn ($time) => $time > $currentTime);
+        }
+
+        $slots = array_map(function ($time) use ($bookedSlots) {
             return [
                 'time' => $time,
-                'available' => $available,
+                'available' => !in_array($time, $bookedSlots),
             ];
         }, $allTimes);
+
+        $slots = array_values($slots);
 
         return response()->json([
             'success' => true,
