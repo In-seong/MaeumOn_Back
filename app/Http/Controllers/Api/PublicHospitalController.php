@@ -79,10 +79,17 @@ class PublicHospitalController extends Controller
             ->pluck('reservation_time')
             ->toArray();
 
-        $slots = array_map(function ($time) use ($bookedSlots) {
+        $isToday = $date === now()->format('Y-m-d');
+        $currentTime = now()->format('H:i');
+
+        $slots = array_map(function ($time) use ($bookedSlots, $isToday, $currentTime) {
+            $available = !in_array($time, $bookedSlots);
+            if ($isToday && $time <= $currentTime) {
+                $available = false;
+            }
             return [
                 'time' => $time,
-                'available' => !in_array($time, $bookedSlots),
+                'available' => $available,
             ];
         }, $allTimes);
 
