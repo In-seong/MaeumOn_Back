@@ -346,6 +346,7 @@ Route::middleware('auth:sanctum')->group(function () {
 
         // 청구 배정 조회
         Route::get('/claim-assignments', [AgentDbDistributionController::class, 'claimAssignments']);
+        Route::get('/claim-request-files/{id}/download', [AgentDbDistributionController::class, 'downloadClaimFile']);
     });
 
     // 고객 API

@@ -4,10 +4,13 @@ namespace App\Http\Controllers\Api\Agent;
 
 use App\Http\Controllers\Controller;
 use App\Models\ClaimRequest;
+use App\Models\ClaimRequestFile;
 use App\Models\Customer;
 use App\Models\CustomerAssignment;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class AgentDbDistributionController extends Controller
 {
@@ -87,6 +90,22 @@ class AgentDbDistributionController extends Controller
             'data' => $assignments,
             'message' => '청구 배정 목록을 조회했습니다.',
         ]);
+    }
+
+    /**
+     * 청구 배정 첨부파일 다운로드
+     */
+    public function downloadClaimFile(Request $request, int $fileId): StreamedResponse
+    {
+        $agentId = $request->user()->agent->agent_id;
+
+        $file = ClaimRequestFile::findOrFail($fileId);
+
+        ClaimRequest::where('request_id', $file->request_id)
+            ->where('assigned_agent_id', $agentId)
+            ->firstOrFail();
+
+        return Storage::disk('s3')->download($file->file_url, $file->file_name);
     }
 
     /**
