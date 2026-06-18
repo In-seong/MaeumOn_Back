@@ -27,6 +27,7 @@ class PartnerHospital extends Model
         'specialties',
         'schedule_config',
         'image_path',
+        'thumbnail_path',
         'is_active',
         'is_deleted',
     ];
@@ -39,12 +40,18 @@ class PartnerHospital extends Model
         'schedule_config' => 'array',
     ];
 
-    protected $appends = ['image_url'];
+    protected $appends = ['image_url', 'thumbnail_url'];
 
     public function getImageUrlAttribute(): ?string
     {
         if (!$this->image_path) return null;
         return Storage::disk('s3')->temporaryUrl($this->image_path, now()->addHours(24));
+    }
+
+    public function getThumbnailUrlAttribute(): ?string
+    {
+        if (!$this->thumbnail_path) return null;
+        return Storage::disk('s3')->temporaryUrl($this->thumbnail_path, now()->addHours(24));
     }
 
     public function reservations(): HasMany

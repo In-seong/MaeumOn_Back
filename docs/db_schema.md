@@ -801,6 +801,7 @@ DB 배분 (고객 배정).
 | introduction | text | YES | | | 소개 |
 | specialties | text | YES | | | 진료 과목 |
 | schedule_config | json | YES | | NULL | 예약 스케줄 설정 (요일별/차단일/특별일정) |
+| thumbnail_path | varchar(255) | YES | | NULL | 목록 썸네일 이미지 S3 경로 (정방형 1:1) |
 | is_active | tinyint(1) | NO | MUL | 1 | 활성 여부 (0=비활성, 1=활성) |
 | is_deleted | tinyint(1) | NO | | 1 | 삭제 여부 (0=삭제됨, 1=존재) |
 | created_at | datetime | NO | | CURRENT_TIMESTAMP | |

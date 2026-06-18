@@ -184,6 +184,43 @@ class AdminHospitalController extends Controller
         ]);
     }
 
+    public function uploadThumbnail(Request $request, int $id): JsonResponse
+    {
+        $hospital = PartnerHospital::findOrFail($id);
+
+        $request->validate([
+            'thumbnail' => 'required|image|max:5120',
+        ]);
+
+        if ($hospital->thumbnail_path) {
+            Storage::disk('s3')->delete($hospital->thumbnail_path);
+        }
+
+        $path = $request->file('thumbnail')->store("hospitals/{$id}/thumbnails", 's3');
+        $hospital->update(['thumbnail_path' => $path]);
+
+        return response()->json([
+            'success' => true,
+            'data' => $hospital,
+            'message' => '썸네일이 업로드되었습니다.',
+        ]);
+    }
+
+    public function deleteThumbnail(int $id): JsonResponse
+    {
+        $hospital = PartnerHospital::findOrFail($id);
+
+        if ($hospital->thumbnail_path) {
+            Storage::disk('s3')->delete($hospital->thumbnail_path);
+            $hospital->update(['thumbnail_path' => null]);
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => '썸네일이 삭제되었습니다.',
+        ]);
+    }
+
     public function destroy(int $id): JsonResponse
     {
         $hospital = PartnerHospital::findOrFail($id);
