@@ -351,6 +351,7 @@ FCM 푸시 알림 토큰. **Model: `FcmToken`** (`app/Models/FcmToken.php`, 2026
 | font_color | varchar(7) | NO | | #000000 | 글꼴 색상 |
 | placeholder | varchar(255) | YES | | | |
 | default_value | varchar(255) | YES | | | |
+| is_hidden | tinyint(1) | NO | | 0 | 소프트 삭제 (1=숨김, 기존 데이터 유지) |
 | created_at | datetime | NO | | CURRENT_TIMESTAMP | |
 | updated_at | datetime | YES | | CURRENT_TIMESTAMP ON UPDATE | |
 

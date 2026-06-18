@@ -18,7 +18,7 @@ class FormFieldController extends Controller
     public function index(int $templateId): JsonResponse
     {
         $template = ClaimForm::findOrFail($templateId);
-        $fields = $template->formFields()->orderBy('field_order')->get();
+        $fields = $template->formFields()->where('is_hidden', false)->orderBy('field_order')->get();
 
         return response()->json([
             'success' => true,
@@ -32,7 +32,7 @@ class FormFieldController extends Controller
     public function indexByPage(int $pageId): JsonResponse
     {
         $page = FormPage::findOrFail($pageId);
-        $fields = $page->formFields()->orderBy('field_order')->get();
+        $fields = $page->formFields()->where('is_hidden', false)->orderBy('field_order')->get();
 
         return response()->json([
             'success' => true,
@@ -217,15 +217,11 @@ class FormFieldController extends Controller
     {
         $field = FormField::findOrFail($id);
 
-        // 연관된 청구 값이 있는지 확인
         if ($field->claimFieldValues()->count() > 0) {
-            return response()->json([
-                'success' => false,
-                'message' => '이 필드에 입력된 데이터가 있어 삭제할 수 없습니다.',
-            ], 400);
+            $field->update(['is_hidden' => true]);
+        } else {
+            $field->delete();
         }
-
-        $field->delete();
 
         return response()->json([
             'success' => true,

@@ -36,7 +36,7 @@ class ClaimForm extends Model
 
     public function formFields()
     {
-        return $this->hasMany(FormField::class, 'claim_form_id', 'claim_form_id')->orderBy('field_order');
+        return $this->hasMany(FormField::class, 'claim_form_id', 'claim_form_id')->where('is_hidden', false)->orderBy('field_order');
     }
 
     public function insuranceClaims()

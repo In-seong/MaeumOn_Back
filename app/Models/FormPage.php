@@ -35,7 +35,7 @@ class FormPage extends Model
 
     public function formFields()
     {
-        return $this->hasMany(FormField::class, 'form_page_id', 'form_page_id')->orderBy('field_order');
+        return $this->hasMany(FormField::class, 'form_page_id', 'form_page_id')->where('is_hidden', false)->orderBy('field_order');
     }
 
     public function getPageImageUrlAttribute(): ?string

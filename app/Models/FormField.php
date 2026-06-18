@@ -28,10 +28,12 @@ class FormField extends Model
         'font_color',
         'placeholder',
         'default_value',
+        'is_hidden',
     ];
 
     protected $casts = [
         'is_required' => 'boolean',
+        'is_hidden' => 'boolean',
         'field_options' => 'array',
         'validation_rules' => 'array',
         'field_order' => 'integer',
