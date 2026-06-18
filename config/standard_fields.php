@@ -103,13 +103,22 @@ return [
             ['label' => '기타', 'value' => 'other'],
         ],
     ],
+    ['code' => 'INSURED_RELATION_TEXT', 'label' => '피보험자와의관계(텍스트)', 'type' => 'text', 'category' => '사고/청구 정보', 'customer_field' => null],
+    ['code' => 'REPRESENTATIVE_EVENT_CONSENT', 'label' => '대표행사 동의', 'type' => 'checkbox', 'category' => '사고/청구 정보', 'customer_field' => null,
+        'default_choices' => [
+            ['label' => '동의', 'value' => 'agree'],
+            ['label' => '비동의', 'value' => 'disagree'],
+        ],
+    ],
     ['code' => 'COMPENSATION_RECIPIENT', 'label' => '보상안내받으실분', 'type' => 'checkbox', 'category' => '사고/청구 정보', 'customer_field' => null,
         'default_choices' => [
-            ['label' => '계약자', 'value' => 'contractor'],
+            ['label' => '보험계약자', 'value' => 'contractor'],
             ['label' => '피보험자', 'value' => 'insured'],
             ['label' => '기타', 'value' => 'other'],
         ],
     ],
+    ['code' => 'COMPENSATION_RECIPIENT_NAME', 'label' => '보상안내받으실분 성명', 'type' => 'text', 'category' => '사고/청구 정보', 'customer_field' => null],
+    ['code' => 'COMPENSATION_RECIPIENT_PHONE', 'label' => '보상안내받으실분 휴대폰번호', 'type' => 'phone', 'category' => '사고/청구 정보', 'customer_field' => null],
 
     ['code' => 'AUTO_TRANSFER', 'label' => '자동이체계좌 지급 여부', 'type' => 'checkbox', 'category' => '사고/청구 정보', 'customer_field' => null,
         'default_choices' => [
