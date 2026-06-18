@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api\Agent;
 
 use App\Http\Controllers\Controller;
 use App\Models\ClaimRequest;
+use App\Models\Customer;
 use App\Models\CustomerAssignment;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -68,6 +69,18 @@ class AgentDbDistributionController extends Controller
             ->with(['hospital:hospital_id,hospital_name', 'files'])
             ->orderBy('created_at', 'desc')
             ->get();
+
+        $agentPhones = Customer::where('agent_id', $agentId)
+            ->where('is_active', true)
+            ->pluck('phone')
+            ->map(fn ($p) => preg_replace('/\D/', '', $p ?? ''))
+            ->filter()
+            ->toArray();
+
+        $assignments->each(function ($a) use ($agentPhones) {
+            $phone = preg_replace('/\D/', '', $a->phone ?? '');
+            $a->is_registered = in_array($phone, $agentPhones);
+        });
 
         return response()->json([
             'success' => true,

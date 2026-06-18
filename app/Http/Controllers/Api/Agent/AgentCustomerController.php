@@ -29,10 +29,11 @@ class AgentCustomerController extends Controller
             });
         }
 
-        // 활성 상태 필터
-        if ($request->has('is_active')) {
-            $query->where('is_active', filter_var($request->is_active, FILTER_VALIDATE_BOOLEAN));
-        }
+        // 활성 상태 필터 (기본: 활성 고객만)
+        $isActive = $request->has('is_active')
+            ? filter_var($request->is_active, FILTER_VALIDATE_BOOLEAN)
+            : true;
+        $query->where('is_active', $isActive);
 
         // 정렬
         $sortField = $request->get('sort_by', 'created_at');
