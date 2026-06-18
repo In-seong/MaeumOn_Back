@@ -65,7 +65,7 @@ class AgentDbDistributionController extends Controller
         $agentId = $request->user()->agent->agent_id;
 
         $assignments = ClaimRequest::where('assigned_agent_id', $agentId)
-            ->with('hospital:hospital_id,hospital_name')
+            ->with(['hospital:hospital_id,hospital_name', 'files'])
             ->orderBy('created_at', 'desc')
             ->get();
 
