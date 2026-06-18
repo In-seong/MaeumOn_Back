@@ -343,6 +343,9 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/assignments', [AgentDbDistributionController::class, 'index']);
         Route::get('/assignments/{id}', [AgentDbDistributionController::class, 'show']);
         Route::put('/assignments/{id}/process', [AgentDbDistributionController::class, 'process']);
+
+        // 청구 배정 조회
+        Route::get('/claim-assignments', [AgentDbDistributionController::class, 'claimAssignments']);
     });
 
     // 고객 API

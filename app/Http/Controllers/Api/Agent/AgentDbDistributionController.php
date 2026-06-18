@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api\Agent;
 
 use App\Http\Controllers\Controller;
+use App\Models\ClaimRequest;
 use App\Models\CustomerAssignment;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -53,6 +54,25 @@ class AgentDbDistributionController extends Controller
             'success' => true,
             'data' => $assignment,
             'message' => '배정 상세 정보를 조회했습니다.',
+        ]);
+    }
+
+    /**
+     * 청구 배정 목록 조회 (관리자가 배정한 청구 신청)
+     */
+    public function claimAssignments(Request $request): JsonResponse
+    {
+        $agentId = $request->user()->agent->agent_id;
+
+        $assignments = ClaimRequest::where('assigned_agent_id', $agentId)
+            ->with('hospital:hospital_id,name')
+            ->orderBy('created_at', 'desc')
+            ->get();
+
+        return response()->json([
+            'success' => true,
+            'data' => $assignments,
+            'message' => '청구 배정 목록을 조회했습니다.',
         ]);
     }
 
