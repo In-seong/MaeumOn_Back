@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Models\ClaimRequest;
 use App\Models\Customer;
 use App\Models\Agent;
 use App\Models\CustomerAssignment;
@@ -170,6 +171,30 @@ class AdminAssignmentController extends Controller
             'data' => ['created_count' => $createdCount],
             'message' => "{$createdCount}건의 DB 배분이 등록되었습니다.",
         ], 201);
+    }
+
+    /**
+     * 청구 배정 이력 조회
+     */
+    public function claimAssignments(Request $request): JsonResponse
+    {
+        $query = ClaimRequest::whereNotNull('assigned_agent_id')
+            ->with(['assignedAgent:agent_id,name,phone', 'hospital:hospital_id,hospital_name']);
+
+        if ($request->has('search') && $request->search) {
+            $search = $request->search;
+            $query->where('name', 'like', "%{$search}%");
+        }
+
+        $query->orderBy('updated_at', 'desc');
+
+        $perPage = min(max((int) $request->get('per_page', 15), 1), 100);
+        $assignments = $query->paginate($perPage);
+
+        return response()->json([
+            'success' => true,
+            'data' => $assignments,
+        ]);
     }
 
     /**

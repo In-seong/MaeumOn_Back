@@ -192,6 +192,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('/assignments', [AdminAssignmentController::class, 'store']);
         Route::post('/assignments/bulk', [AdminAssignmentController::class, 'bulkStore']);
         Route::delete('/assignments/{id}', [AdminAssignmentController::class, 'destroy']);
+        Route::get('/assignments/claim', [AdminAssignmentController::class, 'claimAssignments']);
 
         // 추가계약 발굴 (SFR-040, 041)
         Route::get('/additional-contracts', [AdminAdditionalContractController::class, 'index']);
