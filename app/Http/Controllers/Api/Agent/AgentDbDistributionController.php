@@ -73,16 +73,22 @@ class AgentDbDistributionController extends Controller
             ->orderBy('created_at', 'desc')
             ->get();
 
-        $agentPhones = Customer::where('agent_id', $agentId)
+        $agentCustomers = Customer::where('agent_id', $agentId)
             ->where('is_active', true)
-            ->pluck('phone')
-            ->map(fn ($p) => preg_replace('/\D/', '', $p ?? ''))
-            ->filter()
-            ->toArray();
+            ->get(['customer_id', 'phone']);
 
-        $assignments->each(function ($a) use ($agentPhones) {
+        $phoneToCustomerId = [];
+        foreach ($agentCustomers as $c) {
+            $normalized = preg_replace('/\D/', '', $c->phone ?? '');
+            if ($normalized) {
+                $phoneToCustomerId[$normalized] = $c->customer_id;
+            }
+        }
+
+        $assignments->each(function ($a) use ($phoneToCustomerId) {
             $phone = preg_replace('/\D/', '', $a->phone ?? '');
-            $a->is_registered = in_array($phone, $agentPhones);
+            $a->is_registered = isset($phoneToCustomerId[$phone]);
+            $a->registered_customer_id = $phoneToCustomerId[$phone] ?? null;
         });
 
         return response()->json([
