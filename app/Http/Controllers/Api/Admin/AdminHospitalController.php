@@ -232,6 +232,17 @@ class AdminHospitalController extends Controller
         ]);
     }
 
+    public function activate(int $id): JsonResponse
+    {
+        $hospital = PartnerHospital::findOrFail($id);
+        $hospital->update(['is_active' => true]);
+
+        return response()->json([
+            'success' => true,
+            'message' => '병원이 활성화되었습니다.',
+        ]);
+    }
+
     public function forceDelete(int $id): JsonResponse
     {
         $hospital = PartnerHospital::findOrFail($id);

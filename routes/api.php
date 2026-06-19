@@ -225,6 +225,7 @@ Route::middleware('auth:sanctum')->group(function () {
         // 병원 관리
         Route::apiResource('hospitals', AdminHospitalController::class);
         Route::delete('hospitals/{id}/force', [AdminHospitalController::class, 'forceDelete']);
+        Route::put('hospitals/{id}/activate', [AdminHospitalController::class, 'activate']);
         Route::post('hospitals/{id}/image', [AdminHospitalController::class, 'uploadImage']);
         Route::post('hospitals/{id}/thumbnail', [AdminHospitalController::class, 'uploadThumbnail']);
         Route::delete('hospitals/{id}/thumbnail', [AdminHospitalController::class, 'deleteThumbnail']);
