@@ -14,6 +14,7 @@
 return [
     // ── 계약자 정보 ──
     ['code' => 'CONTRACTOR_NAME',    'label' => '계약자 성명',     'type' => 'text',            'category' => '계약자 정보', 'customer_field' => 'name'],
+    ['code' => 'CONTRACTOR_RRN',       'label' => '계약자 주민번호',         'type' => 'resident_number',       'category' => '계약자 정보', 'customer_field' => 'resident_number'],
     ['code' => 'CONTRACTOR_RRN_FRONT', 'label' => '계약자 생년월일',       'type' => 'resident_number_front', 'category' => '계약자 정보', 'customer_field' => 'resident_number_front'],
     ['code' => 'CONTRACTOR_RRN_BACK',  'label' => '계약자 주민번호 뒷자리', 'type' => 'resident_number_back',  'category' => '계약자 정보', 'customer_field' => 'resident_number_back'],
     ['code' => 'CONTRACTOR_PHONE',   'label' => '계약자 전화번호',  'type' => 'phone',           'category' => '계약자 정보', 'customer_field' => 'phone'],
@@ -22,6 +23,7 @@ return [
 
     // ── 피보험자 정보 ──
     ['code' => 'INSURED_NAME',       'label' => '피보험자 성명',    'type' => 'text',            'category' => '피보험자 정보', 'customer_field' => null],
+    ['code' => 'INSURED_RRN',          'label' => '피보험자 주민번호',        'type' => 'resident_number',       'category' => '피보험자 정보', 'customer_field' => null],
     ['code' => 'INSURED_RRN_FRONT',   'label' => '피보험자 생년월일',       'type' => 'resident_number_front', 'category' => '피보험자 정보', 'customer_field' => null],
     ['code' => 'INSURED_RRN_BACK',    'label' => '피보험자 주민번호 뒷자리', 'type' => 'resident_number_back',  'category' => '피보험자 정보', 'customer_field' => null],
     ['code' => 'INSURED_PHONE',      'label' => '피보험자 전화번호', 'type' => 'phone',           'category' => '피보험자 정보', 'customer_field' => null],
@@ -29,6 +31,7 @@ return [
 
     // ── 수익자 정보 ──
     ['code' => 'BENEFICIARY_NAME',     'label' => '수익자 성명',     'type' => 'text',            'category' => '수익자 정보', 'customer_field' => null],
+    ['code' => 'BENEFICIARY_RRN',       'label' => '수익자 주민번호',         'type' => 'resident_number',       'category' => '수익자 정보', 'customer_field' => null],
     ['code' => 'BENEFICIARY_RRN_FRONT', 'label' => '수익자 생년월일',       'type' => 'resident_number_front', 'category' => '수익자 정보', 'customer_field' => null],
     ['code' => 'BENEFICIARY_RRN_BACK',  'label' => '수익자 주민번호 뒷자리', 'type' => 'resident_number_back',  'category' => '수익자 정보', 'customer_field' => null],
     ['code' => 'BENEFICIARY_PHONE',    'label' => '수익자 전화번호',  'type' => 'phone',           'category' => '수익자 정보', 'customer_field' => null],
@@ -42,6 +45,7 @@ return [
 
     // ── 청구자 정보 ──
     ['code' => 'CLAIMANT_NAME',      'label' => '청구자 성명',           'type' => 'text',                  'category' => '청구자 정보', 'customer_field' => null],
+    ['code' => 'CLAIMANT_RRN',       'label' => '청구자 주민번호',         'type' => 'resident_number',       'category' => '청구자 정보', 'customer_field' => null],
     ['code' => 'CLAIMANT_RRN_FRONT', 'label' => '청구자 생년월일',       'type' => 'resident_number_front', 'category' => '청구자 정보', 'customer_field' => null],
     ['code' => 'CLAIMANT_RRN_BACK',  'label' => '청구자 주민번호 뒷자리', 'type' => 'resident_number_back',  'category' => '청구자 정보', 'customer_field' => null],
     ['code' => 'CLAIMANT_PHONE',     'label' => '청구자 전화번호',        'type' => 'phone',                 'category' => '청구자 정보', 'customer_field' => null],
