@@ -66,7 +66,7 @@ class ClaimFormController extends Controller
      */
     public function index(Request $request): JsonResponse
     {
-        $query = ClaimForm::with('insuranceCompany:company_id,company_name,company_code');
+        $query = ClaimForm::with('insuranceCompany:company_id,company_name,company_code,fax_number');
 
         // 보험사 필터
         if ($request->has('company_id')) {
@@ -108,7 +108,8 @@ class ClaimFormController extends Controller
     public function store(Request $request): JsonResponse
     {
         $validated = $request->validate([
-            'company_id' => 'required|exists:insurance_company,company_id',
+            'company_name' => 'required|string|max:100',
+            'fax_number' => 'required|string|max:20',
             'form_name' => 'required|string|max:100',
             'form_description' => 'nullable|string',
             'is_active' => 'boolean',
@@ -116,8 +117,13 @@ class ClaimFormController extends Controller
             'images.*' => 'file|mimes:jpeg,png,jpg,pdf|max:20480',
         ]);
 
+        $company = InsuranceCompany::create([
+            'company_name' => $validated['company_name'],
+            'fax_number' => $validated['fax_number'],
+        ]);
+
         $template = ClaimForm::create([
-            'company_id' => $validated['company_id'],
+            'company_id' => $company->company_id,
             'form_name' => $validated['form_name'],
             'form_description' => $validated['form_description'] ?? null,
             'is_active' => $validated['is_active'] ?? true,
@@ -215,17 +221,31 @@ class ClaimFormController extends Controller
         $template = ClaimForm::findOrFail($id);
 
         $validated = $request->validate([
-            'company_id' => 'sometimes|required|exists:insurance_company,company_id',
+            'company_name' => 'sometimes|required|string|max:100',
+            'fax_number' => 'sometimes|required|string|max:20',
             'form_name' => 'sometimes|required|string|max:100',
             'form_description' => 'nullable|string',
             'is_active' => 'boolean',
         ]);
 
-        $template->update($validated);
+        if (isset($validated['company_name']) || isset($validated['fax_number'])) {
+            $company = InsuranceCompany::find($template->company_id);
+            if ($company) {
+                $companyData = [];
+                if (isset($validated['company_name'])) $companyData['company_name'] = $validated['company_name'];
+                if (isset($validated['fax_number'])) $companyData['fax_number'] = $validated['fax_number'];
+                $company->update($companyData);
+            }
+        }
+
+        $templateData = array_intersect_key($validated, array_flip(['form_name', 'form_description', 'is_active']));
+        if (!empty($templateData)) {
+            $template->update($templateData);
+        }
 
         return response()->json([
             'success' => true,
-            'data' => $template->load('insuranceCompany:company_id,company_name,company_code'),
+            'data' => $template->load('insuranceCompany:company_id,company_name,company_code,fax_number'),
             'message' => '양식이 수정되었습니다.',
         ]);
     }
