@@ -141,6 +141,11 @@ return [
     ['code' => 'LEGAL_GUARDIAN_SIGNATURE', 'label' => '법정대리인 서명', 'type' => 'signature', 'category' => '서명', 'customer_field' => null],
 
     // ── 계좌 정보 ──
+    ['code' => 'AUTO_TRANSFER_ACCOUNT', 'label' => '자동이체 계좌로 수령', 'type' => 'checkbox', 'category' => '계좌 정보', 'customer_field' => null,
+        'default_choices' => [
+            ['label' => '확인', 'value' => 'Y'],
+        ],
+    ],
     ['code' => 'BANK_NAME',       'label' => '은행명',   'type' => 'select', 'category' => '계좌 정보', 'customer_field' => null,
         'default_choices' => [
             // 은행
