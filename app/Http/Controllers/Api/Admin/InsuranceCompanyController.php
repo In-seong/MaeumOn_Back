@@ -15,7 +15,7 @@ class InsuranceCompanyController extends Controller
     public function publicIndex(Request $request): JsonResponse
     {
         $companies = InsuranceCompany::active()
-            ->select('company_id', 'company_name', 'company_code', 'logo_path')
+            ->select('company_id', 'company_name', 'category', 'company_code', 'logo_path')
             ->orderBy('company_name')
             ->get();
 
@@ -63,6 +63,7 @@ class InsuranceCompanyController extends Controller
     {
         $validated = $request->validate([
             'company_name' => 'required|string|max:100',
+            'category' => 'nullable|string|in:life,non-life,cooperative',
             'company_code' => 'nullable|string|max:20|unique:insurance_company,company_code',
             'business_number' => 'nullable|string|max:20',
             'representative_name' => 'nullable|string|max:50',
@@ -107,6 +108,7 @@ class InsuranceCompanyController extends Controller
 
         $validated = $request->validate([
             'company_name' => 'sometimes|required|string|max:100',
+            'category' => 'nullable|string|in:life,non-life,cooperative',
             'company_code' => 'nullable|string|max:20|unique:insurance_company,company_code,' . $id . ',company_id',
             'business_number' => 'nullable|string|max:20',
             'representative_name' => 'nullable|string|max:50',

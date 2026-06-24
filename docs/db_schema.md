@@ -160,6 +160,7 @@ FCM 푸시 알림 토큰. **Model: `FcmToken`** (`app/Models/FcmToken.php`, 2026
 |------|------|------|-----|---------|------|
 | company_id | int(11) | NO | PRI | auto_increment | |
 | company_name | varchar(100) | NO | MUL | | |
+| category | varchar(20) | NO | | '' | life/non-life/cooperative |
 | company_code | varchar(20) | YES | MUL | | 금감원 코드 |
 | business_number | varchar(20) | YES | | | 사업자등록번호 |
 | representative_name | varchar(50) | YES | | | 대표자명 |

@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\Storage;
 
 class InsuranceCompany extends Model
 {
@@ -11,6 +12,7 @@ class InsuranceCompany extends Model
 
     protected $fillable = [
         'company_name',
+        'category',
         'company_code',
         'business_number',
         'representative_name',
@@ -25,6 +27,17 @@ class InsuranceCompany extends Model
     protected $casts = [
         'is_active' => 'boolean',
     ];
+
+    protected $appends = ['logo_url'];
+
+    public function getLogoUrlAttribute(): ?string
+    {
+        if (!$this->logo_path) {
+            return null;
+        }
+
+        return Storage::disk('s3')->temporaryUrl($this->logo_path, now()->addHours(24));
+    }
 
     public function claimForms()
     {
