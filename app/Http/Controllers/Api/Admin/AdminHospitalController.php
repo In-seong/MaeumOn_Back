@@ -127,6 +127,7 @@ class AdminHospitalController extends Controller
             'introduction' => 'nullable|string',
             'specialties' => 'nullable|string',
             ...PartnerHospital::scheduleConfigValidationRules(),
+            'reservation_enabled' => 'sometimes|boolean',
             'is_active' => 'sometimes|boolean',
             'portal_username' => 'nullable|string|max:50',
             'portal_password' => 'nullable|string|min:4',

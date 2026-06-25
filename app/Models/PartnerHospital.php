@@ -28,11 +28,13 @@ class PartnerHospital extends Model
         'schedule_config',
         'image_path',
         'thumbnail_path',
+        'reservation_enabled',
         'is_active',
         'is_deleted',
     ];
 
     protected $casts = [
+        'reservation_enabled' => 'boolean',
         'is_active' => 'boolean',
         'is_deleted' => 'boolean',
         'latitude' => 'decimal:8',

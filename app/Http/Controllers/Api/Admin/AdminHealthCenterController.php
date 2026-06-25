@@ -92,6 +92,7 @@ class AdminHealthCenterController extends Controller
             'business_hours' => 'nullable|string',
             'introduction' => 'nullable|string',
             ...HealthCenter::scheduleConfigValidationRules(),
+            'reservation_enabled' => 'sometimes|boolean',
             'is_active' => 'sometimes|boolean',
             'portal_username' => 'nullable|string|max:50',
             'portal_password' => 'nullable|string|min:4',

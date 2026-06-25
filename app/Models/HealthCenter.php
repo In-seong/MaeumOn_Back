@@ -25,11 +25,13 @@ class HealthCenter extends Model
         'introduction',
         'thumbnail_path',
         'schedule_config',
+        'reservation_enabled',
         'is_active',
         'is_deleted',
     ];
 
     protected $casts = [
+        'reservation_enabled' => 'boolean',
         'is_active' => 'boolean',
         'is_deleted' => 'boolean',
         'latitude' => 'decimal:8',
