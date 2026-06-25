@@ -15,7 +15,7 @@ class PublicHealthCenterController extends Controller
      */
     public function index(Request $request): JsonResponse
     {
-        $query = HealthCenter::where('is_active', true);
+        $query = HealthCenter::where('is_active', true)->where('is_deleted', true);
 
         if ($search = $request->input('search')) {
             $query->where(function ($q) use ($search) {
@@ -39,6 +39,7 @@ class PublicHealthCenterController extends Controller
     {
         $center = HealthCenter::with('images')
             ->where('is_active', true)
+            ->where('is_deleted', true)
             ->where('center_id', $id)
             ->firstOrFail();
 
@@ -61,6 +62,7 @@ class PublicHealthCenterController extends Controller
 
         $center = HealthCenter::where('center_id', $id)
             ->where('is_active', true)
+            ->where('is_deleted', true)
             ->firstOrFail();
 
         // schedule_config 기반 시간 슬롯 생성

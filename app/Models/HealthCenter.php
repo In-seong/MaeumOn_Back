@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Support\Facades\Storage;
 use App\Models\Traits\HasScheduleConfig;
 
 class HealthCenter extends Model
@@ -22,16 +23,30 @@ class HealthCenter extends Model
         'contact_phone',
         'business_hours',
         'introduction',
+        'thumbnail_path',
         'schedule_config',
         'is_active',
+        'is_deleted',
     ];
 
     protected $casts = [
         'is_active' => 'boolean',
+        'is_deleted' => 'boolean',
         'latitude' => 'decimal:8',
         'longitude' => 'decimal:8',
         'schedule_config' => 'array',
     ];
+
+    protected $appends = ['thumbnail_url'];
+
+    public function getThumbnailUrlAttribute(): ?string
+    {
+        if (!$this->thumbnail_path) {
+            return null;
+        }
+
+        return Storage::disk('s3')->temporaryUrl($this->thumbnail_path, now()->addHours(24));
+    }
 
     public function reservations(): HasMany
     {

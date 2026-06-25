@@ -15,7 +15,8 @@ class AdminHealthCenterController extends Controller
 {
     public function index(Request $request): JsonResponse
     {
-        $query = HealthCenter::with(['accounts', 'images']);
+        $query = HealthCenter::with(['accounts', 'images'])
+            ->where('is_deleted', true);
 
         if ($search = $request->input('search')) {
             $query->where(function ($q) use ($search) {
@@ -156,6 +157,43 @@ class AdminHealthCenterController extends Controller
         return response()->json(['success' => true, 'message' => '이미지가 삭제되었습니다.']);
     }
 
+    public function uploadThumbnail(Request $request, int $id): JsonResponse
+    {
+        $center = HealthCenter::findOrFail($id);
+
+        $request->validate([
+            'thumbnail' => 'required|image|max:5120',
+        ]);
+
+        if ($center->thumbnail_path) {
+            Storage::disk('s3')->delete($center->thumbnail_path);
+        }
+
+        $path = $request->file('thumbnail')->store("health-centers/{$id}/thumbnails", 's3');
+        $center->update(['thumbnail_path' => $path]);
+
+        return response()->json([
+            'success' => true,
+            'data' => $center,
+            'message' => '썸네일이 업로드되었습니다.',
+        ]);
+    }
+
+    public function deleteThumbnail(int $id): JsonResponse
+    {
+        $center = HealthCenter::findOrFail($id);
+
+        if ($center->thumbnail_path) {
+            Storage::disk('s3')->delete($center->thumbnail_path);
+            $center->update(['thumbnail_path' => null]);
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => '썸네일이 삭제되었습니다.',
+        ]);
+    }
+
     public function destroy(int $id): JsonResponse
     {
         $center = HealthCenter::findOrFail($id);
@@ -164,6 +202,18 @@ class AdminHealthCenterController extends Controller
         return response()->json([
             'success' => true,
             'message' => '건강검진 센터가 비활성화되었습니다.',
+        ]);
+    }
+
+    public function forceDelete(int $id): JsonResponse
+    {
+        $center = HealthCenter::findOrFail($id);
+        $center->update(['is_active' => false, 'is_deleted' => false]);
+        $center->accounts()->update(['is_active' => false]);
+
+        return response()->json([
+            'success' => true,
+            'message' => '건강검진 센터가 삭제되었습니다.',
         ]);
     }
 }

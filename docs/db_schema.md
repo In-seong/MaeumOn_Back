@@ -1153,8 +1153,10 @@ FaxClientNC 연동용 테이블. **테이블명 반드시 대문자 유지**.
 | contact_phone | varchar(20) | YES | | | |
 | business_hours | text | YES | | | 영업시간 |
 | introduction | text | YES | | | 소개 |
+| thumbnail_path | varchar(255) | YES | | NULL | S3 썸네일 이미지 경로 (정방형 1:1) |
 | schedule_config | json | YES | | NULL | 예약 스케줄 설정 (요일별/차단일/특별일정) |
 | is_active | tinyint(1) | NO | MUL | 1 | |
+| is_deleted | tinyint(1) | NO | | 1 | 삭제 여부 (1=존재, 0=삭제) |
 | created_at | timestamp | NO | | CURRENT_TIMESTAMP | |
 | updated_at | timestamp | NO | | CURRENT_TIMESTAMP ON UPDATE | |
 
@@ -1246,3 +1248,4 @@ FaxClientNC 연동용 테이블. **테이블명 반드시 대문자 유지**.
 | 2026-05-07 | 헤더 카운트 표기 정정: 총 53개→54개, 비즈니스 45개→46개 (DEV/PROD/문서 3자 비교 스크립트로 일치 확인, 컬럼·인덱스 차이 0건) |
 | 2026-05-31 | 사용자 앱 리뉴얼: 5개 테이블 신규 생성 (claim_request, claim_request_file, health_center, hospital_reservation, hospital_account) + 6개 Model 구현 (ClaimRequest, ClaimRequestFile, PartnerHospital, HealthCenter, HospitalReservation, HospitalAccount) + 공개 API/관리자 API/병원 포털 API 추가 |
 | 2026-05-31 | partner_hospital, health_center에 schedule_config JSON NULL 컬럼 추가 (예약 스케줄 커스터마이징: 요일별/차단일/특별일정/간격 설정). HasScheduleConfig Trait 구현. 병원 포털 스케줄 API 2개 추가 (GET/PUT /hospital-portal/schedule) |
+| 2026-06-25 | health_center에 thumbnail_path VARCHAR(255) NULL, is_deleted TINYINT(1) NOT NULL DEFAULT 1 컬럼 추가. 삭제(forceDelete), 썸네일 업로드/삭제 API 추가 |

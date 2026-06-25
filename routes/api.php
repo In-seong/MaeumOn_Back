@@ -235,6 +235,9 @@ Route::middleware('auth:sanctum')->group(function () {
 
         // 건강검진 센터 관리
         Route::apiResource('health-centers', AdminHealthCenterController::class);
+        Route::delete('health-centers/{id}/force', [AdminHealthCenterController::class, 'forceDelete']);
+        Route::post('health-centers/{id}/thumbnail', [AdminHealthCenterController::class, 'uploadThumbnail']);
+        Route::delete('health-centers/{id}/thumbnail', [AdminHealthCenterController::class, 'deleteThumbnail']);
         Route::post('health-centers/{id}/images', [AdminHealthCenterController::class, 'addImage']);
         Route::delete('health-centers/{id}/images/{imageId}', [AdminHealthCenterController::class, 'deleteImage']);
 
