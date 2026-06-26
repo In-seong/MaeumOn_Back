@@ -133,27 +133,34 @@ class AgentDashboardController extends Controller
             ];
         }
 
-        // 3) DB배분 신규 고객 (오늘 배분)
+        // 3) DB배분 고객 (전체)
         $assignments = CustomerAssignment::where('agent_id', $agentId)
-            ->where('assignment_date', $today)
-            ->with('customer:customer_id,name')
-            ->limit(10)
+            ->with('customer:customer_id,name,phone')
+            ->orderByDesc('assignment_date')
+            ->limit(30)
             ->get();
 
-        if ($assignments->count() > 0) {
-            $names = $assignments->map(fn($a) => $a->customer->name ?? '미확인')->take(3)->join(', ');
-            $count = $assignments->count();
+        foreach ($assignments as $assignment) {
+            $customerName = $assignment->customer->name ?? '미확인';
+            $phone = $assignment->customer->phone ?? '';
+            $date = $assignment->assignment_date
+                ? Carbon::parse($assignment->assignment_date)->format('m/d')
+                : '';
+            $subtitle = $date;
+            if ($phone) {
+                $subtitle .= ($subtitle ? ' · ' : '') . $phone;
+            }
 
             $tasks[] = [
-                'id' => 'assignment_group_' . $today->format('Ymd'),
+                'id' => 'assignment_' . $assignment->assignment_id,
                 'type' => 'assignment',
-                'title' => "DB배분 신규 고객 {$count}명",
-                'subtitle' => $names . ($count > 3 ? " 외 " . ($count - 3) . "명" : ''),
+                'title' => $customerName,
+                'subtitle' => $subtitle,
                 'is_completed' => false,
                 'can_toggle' => false,
-                'related_id' => null,
+                'related_id' => $assignment->assignment_id,
                 'due_time' => null,
-                'route' => '/db-distribution',
+                'route' => '/customers/' . $assignment->customer_id,
             ];
         }
 
