@@ -60,25 +60,35 @@ class FaxService
             ];
         }
 
-        // S3에서 PDF 다운로드 → FaxClientNC SendDoc 디렉토리로 저장
-        $docFileName = "claim_{$claim->claim_id}_" . time() . '.pdf';
-        $sendDocFullPath = rtrim($this->sendDocPath, '/') . '/' . $docFileName;
+        // S3에서 PDF 다운로드 → TIFF 변환 → FaxClientNC SendDoc 디렉토리에 저장
+        $timestamp = time();
+        $pdfTempPath = sys_get_temp_dir() . "/claim_{$claim->claim_id}_{$timestamp}.pdf";
 
         try {
             $pdfContent = Storage::disk('s3')->get($claim->generated_pdf_path);
-            if (file_put_contents($sendDocFullPath, $pdfContent) === false) {
-                throw new \RuntimeException('파일 쓰기 실패');
+            if (file_put_contents($pdfTempPath, $pdfContent) === false) {
+                throw new \RuntimeException('PDF 임시 파일 쓰기 실패');
             }
         } catch (\Exception $e) {
-            Log::error('FaxClientNC: S3 → SendDoc 파일 저장 실패', [
+            Log::error('FaxClientNC: S3 → 임시 PDF 저장 실패', [
                 'claim_id' => $claim->claim_id,
                 's3_path' => $claim->generated_pdf_path,
-                'local_path' => $sendDocFullPath,
                 'error' => $e->getMessage(),
             ]);
             return [
                 'success' => false,
                 'message' => '팩스 발송 파일 준비에 실패했습니다.',
+            ];
+        }
+
+        $docFileName = "claim_{$claim->claim_id}_{$timestamp}.tiff";
+        $sendDocFullPath = rtrim($this->sendDocPath, '/') . '/' . $docFileName;
+
+        $tiffResult = $this->convertPdfToTiff($pdfTempPath, $sendDocFullPath);
+        if (!$tiffResult) {
+            return [
+                'success' => false,
+                'message' => 'PDF를 TIFF로 변환하는 데 실패했습니다.',
             ];
         }
 
@@ -175,23 +185,33 @@ class FaxService
 
         $targetFaxNumber = preg_replace('/[^0-9]/', '', $targetFaxNumber);
 
-        // 병합 PDF를 SendDoc 디렉토리에 저장
-        $docFileName = "claim_{$claim->claim_id}_merged_" . time() . '.pdf';
-        $sendDocFullPath = rtrim($this->sendDocPath, '/') . '/' . $docFileName;
+        // 병합 PDF → TIFF 변환 → FaxClientNC SendDoc 디렉토리에 저장
+        $timestamp = time();
+        $pdfTempPath = sys_get_temp_dir() . "/claim_{$claim->claim_id}_merged_{$timestamp}.pdf";
 
         try {
-            if (file_put_contents($sendDocFullPath, $pdfBinary) === false) {
-                throw new \RuntimeException('파일 쓰기 실패');
+            if (file_put_contents($pdfTempPath, $pdfBinary) === false) {
+                throw new \RuntimeException('PDF 임시 파일 쓰기 실패');
             }
         } catch (\Exception $e) {
-            Log::error('FaxClientNC: 병합 PDF 저장 실패', [
+            Log::error('FaxClientNC: 병합 PDF 임시 저장 실패', [
                 'claim_id' => $claim->claim_id,
-                'local_path' => $sendDocFullPath,
                 'error' => $e->getMessage(),
             ]);
             return [
                 'success' => false,
                 'message' => '팩스 발송 파일 준비에 실패했습니다.',
+            ];
+        }
+
+        $docFileName = "claim_{$claim->claim_id}_merged_{$timestamp}.tiff";
+        $sendDocFullPath = rtrim($this->sendDocPath, '/') . '/' . $docFileName;
+
+        $tiffResult = $this->convertPdfToTiff($pdfTempPath, $sendDocFullPath);
+        if (!$tiffResult) {
+            return [
+                'success' => false,
+                'message' => 'PDF를 TIFF로 변환하는 데 실패했습니다.',
             ];
         }
 
@@ -314,6 +334,76 @@ class FaxService
         $resultCodes = config('webfax.result_codes', []);
 
         return $resultCodes[$code] ?? "알 수 없는 결과 (코드: {$code})";
+    }
+
+    /**
+     * PDF → 멀티페이지 TIFF 변환 (pdftoppm + tiffcp)
+     */
+    private function convertPdfToTiff(string $pdfPath, string $tiffOutputPath): bool
+    {
+        $tempDir = sys_get_temp_dir() . '/fax_tiff_' . uniqid();
+
+        try {
+            if (!mkdir($tempDir, 0755, true)) {
+                throw new \RuntimeException("임시 디렉토리 생성 실패: {$tempDir}");
+            }
+
+            $prefix = $tempDir . '/page';
+            $cmd = sprintf(
+                'pdftoppm -tiff -r 200 %s %s 2>&1',
+                escapeshellarg($pdfPath),
+                escapeshellarg($prefix)
+            );
+            exec($cmd, $output, $returnCode);
+
+            if ($returnCode !== 0) {
+                throw new \RuntimeException('pdftoppm 변환 실패: ' . implode("\n", $output));
+            }
+
+            $tiffFiles = glob($tempDir . '/page-*.tif');
+            sort($tiffFiles);
+
+            if (empty($tiffFiles)) {
+                throw new \RuntimeException('변환된 TIFF 파일 없음');
+            }
+
+            if (count($tiffFiles) === 1) {
+                copy($tiffFiles[0], $tiffOutputPath);
+            } else {
+                $cmd = sprintf(
+                    'tiffcp %s %s 2>&1',
+                    implode(' ', array_map('escapeshellarg', $tiffFiles)),
+                    escapeshellarg($tiffOutputPath)
+                );
+                exec($cmd, $output, $returnCode);
+
+                if ($returnCode !== 0) {
+                    throw new \RuntimeException('tiffcp 병합 실패: ' . implode("\n", $output));
+                }
+            }
+
+            Log::info('PDF → TIFF 변환 완료', [
+                'pages' => count($tiffFiles),
+                'output' => $tiffOutputPath,
+            ]);
+
+            return true;
+
+        } catch (\Exception $e) {
+            Log::error('PDF → TIFF 변환 실패', [
+                'pdf' => $pdfPath,
+                'error' => $e->getMessage(),
+            ]);
+            return false;
+
+        } finally {
+            // 임시 파일 정리
+            if (is_dir($tempDir)) {
+                array_map('unlink', glob($tempDir . '/*') ?: []);
+                @rmdir($tempDir);
+            }
+            @unlink($pdfPath);
+        }
     }
 
     /**
