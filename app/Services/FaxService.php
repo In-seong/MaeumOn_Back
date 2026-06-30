@@ -341,49 +341,24 @@ class FaxService
      */
     private function convertPdfToTiff(string $pdfPath, string $tiffOutputPath): bool
     {
-        $tempDir = sys_get_temp_dir() . '/fax_tiff_' . uniqid();
-
         try {
-            if (!mkdir($tempDir, 0755, true)) {
-                throw new \RuntimeException("임시 디렉토리 생성 실패: {$tempDir}");
-            }
-
-            $prefix = $tempDir . '/page';
             $cmd = sprintf(
-                '/usr/bin/pdftoppm -mono -tiff -tiffcompression lzw -r 200 %s %s 2>&1',
-                escapeshellarg($pdfPath),
-                escapeshellarg($prefix)
+                '/usr/bin/gs -dNOPAUSE -dBATCH -dQUIET -sDEVICE=tiffg4 -r200 -sOutputFile=%s %s 2>&1',
+                escapeshellarg($tiffOutputPath),
+                escapeshellarg($pdfPath)
             );
             exec($cmd, $output, $returnCode);
 
             if ($returnCode !== 0) {
-                throw new \RuntimeException('pdftoppm 변환 실패: ' . implode("\n", $output));
+                throw new \RuntimeException('Ghostscript 변환 실패: ' . implode("\n", $output));
             }
 
-            $tiffFiles = glob($tempDir . '/page-*.tif');
-            sort($tiffFiles);
-
-            if (empty($tiffFiles)) {
-                throw new \RuntimeException('변환된 TIFF 파일 없음');
+            if (!file_exists($tiffOutputPath) || filesize($tiffOutputPath) === 0) {
+                throw new \RuntimeException('TIFF 파일 생성 실패');
             }
 
-            if (count($tiffFiles) === 1) {
-                copy($tiffFiles[0], $tiffOutputPath);
-            } else {
-                $cmd = sprintf(
-                    '/usr/bin/tiffcp %s %s 2>&1',
-                    implode(' ', array_map('escapeshellarg', $tiffFiles)),
-                    escapeshellarg($tiffOutputPath)
-                );
-                exec($cmd, $output, $returnCode);
-
-                if ($returnCode !== 0) {
-                    throw new \RuntimeException('tiffcp 병합 실패: ' . implode("\n", $output));
-                }
-            }
-
-            Log::info('PDF → TIFF 변환 완료', [
-                'pages' => count($tiffFiles),
+            Log::info('PDF → TIFF 변환 완료 (Ghostscript G4)', [
+                'size' => round(filesize($tiffOutputPath) / 1024) . 'KB',
                 'output' => $tiffOutputPath,
             ]);
 
@@ -397,11 +372,6 @@ class FaxService
             return false;
 
         } finally {
-            // 임시 파일 정리
-            if (is_dir($tempDir)) {
-                array_map('unlink', glob($tempDir . '/*') ?: []);
-                @rmdir($tempDir);
-            }
             @unlink($pdfPath);
         }
     }
