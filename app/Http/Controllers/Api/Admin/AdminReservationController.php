@@ -11,8 +11,15 @@ class AdminReservationController extends Controller
 {
     public function index(Request $request): JsonResponse
     {
-        $query = HospitalReservation::with(['hospital', 'healthCenter'])
-            ->orderByDesc('created_at');
+        $query = HospitalReservation::with(['hospital', 'healthCenter']);
+
+        // 정렬
+        $sortField = $request->get('sort_by', 'created_at');
+        $sortDirection = $request->get('sort_direction', 'desc');
+
+        if (in_array($sortField, ['created_at', 'reservation_date', 'status'])) {
+            $query->orderBy($sortField, $sortDirection === 'asc' ? 'asc' : 'desc');
+        }
 
         if ($request->filled('status')) {
             $query->where('status', $request->input('status'));

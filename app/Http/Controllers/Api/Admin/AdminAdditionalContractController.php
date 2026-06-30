@@ -25,12 +25,21 @@ class AdminAdditionalContractController extends Controller
         $type = $request->get('type', 'unclaimed');
         $perPage = min(max((int) $request->get('per_page', 15), 1), 100);
 
+        // 정렬
+        $sortField = $request->get('sort_by', 'created_at');
+        $sortDirection = $request->get('sort_direction', 'desc');
+
+        if (!in_array($sortField, ['created_at'])) {
+            $sortField = 'created_at';
+        }
+        $sortDirection = $sortDirection === 'asc' ? 'asc' : 'desc';
+
         $result = match ($type) {
-            'unclaimed' => $this->getUnclaimedCustomers($perPage),
-            'renewal' => $this->getRenewalCustomers($perPage),
-            'undercovered' => $this->getUndercoveredCustomers($perPage),
-            'abnormal' => $this->getAbnormalCustomers($perPage),
-            default => $this->getUnclaimedCustomers($perPage),
+            'unclaimed' => $this->getUnclaimedCustomers($perPage, $sortField, $sortDirection),
+            'renewal' => $this->getRenewalCustomers($perPage, $sortField, $sortDirection),
+            'undercovered' => $this->getUndercoveredCustomers($perPage, $sortField, $sortDirection),
+            'abnormal' => $this->getAbnormalCustomers($perPage, $sortField, $sortDirection),
+            default => $this->getUnclaimedCustomers($perPage, $sortField, $sortDirection),
         };
 
         return response()->json([
@@ -42,7 +51,7 @@ class AdminAdditionalContractController extends Controller
     /**
      * 미청구 고객: 계약이 있지만 최근 6개월 내 청구 이력 없는 고객
      */
-    private function getUnclaimedCustomers(int $perPage)
+    private function getUnclaimedCustomers(int $perPage, string $sortField = 'created_at', string $sortDirection = 'desc')
     {
         $customers = Customer::where('is_active', true)
             ->whereHas('contracts')
@@ -50,6 +59,7 @@ class AdminAdditionalContractController extends Controller
                 $q->where('created_at', '>=', Carbon::now()->subMonths(6));
             })
             ->with('agent:agent_id,name')
+            ->orderBy($sortField, $sortDirection)
             ->paginate($perPage);
 
         $customers->getCollection()->transform(function ($customer) {
@@ -62,7 +72,7 @@ class AdminAdditionalContractController extends Controller
     /**
      * 갱신대상 고객: 계약 만기 3개월 이내 도래 고객
      */
-    private function getRenewalCustomers(int $perPage)
+    private function getRenewalCustomers(int $perPage, string $sortField = 'created_at', string $sortDirection = 'desc')
     {
         $threeMonthsLater = Carbon::now()->addMonths(3);
 
@@ -72,6 +82,7 @@ class AdminAdditionalContractController extends Controller
                   ->where('contract_status', '!=', 'cancelled');
             })
             ->with('agent:agent_id,name')
+            ->orderBy($sortField, $sortDirection)
             ->paginate($perPage);
 
         $customers->getCollection()->transform(function ($customer) {
@@ -84,7 +95,7 @@ class AdminAdditionalContractController extends Controller
     /**
      * 보장부족 고객: 총 진료비가 총 계약금액보다 큰 고객
      */
-    private function getUndercoveredCustomers(int $perPage)
+    private function getUndercoveredCustomers(int $perPage, string $sortField = 'created_at', string $sortDirection = 'desc')
     {
         $customers = Customer::where('is_active', true)
             ->whereHas('medicalRecords')
@@ -93,6 +104,7 @@ class AdminAdditionalContractController extends Controller
             ->withSum('medicalRecords', 'medical_cost')
             ->withSum('contracts', 'contract_amount')
             ->havingRaw('medical_records_sum_medical_cost > contracts_sum_contract_amount')
+            ->orderBy($sortField, $sortDirection)
             ->paginate($perPage);
 
         $customers->getCollection()->transform(function ($customer) {
@@ -105,13 +117,14 @@ class AdminAdditionalContractController extends Controller
     /**
      * 검진이상 고객: 중요 진료 기록이 있는 고객
      */
-    private function getAbnormalCustomers(int $perPage)
+    private function getAbnormalCustomers(int $perPage, string $sortField = 'created_at', string $sortDirection = 'desc')
     {
         $customers = Customer::where('is_active', true)
             ->whereHas('medicalRecords', function ($q) {
                 $q->where('is_important', true);
             })
             ->with('agent:agent_id,name')
+            ->orderBy($sortField, $sortDirection)
             ->paginate($perPage);
 
         $customers->getCollection()->transform(function ($customer) {

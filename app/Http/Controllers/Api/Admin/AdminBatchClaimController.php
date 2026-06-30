@@ -30,7 +30,13 @@ class AdminBatchClaimController extends Controller
             });
         }
 
-        $query->orderBy('created_at', 'desc');
+        // 정렬
+        $sortField = $request->get('sort_by', 'created_at');
+        $sortDirection = $request->get('sort_direction', 'desc');
+
+        if (in_array($sortField, ['created_at', 'batch_status'])) {
+            $query->orderBy($sortField, $sortDirection === 'asc' ? 'asc' : 'desc');
+        }
 
         $perPage = $request->input('per_page', 15);
 

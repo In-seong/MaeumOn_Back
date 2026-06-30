@@ -32,8 +32,13 @@ class AdminAssignmentController extends Controller
             });
         }
 
-        // 최신순 정렬
-        $query->orderBy('created_at', 'desc');
+        // 정렬
+        $sortField = $request->get('sort_by', 'created_at');
+        $sortDirection = $request->get('sort_direction', 'desc');
+
+        if (in_array($sortField, ['created_at', 'assignment_date'])) {
+            $query->orderBy($sortField, $sortDirection === 'asc' ? 'asc' : 'desc');
+        }
 
         $perPage = min(max((int) $request->get('per_page', 15), 1), 100);
         $assignments = $query->paginate($perPage);

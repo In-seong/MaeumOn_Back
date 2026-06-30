@@ -501,8 +501,15 @@ class ClaimController extends Controller
             $query->whereDate('created_at', '<=', $request->date_to);
         }
 
-        $claims = $query->orderBy('created_at', 'desc')
-            ->paginate($request->get('per_page', 15));
+        // 정렬
+        $sortField = $request->get('sort_by', 'created_at');
+        $sortDirection = $request->get('sort_direction', 'desc');
+
+        if (in_array($sortField, ['created_at', 'claim_status', 'approved_amount'])) {
+            $query->orderBy($sortField, $sortDirection === 'asc' ? 'asc' : 'desc');
+        }
+
+        $claims = $query->paginate($request->get('per_page', 15));
 
         // 목록에서 S3 접근하는 appends 제거 (성능 최적화)
         $claims->getCollection()->each(fn($c) => $c->setAppends([]));

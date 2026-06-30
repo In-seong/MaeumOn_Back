@@ -25,8 +25,15 @@ class AdminHospitalController extends Controller
             });
         }
 
-        $hospitals = $query->orderBy('created_at', 'desc')
-            ->paginate($request->input('per_page', 15));
+        // 정렬
+        $sortField = $request->get('sort_by', 'created_at');
+        $sortDirection = $request->get('sort_direction', 'desc');
+
+        if (in_array($sortField, ['created_at', 'hospital_name', 'is_active'])) {
+            $query->orderBy($sortField, $sortDirection === 'asc' ? 'asc' : 'desc');
+        }
+
+        $hospitals = $query->paginate($request->input('per_page', 15));
 
         return response()->json([
             'success' => true,
