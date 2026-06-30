@@ -350,7 +350,7 @@ class FaxService
 
             $prefix = $tempDir . '/page';
             $cmd = sprintf(
-                '/usr/bin/pdftoppm -tiff -r 200 %s %s 2>&1',
+                '/usr/bin/pdftoppm -mono -tiff -tiffcompression lzw -r 200 %s %s 2>&1',
                 escapeshellarg($pdfPath),
                 escapeshellarg($prefix)
             );
