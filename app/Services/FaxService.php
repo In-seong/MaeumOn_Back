@@ -350,7 +350,7 @@ class FaxService
 
             $prefix = $tempDir . '/page';
             $cmd = sprintf(
-                'pdftoppm -tiff -r 200 %s %s 2>&1',
+                '/usr/bin/pdftoppm -tiff -r 200 %s %s 2>&1',
                 escapeshellarg($pdfPath),
                 escapeshellarg($prefix)
             );
@@ -371,7 +371,7 @@ class FaxService
                 copy($tiffFiles[0], $tiffOutputPath);
             } else {
                 $cmd = sprintf(
-                    'tiffcp %s %s 2>&1',
+                    '/usr/bin/tiffcp %s %s 2>&1',
                     implode(' ', array_map('escapeshellarg', $tiffFiles)),
                     escapeshellarg($tiffOutputPath)
                 );
