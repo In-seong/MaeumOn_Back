@@ -214,15 +214,15 @@ class ImportCustomersFromJson extends Command
     private function runInsert(array $data): void
     {
         $customerBatch = [];
-        $memoBatch = [];
+        $allMemos = [];
 
         DB::beginTransaction();
         try {
+            // 1단계: customer 전부 INSERT
             foreach ($data as $i => $row) {
                 $result = $this->parseRow($row);
                 if (!$result) continue;
 
-                // 주민번호 암호화
                 $rn = $result['customer']['resident_number'];
                 if ($rn) {
                     $result['customer']['resident_number'] = Crypt::encryptString($rn);
@@ -230,34 +230,36 @@ class ImportCustomersFromJson extends Command
 
                 $customerBatch[] = $result['customer'];
                 foreach ($result['memos'] as $m) {
-                    $memoBatch[] = $m;
+                    $allMemos[] = $m;
                 }
 
                 $this->stats['inserted']++;
                 $this->stats['memo_count'] += count($result['memos']);
 
-                // 500건씩 batch insert
                 if (count($customerBatch) >= 500) {
                     DB::table('customer')->insert($customerBatch);
+                    $this->info("  고객 INSERT... " . $this->stats['inserted'] . "건");
                     $customerBatch = [];
                 }
+            }
+            if (!empty($customerBatch)) {
+                DB::table('customer')->insert($customerBatch);
+            }
+            $this->info("고객 INSERT 완료: {$this->stats['inserted']}건");
+
+            // 2단계: memo 전부 INSERT (customer FK 보장됨)
+            $memoBatch = [];
+            foreach ($allMemos as $j => $m) {
+                $memoBatch[] = $m;
                 if (count($memoBatch) >= 500) {
                     DB::table('memo')->insert($memoBatch);
                     $memoBatch = [];
                 }
-
-                if (($i + 1) % 500 === 0) {
-                    $this->info("  처리 중... " . ($i + 1) . "/" . $this->stats['total']);
-                }
-            }
-
-            // 잔여분
-            if (!empty($customerBatch)) {
-                DB::table('customer')->insert($customerBatch);
             }
             if (!empty($memoBatch)) {
                 DB::table('memo')->insert($memoBatch);
             }
+            $this->info("메모 INSERT 완료: {$this->stats['memo_count']}건");
 
             DB::commit();
             $this->info('DB INSERT 완료 (커밋됨)');
