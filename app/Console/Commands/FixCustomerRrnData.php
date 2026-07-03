@@ -77,13 +77,19 @@ class FixCustomerRrnData extends Command
                 $dd = substr($rn, 4, 2);
                 $gd = substr($rn, 6, 1);
                 $century = in_array($gd, ['1', '2']) ? '19' : '20';
-                $birthDate = "{$century}{$yy}-{$mm}-{$dd}";
+                $candidate = "{$century}{$yy}-{$mm}-{$dd}";
+                if (checkdate((int)$mm, (int)$dd, (int)("{$century}{$yy}"))) {
+                    $birthDate = $candidate;
+                }
                 $gender = in_array($gd, ['1', '3']) ? 'M' : 'F';
             } elseif (strlen($rn) === 6) {
                 $yy = substr($rn, 0, 2);
                 $mm = substr($rn, 2, 2);
                 $dd = substr($rn, 4, 2);
-                $birthDate = "19{$yy}-{$mm}-{$dd}";
+                $candidate = "19{$yy}-{$mm}-{$dd}";
+                if (checkdate((int)$mm, (int)$dd, (int)("19{$yy}"))) {
+                    $birthDate = $candidate;
+                }
                 $genderUnknown++;
             }
 
