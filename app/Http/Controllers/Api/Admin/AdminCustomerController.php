@@ -14,7 +14,7 @@ class AdminCustomerController extends Controller
      */
     public function index(Request $request): JsonResponse
     {
-        $query = Customer::query();
+        $query = Customer::with('agent:agent_id,name');
 
         // 검색 (이름, 전화번호, 주민번호)
         if ($request->has('search')) {
