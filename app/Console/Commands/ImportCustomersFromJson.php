@@ -104,7 +104,7 @@ class ImportCustomersFromJson extends Command
         $phone = preg_replace('/[^0-9]/', '', $row['phone']['phone'] ?? '');
 
         // 주민번호 → 생년월일, 성별
-        $rn = $row['decrypt_regist_number'] ?? '';
+        $rn = $row['regist_number'] ?? '';
         $birthDate = null;
         $gender = null;
 
