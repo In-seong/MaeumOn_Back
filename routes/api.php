@@ -269,6 +269,7 @@ Route::middleware('auth:sanctum')->group(function () {
 
         // 고객 관리 (SFR-019~022)
         Route::apiResource('customers', AgentCustomerController::class)->names('agent.customers');
+        Route::get('/customers/{id}/resident-number', [AgentCustomerController::class, 'unmaskResidentNumber']);
         Route::get('/customers/{id}/contracts', [AgentCustomerController::class, 'contracts']);
         Route::post('/customers/{id}/contracts', [AgentCustomerController::class, 'storeContract']);
         Route::put('/customers/{id}/contracts/{contractId}', [AgentCustomerController::class, 'updateContract']);
