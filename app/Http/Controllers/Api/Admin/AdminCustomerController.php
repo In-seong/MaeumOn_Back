@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\Customer;
+use App\Models\PiiLog;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -50,6 +51,11 @@ class AdminCustomerController extends Controller
 
         $perPage = min(max((int) $request->get('per_page', 15), 1), 100);
         $customers = $query->paginate($perPage);
+
+        $customers->getCollection()->transform(function ($customer) {
+            $customer->makeHidden('resident_number');
+            return $customer;
+        });
 
         return response()->json([
             'success' => true,
@@ -129,9 +135,13 @@ class AdminCustomerController extends Controller
             ->where('customer_id', $id)
             ->firstOrFail();
 
+        $data = $customer->toArray();
+        $data['resident_number_masked'] = $customer->getMaskedResidentNumber();
+        unset($data['resident_number']);
+
         return response()->json([
             'success' => true,
-            'data' => $customer,
+            'data' => $data,
         ]);
     }
 
@@ -171,6 +181,39 @@ class AdminCustomerController extends Controller
             'success' => true,
             'data' => $customer->fresh(),
             'message' => '고객 정보가 수정되었습니다.',
+        ]);
+    }
+
+    /**
+     * 주민번호 마스킹 해제 (평문 반환 + PII 로그)
+     */
+    public function unmaskResidentNumber(Request $request, string $id): JsonResponse
+    {
+        $customer = Customer::where('customer_id', $id)->firstOrFail();
+
+        if (!$customer->resident_number) {
+            return response()->json([
+                'success' => false,
+                'message' => '주민번호가 등록되지 않은 고객입니다.',
+            ], 404);
+        }
+
+        $adminId = $request->user()?->id ?? $request->header('X-Admin-Id', 'unknown');
+
+        PiiLog::log(
+            (string) $adminId,
+            'UNMASK',
+            'customer',
+            $id,
+            'resident_number',
+            $request->ip()
+        );
+
+        return response()->json([
+            'success' => true,
+            'data' => [
+                'resident_number' => $customer->resident_number,
+            ],
         ]);
     }
 

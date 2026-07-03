@@ -74,6 +74,21 @@ class Customer extends Model
         $this->attributes['resident_number'] = \Illuminate\Support\Facades\Crypt::encryptString($value);
     }
 
+    public function getMaskedResidentNumber(): ?string
+    {
+        $rn = $this->resident_number;
+        if ($rn === null || $rn === '') return null;
+
+        $cleaned = preg_replace('/\D/', '', $rn);
+        if (strlen($cleaned) >= 7) {
+            return substr($cleaned, 0, 6) . '-' . substr($cleaned, 6, 1) . '******';
+        }
+        if (strlen($cleaned) === 6) {
+            return $cleaned;
+        }
+        return $cleaned;
+    }
+
     public function account()
     {
         return $this->belongsTo(Account::class, 'account_id', 'account_id');
