@@ -12,20 +12,17 @@ class ImportCustomersFromJson extends Command
     protected $description = 'CHAMS 고객 JSON 데이터를 MaeumOn DB로 import';
 
     private array $agentMap = [];
-    private array $existingPhones = [];
     private int $lastSeq = 0;
 
     private array $stats = [
         'total' => 0,
         'inserted' => 0,
-        'skipped_duplicate' => 0,
         'skipped_no_name' => 0,
         'agent_mapped' => 0,
         'agent_null' => 0,
         'gender_unknown' => 0,
         'memo_count' => 0,
     ];
-    private array $duplicates = [];
     private array $unmappedAgents = [];
 
     public function handle(): int
@@ -53,11 +50,9 @@ class ImportCustomersFromJson extends Command
         }
 
         $this->prepareAgentMap();
-        $this->prepareExistingPhones();
         $this->prepareLastSeq();
 
         $this->info("설계사 매핑: " . count($this->agentMap) . "명");
-        $this->info("기존 고객 전화번호: " . count($this->existingPhones) . "건");
         $this->info("마지막 customer_id: C" . str_pad($this->lastSeq, 7, '0', STR_PAD_LEFT));
         $this->newLine();
 
@@ -80,22 +75,6 @@ class ImportCustomersFromJson extends Command
 
         foreach ($agents as $agent) {
             $this->agentMap[$agent->name] = $agent->agent_id;
-        }
-    }
-
-    private function prepareExistingPhones(): void
-    {
-        $phones = DB::table('customer')
-            ->whereNotNull('phone')
-            ->where('phone', '!=', '')
-            ->pluck('phone')
-            ->toArray();
-
-        foreach ($phones as $p) {
-            $normalized = preg_replace('/[^0-9]/', '', $p);
-            if ($normalized) {
-                $this->existingPhones[$normalized] = true;
-            }
         }
     }
 
@@ -122,13 +101,7 @@ class ImportCustomersFromJson extends Command
             return null;
         }
 
-        // 전화번호 중복 체크
         $phone = preg_replace('/[^0-9]/', '', $row['phone']['phone'] ?? '');
-        if ($phone && isset($this->existingPhones[$phone])) {
-            $this->stats['skipped_duplicate']++;
-            $this->duplicates[] = "{$name} ({$phone})";
-            return null;
-        }
 
         // 주민번호 → 생년월일, 성별
         $rn = $row['decrypt_regist_number'] ?? '';
@@ -177,11 +150,6 @@ class ImportCustomersFromJson extends Command
             : null;
 
         $customerId = $this->nextCustomerId();
-
-        // 중복 방지 (import 내 중복)
-        if ($phone) {
-            $this->existingPhones[$phone] = true;
-        }
 
         $customer = [
             'customer_id' => $customerId,
@@ -310,7 +278,6 @@ class ImportCustomersFromJson extends Command
             [
                 ['전체 JSON 건수', $this->stats['total']],
                 ['INSERT 성공', $this->stats['inserted']],
-                ['전화번호 중복 SKIP', $this->stats['skipped_duplicate']],
                 ['이름 없음 SKIP', $this->stats['skipped_no_name']],
                 ['설계사 매핑 성공', $this->stats['agent_mapped']],
                 ['설계사 NULL 처리', $this->stats['agent_null']],
@@ -318,14 +285,6 @@ class ImportCustomersFromJson extends Command
                 ['메모 INSERT', $this->stats['memo_count']],
             ]
         );
-
-        if (!empty($this->duplicates)) {
-            $this->newLine();
-            $this->warn('--- 중복 SKIP 목록 (전화번호 기준) ---');
-            foreach ($this->duplicates as $d) {
-                $this->line("  - {$d}");
-            }
-        }
 
         if (!empty($this->unmappedAgents)) {
             $this->newLine();
