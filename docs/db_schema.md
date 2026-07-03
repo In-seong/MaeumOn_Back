@@ -1,8 +1,8 @@
 # MaeumOn DB 스키마 (운영 기준)
 
-> **최종 업데이트**: 2026-05-31
+> **최종 업데이트**: 2026-07-03
 > **DB**: MySQL (MariaDB)
-> **총 테이블**: 59개 (비즈니스 51개 + Laravel 시스템 8개)
+> **총 테이블**: 60개 (비즈니스 52개 + Laravel 시스템 8개)
 
 ---
 
@@ -21,6 +21,7 @@
 11. [캘린더/일정](#11-캘린더일정) — agent_calendar_event, agent_reminder
 14. [간편 청구/예약](#14-간편-청구예약) — claim_request, claim_request_file, health_center, hospital_reservation, hospital_account
 12. [팩스](#12-팩스-faxclientnc) — FC_META_TRAN, FC_MSG_TRAN, FC_RECV_TRAN
+15. [개인정보 로그](#15-개인정보-로그) — pii_logs
 13. [Laravel 시스템](#13-laravel-시스템-테이블) — sessions, cache, jobs 등
 
 ---
@@ -1085,6 +1086,27 @@ FaxClientNC 연동용 테이블. **테이블명 반드시 대문자 유지**.
 | TR_RECVFAXNUM | varchar(20) | YES | | | 수신 팩스번호 |
 | TR_RECVTIME | varchar(20) | YES | | | 수신 시각 |
 | TR_FILENAMELIST | varchar(500) | YES | | | 수신 파일 목록 |
+
+---
+
+## 15. 개인정보 로그
+
+### pii_logs — 개인정보 조회 로그 ✅
+
+> 주민번호 등 민감정보 마스킹 해제 시 누가/언제/어떤 데이터를 조회했는지 기록
+
+| 컬럼 | 타입 | 설명 |
+|------|------|------|
+| id | BIGINT PK | 자동증가 |
+| admin_id | VARCHAR(50) | 조회한 관리자 ID |
+| action | VARCHAR(20) | UNMASK, READ 등 |
+| target_type | VARCHAR(30) | customer 등 |
+| target_id | VARCHAR(20) | 대상 ID (예: C0000001) |
+| field | VARCHAR(50) | resident_number 등 |
+| ip_address | VARCHAR(45) | 접근 IP |
+| created_at | TIMESTAMP | 조회 시각 |
+
+**Model**: `App\Models\PiiLog` ✅
 
 ---
 
