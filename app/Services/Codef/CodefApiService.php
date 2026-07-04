@@ -111,6 +111,13 @@ class CodefApiService
                 ];
             }
 
+            Log::info('CODEF API 응답 수신', [
+                'endpoint' => $endpoint,
+                'api_type' => $apiType,
+                'result_code' => $data['result']['code'] ?? 'UNKNOWN',
+                'result_message' => $data['result']['message'] ?? '',
+            ]);
+
             return $this->handleResponse($data, $customerId, $apiType);
 
         } catch (\Illuminate\Http\Client\ConnectionException $e) {
@@ -251,6 +258,13 @@ class CodefApiService
                 ];
             }
 
+            Log::info('CODEF 2-Way 응답 수신', [
+                'endpoint' => $endpoint,
+                'api_type' => $apiType,
+                'result_code' => $data['result']['code'] ?? 'UNKNOWN',
+                'result_message' => $data['result']['message'] ?? '',
+            ]);
+
             $result = $this->handleResponse($data, $customerId, $apiType);
 
             // 성공 시 캐시 삭제
@@ -312,9 +326,12 @@ class CodefApiService
 
         // 에러 처리
         Log::warning('CODEF API 에러 응답', [
+            'api_type' => $apiType,
+            'customer_id' => $customerId,
             'code' => $resultCode,
             'message' => $resultMessage,
             'extra' => $extraMessage,
+            'raw_data_keys' => is_array($responseData) ? array_keys($responseData) : 'not_array',
         ]);
 
         return [
