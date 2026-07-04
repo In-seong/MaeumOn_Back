@@ -17,6 +17,7 @@ use App\Http\Controllers\Api\Agent\AgentMessageController;
 use App\Http\Controllers\Api\Agent\AgentNotificationController;
 use App\Http\Controllers\Api\Agent\AgentObligationController;
 use App\Http\Controllers\Api\Agent\AgentSatisfactionController;
+use App\Http\Controllers\Api\Agent\AgentCodefController;
 use App\Http\Controllers\Api\Agent\AgentDbDistributionController;
 use App\Http\Controllers\Api\Admin\AdminNoticeController;
 use App\Http\Controllers\Api\Admin\AdminCustomerController;
@@ -354,6 +355,34 @@ Route::middleware('auth:sanctum')->group(function () {
         // 청구 배정 조회
         Route::get('/claim-assignments', [AgentDbDistributionController::class, 'claimAssignments']);
         Route::get('/claim-request-files/{id}/download', [AgentDbDistributionController::class, 'downloadClaimFile']);
+
+        // 설계사 - CODEF 보험/건강 조회
+        Route::prefix('codef')->group(function () {
+            Route::get('/customers', [AgentCodefController::class, 'customerSyncStatus']);
+
+            Route::prefix('{customerId}')->group(function () {
+                // 보험 계약
+                Route::get('/insurance', [AgentCodefController::class, 'getInsuranceContracts']);
+                Route::get('/insurance/{insuranceId}', [AgentCodefController::class, 'getInsuranceDetail']);
+                Route::post('/insurance/fetch', [AgentCodefController::class, 'fetchInsurance']);
+                Route::post('/insurance/confirm', [AgentCodefController::class, 'confirmInsurance']);
+
+                // 진료 내역
+                Route::get('/medical', [AgentCodefController::class, 'getMedicalRecords']);
+                Route::post('/medical/fetch', [AgentCodefController::class, 'fetchMedical']);
+                Route::post('/medical/confirm', [AgentCodefController::class, 'confirmMedical']);
+
+                // 건강검진
+                Route::get('/checkup', [AgentCodefController::class, 'getCheckups']);
+                Route::post('/checkup/fetch', [AgentCodefController::class, 'fetchCheckup']);
+                Route::post('/checkup/confirm', [AgentCodefController::class, 'confirmCheckup']);
+
+                // 건강나이
+                Route::get('/health-age', [AgentCodefController::class, 'getHealthAge']);
+                Route::post('/health-age/fetch', [AgentCodefController::class, 'fetchHealthAge']);
+                Route::post('/health-age/confirm', [AgentCodefController::class, 'confirmHealthAge']);
+            });
+        });
     });
 
     // 고객 API
