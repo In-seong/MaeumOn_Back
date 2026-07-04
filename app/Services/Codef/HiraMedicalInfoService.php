@@ -204,6 +204,7 @@ class HiraMedicalInfoService
                     'codef_synced' => true,
                     'synced_at' => now(),
                     'source' => MedicalRecord::SOURCE_CODEF_HIRA,
+                    'codef_raw_data' => json_encode($basic, JSON_UNESCAPED_UNICODE),
                 ]);
 
                 $savedCount++;

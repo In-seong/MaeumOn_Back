@@ -20,6 +20,7 @@ class InsuranceContractService
         'resPropertyContractList' => 'property',
         'resActualLossContractList' => 'actual_loss',
         'resFlatRateContractList' => 'flat_rate',
+        'resActualExpenseContractList' => 'actual_expense',
     ];
 
     /** CODEF 계약 유형 → insurance_type 한글명 */
@@ -29,6 +30,7 @@ class InsuranceContractService
         'property' => '화재특종보장',
         'actual_loss' => '실손형보장',
         'flat_rate' => '정액형보장',
+        'actual_expense' => '실비보험',
     ];
 
     /**
