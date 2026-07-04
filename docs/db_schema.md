@@ -1,8 +1,8 @@
 # MaeumOn DB 스키마 (운영 기준)
 
-> **최종 업데이트**: 2026-07-03
+> **최종 업데이트**: 2026-07-04
 > **DB**: MySQL (MariaDB)
-> **총 테이블**: 60개 (비즈니스 52개 + Laravel 시스템 8개)
+> **총 테이블**: 61개 (비즈니스 53개 + Laravel 시스템 8개)
 
 ---
 
@@ -22,6 +22,7 @@
 14. [간편 청구/예약](#14-간편-청구예약) — claim_request, claim_request_file, health_center, hospital_reservation, hospital_account
 12. [팩스](#12-팩스-faxclientnc) — FC_META_TRAN, FC_MSG_TRAN, FC_RECV_TRAN
 15. [개인정보 로그](#15-개인정보-로그) — pii_logs
+16. [CODEF API 사용 로그](#16-codef-api-사용-로그) — codef_api_logs
 13. [Laravel 시스템](#13-laravel-시스템-테이블) — sessions, cache, jobs 등
 
 ---
@@ -1274,3 +1275,30 @@ FaxClientNC 연동용 테이블. **테이블명 반드시 대문자 유지**.
 | 2026-05-31 | partner_hospital, health_center에 schedule_config JSON NULL 컬럼 추가 (예약 스케줄 커스터마이징: 요일별/차단일/특별일정/간격 설정). HasScheduleConfig Trait 구현. 병원 포털 스케줄 API 2개 추가 (GET/PUT /hospital-portal/schedule) |
 | 2026-06-25 | health_center에 thumbnail_path VARCHAR(255) NULL, is_deleted TINYINT(1) NOT NULL DEFAULT 1 컬럼 추가. 삭제(forceDelete), 썸네일 업로드/삭제 API 추가 |
 | 2026-06-25 | partner_hospital, health_center에 reservation_enabled TINYINT(1) NOT NULL DEFAULT 1 컬럼 추가. 예약 기능 on/off 토글 (비활성 시 사용자 앱에서 예약 섹션 숨김) |
+| 2026-07-04 | codef_api_logs 테이블 신규 생성 — 설계사별 CODEF API 사용 로그 (월별 정산용). Model: CodefApiLog. 관리자 정산 API 3개 추가 (summary/logs/mark-billed) |
+
+---
+
+## 16. CODEF API 사용 로그
+
+### codef_api_logs
+
+설계사의 CODEF API 호출 이력. 월별 정산 기반. **Model: `CodefApiLog`** (구현 완료).
+
+| 컬럼 | 타입 | NULL | Key | Default | 비고 |
+|------|------|------|-----|---------|------|
+| log_id | bigint unsigned | NO | PRI | auto_increment | |
+| agent_id | char(8) | NO | MUL | | FK → agent.agent_id |
+| customer_id | char(8) | NO | MUL | | FK → customer.customer_id |
+| api_type | enum('insurance','medical','checkup','health_age') | NO | MUL | | 조회 API 종류 |
+| api_action | enum('fetch','confirm') | NO | | | fetch=최초요청, confirm=2-Way확인 |
+| status | enum('success','failed','two_way') | NO | MUL | | 결과 상태 |
+| result_count | int | NO | | 0 | 조회 결과 건수 |
+| error_message | varchar(500) | YES | | NULL | 실패 시 에러 메시지 |
+| billed | tinyint(1) | NO | | 0 | 정산 완료 여부 |
+| billed_at | timestamp | YES | | NULL | 정산 처리 시각 |
+| billing_month | char(7) | NO | MUL | | 정산 귀속 월 (YYYY-MM) |
+| created_at | timestamp | YES | | NULL | |
+| updated_at | timestamp | YES | | NULL | |
+
+**인덱스**: `billing_month` + `agent_id` (월별 설계사 조회), `status` (성공 건만 정산), `api_type`

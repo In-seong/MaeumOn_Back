@@ -25,6 +25,7 @@ use App\Http\Controllers\Api\Admin\AdminAgentController;
 use App\Http\Controllers\Api\Admin\AdminMemoController;
 use App\Http\Controllers\Api\Admin\AdminAssignmentController;
 use App\Http\Controllers\Api\Admin\AdminAdditionalContractController;
+use App\Http\Controllers\Api\Admin\AdminCodefBillingController;
 use App\Http\Controllers\Api\Admin\AdminPerformanceController;
 use App\Http\Controllers\Api\Admin\AdminDashboardController;
 use App\Http\Controllers\Api\Agent\AgentBatchClaimController;
@@ -258,6 +259,11 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/claim-requests/{id}', [AdminClaimRequestController::class, 'show']);
         Route::put('/claim-requests/{id}/assign', [AdminClaimRequestController::class, 'assign']);
         Route::put('/claim-requests/{id}/status', [AdminClaimRequestController::class, 'updateStatus']);
+
+        // CODEF API 사용량/정산
+        Route::get('/codef-billing/summary', [AdminCodefBillingController::class, 'monthlySummary']);
+        Route::get('/codef-billing/logs', [AdminCodefBillingController::class, 'logs']);
+        Route::post('/codef-billing/mark-billed', [AdminCodefBillingController::class, 'markBilled']);
     });
 
     // 설계사 API

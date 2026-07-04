@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api\Agent;
 
 use App\Http\Controllers\Controller;
+use App\Models\CodefApiLog;
 use App\Models\Customer;
 use App\Models\HealthCheckup;
 use App\Models\HealthExternalAccount;
@@ -174,10 +175,12 @@ class AgentCodefController extends Controller
             'customer_id' => $customer->customer_id,
         ];
 
+        $agentId = $request->user()->agent->agent_id;
         $result = $this->credit4uService->getContractInfo($loginData);
 
         // 2-Way 발생 시
         if ($result['two_way'] ?? false) {
+            $this->logApiCall($agentId, $customer->customer_id, CodefApiLog::TYPE_INSURANCE, CodefApiLog::ACTION_FETCH, CodefApiLog::STATUS_TWO_WAY);
             return $this->buildResponse($result);
         }
 
@@ -187,6 +190,8 @@ class AgentCodefController extends Controller
                 $this->contractService->syncContracts($customer->customer_id, $result['data']);
 
                 $contracts = $this->contractService->getCustomerContracts($customer->customer_id);
+
+                $this->logApiCall($agentId, $customer->customer_id, CodefApiLog::TYPE_INSURANCE, CodefApiLog::ACTION_FETCH, CodefApiLog::STATUS_SUCCESS, count($result['data']));
 
                 return response()->json([
                     'success' => true,
@@ -199,12 +204,16 @@ class AgentCodefController extends Controller
                     'error' => $e->getMessage(),
                 ]);
 
+                $this->logApiCall($agentId, $customer->customer_id, CodefApiLog::TYPE_INSURANCE, CodefApiLog::ACTION_FETCH, CodefApiLog::STATUS_FAILED, 0, $e->getMessage());
+
                 return response()->json([
                     'success' => false,
                     'message' => '계약정보 저장 중 오류가 발생했습니다.',
                 ], 500);
             }
         }
+
+        $this->logApiCall($agentId, $customer->customer_id, CodefApiLog::TYPE_INSURANCE, CodefApiLog::ACTION_FETCH, CodefApiLog::STATUS_FAILED, 0, $result['message'] ?? null);
 
         return $this->buildResponse($result);
     }
@@ -216,6 +225,7 @@ class AgentCodefController extends Controller
     public function confirmInsurance(Request $request, string $customerId): JsonResponse
     {
         $customer = $this->resolveCustomer($request, $customerId);
+        $agentId = $request->user()->agent->agent_id;
 
         $twoWayInput = $request->all();
 
@@ -228,6 +238,8 @@ class AgentCodefController extends Controller
 
                 $contracts = $this->contractService->getCustomerContracts($customer->customer_id);
 
+                $this->logApiCall($agentId, $customer->customer_id, CodefApiLog::TYPE_INSURANCE, CodefApiLog::ACTION_CONFIRM, CodefApiLog::STATUS_SUCCESS, count($result['data']));
+
                 return response()->json([
                     'success' => true,
                     'data' => $contracts,
@@ -239,12 +251,16 @@ class AgentCodefController extends Controller
                     'error' => $e->getMessage(),
                 ]);
 
+                $this->logApiCall($agentId, $customer->customer_id, CodefApiLog::TYPE_INSURANCE, CodefApiLog::ACTION_CONFIRM, CodefApiLog::STATUS_FAILED, 0, $e->getMessage());
+
                 return response()->json([
                     'success' => false,
                     'message' => '계약정보 저장 중 오류가 발생했습니다.',
                 ], 500);
             }
         }
+
+        $this->logApiCall($agentId, $customer->customer_id, CodefApiLog::TYPE_INSURANCE, CodefApiLog::ACTION_CONFIRM, CodefApiLog::STATUS_FAILED, 0, $result['message'] ?? null);
 
         return $this->buildResponse($result);
     }
@@ -281,6 +297,7 @@ class AgentCodefController extends Controller
     public function fetchMedical(Request $request, string $customerId): JsonResponse
     {
         $customer = $this->resolveCustomer($request, $customerId);
+        $agentId = $request->user()->agent->agent_id;
 
         $validated = $request->validate([
             'loginTypeLevel' => 'required|string|in:1,3,4,5,6,7,8,10',
@@ -290,7 +307,6 @@ class AgentCodefController extends Controller
             'includeSensitive' => 'nullable|boolean',
         ]);
 
-        // 기본 5년 범위
         $defaults = HiraMedicalInfoService::defaultDateRange();
         $startDate = $validated['startDate'] ?? $defaults['start'];
         $endDate = $validated['endDate'] ?? $defaults['end'];
@@ -312,6 +328,7 @@ class AgentCodefController extends Controller
                 $includeSensitive
             );
         } catch (\RuntimeException $e) {
+            $this->logApiCall($agentId, $customer->customer_id, CodefApiLog::TYPE_MEDICAL, CodefApiLog::ACTION_FETCH, CodefApiLog::STATUS_FAILED, 0, $e->getMessage());
             return response()->json([
                 'success' => false,
                 'code' => 'MISSING_CUSTOMER_INFO',
@@ -319,16 +336,17 @@ class AgentCodefController extends Controller
             ], 422);
         }
 
-        // 2-Way 응답
         if ($result['two_way'] ?? false) {
+            $this->logApiCall($agentId, $customer->customer_id, CodefApiLog::TYPE_MEDICAL, CodefApiLog::ACTION_FETCH, CodefApiLog::STATUS_TWO_WAY);
             return $this->buildResponse($result);
         }
 
-        // 1-Way 성공 -> DB 저장
         if ($result['success'] && !empty($result['data'])) {
+            $this->logApiCall($agentId, $customer->customer_id, CodefApiLog::TYPE_MEDICAL, CodefApiLog::ACTION_FETCH, CodefApiLog::STATUS_SUCCESS, is_array($result['data']) ? count($result['data']) : 0);
             return $this->saveMedicalAndRespond($customer->customer_id, $result['data'], $startDate, $endDate);
         }
 
+        $this->logApiCall($agentId, $customer->customer_id, CodefApiLog::TYPE_MEDICAL, CodefApiLog::ACTION_FETCH, CodefApiLog::STATUS_FAILED, 0, $result['message'] ?? null);
         return $this->buildResponse($result);
     }
 
@@ -339,6 +357,7 @@ class AgentCodefController extends Controller
     public function confirmMedical(Request $request, string $customerId): JsonResponse
     {
         $customer = $this->resolveCustomer($request, $customerId);
+        $agentId = $request->user()->agent->agent_id;
 
         $validated = $request->validate([
             'startDate' => 'nullable|string',
@@ -354,9 +373,11 @@ class AgentCodefController extends Controller
         $result = $this->hiraService->confirmMedicalInfo($twoWayInput, $customer->customer_id);
 
         if ($result['success'] && !empty($result['data'])) {
+            $this->logApiCall($agentId, $customer->customer_id, CodefApiLog::TYPE_MEDICAL, CodefApiLog::ACTION_CONFIRM, CodefApiLog::STATUS_SUCCESS, is_array($result['data']) ? count($result['data']) : 0);
             return $this->saveMedicalAndRespond($customer->customer_id, $result['data'], $startDate, $endDate);
         }
 
+        $this->logApiCall($agentId, $customer->customer_id, CodefApiLog::TYPE_MEDICAL, CodefApiLog::ACTION_CONFIRM, CodefApiLog::STATUS_FAILED, 0, $result['message'] ?? null);
         return $this->buildResponse($result);
     }
 
@@ -400,6 +421,8 @@ class AgentCodefController extends Controller
             'searchEndYear' => 'nullable|string|regex:/^\d{4}$/',
         ]);
 
+        $agentId = $request->user()->agent->agent_id;
+
         try {
             $result = $this->nhisHealthService->fetchCheckupResult([
                 'customer' => $customer,
@@ -413,6 +436,7 @@ class AgentCodefController extends Controller
                 'searchEndYear' => $validated['searchEndYear'] ?? null,
             ]);
         } catch (\RuntimeException $e) {
+            $this->logApiCall($agentId, $customer->customer_id, CodefApiLog::TYPE_CHECKUP, CodefApiLog::ACTION_FETCH, CodefApiLog::STATUS_FAILED, 0, $e->getMessage());
             return response()->json([
                 'success' => false,
                 'code' => 'MISSING_CUSTOMER_INFO',
@@ -421,13 +445,16 @@ class AgentCodefController extends Controller
         }
 
         if ($result['two_way'] ?? false) {
+            $this->logApiCall($agentId, $customer->customer_id, CodefApiLog::TYPE_CHECKUP, CodefApiLog::ACTION_FETCH, CodefApiLog::STATUS_TWO_WAY);
             return $this->buildResponse($result);
         }
 
         if ($result['success'] && !empty($result['data'])) {
+            $this->logApiCall($agentId, $customer->customer_id, CodefApiLog::TYPE_CHECKUP, CodefApiLog::ACTION_FETCH, CodefApiLog::STATUS_SUCCESS, is_array($result['data']) ? count($result['data']) : 0);
             return $this->saveCheckupAndRespond($customer->customer_id, $result['data']);
         }
 
+        $this->logApiCall($agentId, $customer->customer_id, CodefApiLog::TYPE_CHECKUP, CodefApiLog::ACTION_FETCH, CodefApiLog::STATUS_FAILED, 0, $result['message'] ?? null);
         return $this->buildResponse($result);
     }
 
@@ -438,6 +465,7 @@ class AgentCodefController extends Controller
     public function confirmCheckup(Request $request, string $customerId): JsonResponse
     {
         $customer = $this->resolveCustomer($request, $customerId);
+        $agentId = $request->user()->agent->agent_id;
 
         $result = $this->nhisHealthService->confirmCheckupResult(
             $request->all(),
@@ -445,9 +473,11 @@ class AgentCodefController extends Controller
         );
 
         if ($result['success'] && !empty($result['data'])) {
+            $this->logApiCall($agentId, $customer->customer_id, CodefApiLog::TYPE_CHECKUP, CodefApiLog::ACTION_CONFIRM, CodefApiLog::STATUS_SUCCESS, is_array($result['data']) ? count($result['data']) : 0);
             return $this->saveCheckupAndRespond($customer->customer_id, $result['data']);
         }
 
+        $this->logApiCall($agentId, $customer->customer_id, CodefApiLog::TYPE_CHECKUP, CodefApiLog::ACTION_CONFIRM, CodefApiLog::STATUS_FAILED, 0, $result['message'] ?? null);
         return $this->buildResponse($result);
     }
 
@@ -492,6 +522,8 @@ class AgentCodefController extends Controller
             'date' => 'nullable|string',
         ]);
 
+        $agentId = $request->user()->agent->agent_id;
+
         try {
             $result = $this->predictionService->fetchHealthAge([
                 'customer' => $customer,
@@ -501,10 +533,11 @@ class AgentCodefController extends Controller
                 'birthDate' => $customer->birth_date?->format('Ymd'),
                 'phoneNo' => $customer->phone,
                 'telecom' => $validated['telecom'],
-                'type' => '0', // 항상 신규사용자 모드
+                'type' => '0',
                 'date' => $validated['date'] ?? null,
             ]);
         } catch (\RuntimeException $e) {
+            $this->logApiCall($agentId, $customer->customer_id, CodefApiLog::TYPE_HEALTH_AGE, CodefApiLog::ACTION_FETCH, CodefApiLog::STATUS_FAILED, 0, $e->getMessage());
             return response()->json([
                 'success' => false,
                 'code' => 'MISSING_CUSTOMER_INFO',
@@ -513,13 +546,16 @@ class AgentCodefController extends Controller
         }
 
         if ($result['two_way'] ?? false) {
+            $this->logApiCall($agentId, $customer->customer_id, CodefApiLog::TYPE_HEALTH_AGE, CodefApiLog::ACTION_FETCH, CodefApiLog::STATUS_TWO_WAY);
             return $this->buildResponse($result);
         }
 
         if ($result['success'] && !empty($result['data'])) {
+            $this->logApiCall($agentId, $customer->customer_id, CodefApiLog::TYPE_HEALTH_AGE, CodefApiLog::ACTION_FETCH, CodefApiLog::STATUS_SUCCESS);
             return $this->saveHealthAgeAndRespond($customer->customer_id, $result['data']);
         }
 
+        $this->logApiCall($agentId, $customer->customer_id, CodefApiLog::TYPE_HEALTH_AGE, CodefApiLog::ACTION_FETCH, CodefApiLog::STATUS_FAILED, 0, $result['message'] ?? null);
         return $this->buildResponse($result);
     }
 
@@ -530,6 +566,7 @@ class AgentCodefController extends Controller
     public function confirmHealthAge(Request $request, string $customerId): JsonResponse
     {
         $customer = $this->resolveCustomer($request, $customerId);
+        $agentId = $request->user()->agent->agent_id;
 
         $result = $this->predictionService->confirmHealthAge(
             $request->all(),
@@ -537,15 +574,50 @@ class AgentCodefController extends Controller
         );
 
         if ($result['success'] && !empty($result['data'])) {
+            $this->logApiCall($agentId, $customer->customer_id, CodefApiLog::TYPE_HEALTH_AGE, CodefApiLog::ACTION_CONFIRM, CodefApiLog::STATUS_SUCCESS);
             return $this->saveHealthAgeAndRespond($customer->customer_id, $result['data']);
         }
 
+        $this->logApiCall($agentId, $customer->customer_id, CodefApiLog::TYPE_HEALTH_AGE, CodefApiLog::ACTION_CONFIRM, CodefApiLog::STATUS_FAILED, 0, $result['message'] ?? null);
         return $this->buildResponse($result);
     }
 
     // ========================================================================
     // 헬퍼
     // ========================================================================
+
+    /**
+     * CODEF API 사용 로그 기록
+     */
+    private function logApiCall(
+        string $agentId,
+        string $customerId,
+        string $apiType,
+        string $apiAction,
+        string $status,
+        int $resultCount = 0,
+        ?string $errorMessage = null
+    ): void {
+        try {
+            CodefApiLog::create([
+                'agent_id' => $agentId,
+                'customer_id' => $customerId,
+                'api_type' => $apiType,
+                'api_action' => $apiAction,
+                'status' => $status,
+                'result_count' => $resultCount,
+                'error_message' => $errorMessage ? mb_substr($errorMessage, 0, 500) : null,
+                'billing_month' => now()->format('Y-m'),
+            ]);
+        } catch (\Exception $e) {
+            Log::error('CODEF API 로그 기록 실패', [
+                'agent_id' => $agentId,
+                'customer_id' => $customerId,
+                'api_type' => $apiType,
+                'error' => $e->getMessage(),
+            ]);
+        }
+    }
 
     /**
      * 해당 고객이 설계사 소속인지 검증하고 Customer 반환
