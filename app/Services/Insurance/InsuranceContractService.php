@@ -132,6 +132,7 @@ class InsuranceContractService
                     'car_number' => $contract['resCarNo'] ?? null,
                     'codef_synced' => 1,
                     'synced_at' => now(),
+                    'codef_raw_data' => json_encode($contract, JSON_UNESCAPED_UNICODE),
                 ]
             );
 

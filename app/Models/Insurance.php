@@ -37,6 +37,7 @@ class Insurance extends Model
         'car_number',
         'codef_synced',
         'synced_at',
+        'codef_raw_data',
     ];
 
     protected $casts = [
