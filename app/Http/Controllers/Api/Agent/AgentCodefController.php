@@ -732,7 +732,10 @@ class AgentCodefController extends Controller
             $code = $result['code'] ?? 'ERROR';
 
             // 2-Way 응답은 200으로 반환 (Frontend에서 모달 처리)
+            // CODEF CF-* 에러도 200으로 반환하여 프론트에서 메시지 표시
             if ($code === 'CF-03002' || ($result['two_way'] ?? false)) {
+                $statusCode = 200;
+            } elseif (str_starts_with($code, 'CF-')) {
                 $statusCode = 200;
             } elseif (in_array($code, ['TWO_WAY_EXPIRED', 'INVALID_API_TYPE'])) {
                 $statusCode = 400;

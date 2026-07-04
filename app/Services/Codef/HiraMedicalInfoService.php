@@ -362,7 +362,7 @@ class HiraMedicalInfoService
     {
         $now = Carbon::now();
         return [
-            'start' => $now->copy()->subYears(5)->startOfYear()->format('Ymd'),
+            'start' => $now->copy()->subYear()->format('Ymd'),
             'end' => $now->format('Ymd'),
         ];
     }
