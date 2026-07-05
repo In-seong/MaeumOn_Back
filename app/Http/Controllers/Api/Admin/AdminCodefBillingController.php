@@ -22,17 +22,16 @@ class AdminCodefBillingController extends Controller
         $summary = CodefApiLog::where('billing_month', $month)
             ->where('status', CodefApiLog::STATUS_SUCCESS)
             ->join('agent', 'codef_api_logs.agent_id', '=', 'agent.agent_id')
-            ->join('account', 'agent.account_id', '=', 'account.account_id')
             ->select(
                 'codef_api_logs.agent_id',
-                'account.name as agent_name',
+                'agent.name as agent_name',
                 DB::raw("SUM(CASE WHEN api_type = 'insurance' THEN 1 ELSE 0 END) as insurance_count"),
                 DB::raw("SUM(CASE WHEN api_type = 'medical' THEN 1 ELSE 0 END) as medical_count"),
                 DB::raw("SUM(CASE WHEN api_type = 'checkup' THEN 1 ELSE 0 END) as checkup_count"),
                 DB::raw("SUM(CASE WHEN api_type = 'health_age' THEN 1 ELSE 0 END) as health_age_count"),
                 DB::raw('COUNT(*) as total_count'),
             )
-            ->groupBy('codef_api_logs.agent_id', 'account.name')
+            ->groupBy('codef_api_logs.agent_id', 'agent.name')
             ->orderByDesc('total_count')
             ->get();
 
@@ -57,8 +56,7 @@ class AdminCodefBillingController extends Controller
     {
         $query = CodefApiLog::with(['customer:customer_id,name,phone'])
             ->join('agent', 'codef_api_logs.agent_id', '=', 'agent.agent_id')
-            ->join('account', 'agent.account_id', '=', 'account.account_id')
-            ->select('codef_api_logs.*', 'account.name as agent_name');
+            ->select('codef_api_logs.*', 'agent.name as agent_name');
 
         if ($request->has('month')) {
             $query->where('billing_month', $request->month);
