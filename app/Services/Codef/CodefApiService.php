@@ -176,8 +176,8 @@ class CodefApiService
         // 캐시에서 twoWayInfo 복원
         $twoWayInfo = $cachedData['twoWayInfo'] ?? [];
 
-        // 보안: 사용자 입력에서 민감 필드 제거 (twoWayInfo, is2Way는 서버에서만 세팅)
-        unset($twoWayInput['twoWayInfo'], $twoWayInput['is2Way']);
+        // 보안: 사용자 입력에서 민감/불필요 필드 제거
+        unset($twoWayInput['twoWayInfo'], $twoWayInput['is2Way'], $twoWayInput['is_confirm']);
 
         // CODEF 스펙: N단계 요청은 1~N-1단계의 입력값을 누적 포함해야 함
         // (예: SMS 단계 = 기본 + 보안문자 + SMS)
