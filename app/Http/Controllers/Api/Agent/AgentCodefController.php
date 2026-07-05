@@ -305,6 +305,9 @@ class AgentCodefController extends Controller
             'startDate' => 'nullable|string',
             'endDate' => 'nullable|string',
             'includeSensitive' => 'nullable|boolean',
+            'userName' => 'nullable|string',
+            'phoneNo' => 'nullable|string',
+            'identity' => 'nullable|string',
         ]);
 
         $defaults = HiraMedicalInfoService::defaultDateRange();
@@ -318,9 +321,9 @@ class AgentCodefController extends Controller
                     'customer' => $customer,
                     'customer_id' => $customer->customer_id,
                     'loginTypeLevel' => $validated['loginTypeLevel'],
-                    'userName' => $customer->name,
-                    'identity' => $customer->resident_number,
-                    'phoneNo' => $customer->phone,
+                    'userName' => $validated['userName'] ?? $customer->name,
+                    'identity' => $validated['identity'] ?? $customer->resident_number,
+                    'phoneNo' => $validated['phoneNo'] ?? $customer->phone,
                     'telecom' => $validated['telecom'],
                 ],
                 $startDate,
@@ -419,18 +422,30 @@ class AgentCodefController extends Controller
             'telecom' => 'required|string|in:0,1,2',
             'searchStartYear' => 'nullable|string|regex:/^\d{4}$/',
             'searchEndYear' => 'nullable|string|regex:/^\d{4}$/',
+            'userName' => 'nullable|string',
+            'phoneNo' => 'nullable|string',
+            'identity' => 'nullable|string',
         ]);
 
         $agentId = $request->user()->agent->agent_id;
+
+        $birthDate = $customer->birth_date?->format('Ymd');
+        if (!empty($validated['identity'])) {
+            $digits = preg_replace('/\D/', '', $validated['identity']);
+            if (strlen($digits) >= 6) {
+                $prefix = (int) $digits[6] >= 3 ? '20' : '19';
+                $birthDate = $prefix . substr($digits, 0, 6);
+            }
+        }
 
         try {
             $result = $this->nhisHealthService->fetchCheckupResult([
                 'customer' => $customer,
                 'customer_id' => $customer->customer_id,
                 'loginTypeLevel' => $validated['loginTypeLevel'],
-                'userName' => $customer->name,
-                'birthDate' => $customer->birth_date?->format('Ymd'),
-                'phoneNo' => $customer->phone,
+                'userName' => $validated['userName'] ?? $customer->name,
+                'birthDate' => $birthDate,
+                'phoneNo' => $validated['phoneNo'] ?? $customer->phone,
                 'telecom' => $validated['telecom'],
                 'searchStartYear' => $validated['searchStartYear'] ?? null,
                 'searchEndYear' => $validated['searchEndYear'] ?? null,
@@ -520,18 +535,30 @@ class AgentCodefController extends Controller
             'loginTypeLevel' => 'required|string|in:1,3,4,5,6,7,8,10',
             'telecom' => 'required|string|in:0,1,2',
             'date' => 'nullable|string',
+            'userName' => 'nullable|string',
+            'phoneNo' => 'nullable|string',
+            'identity' => 'nullable|string',
         ]);
 
         $agentId = $request->user()->agent->agent_id;
+
+        $birthDate = $customer->birth_date?->format('Ymd');
+        if (!empty($validated['identity'])) {
+            $digits = preg_replace('/\D/', '', $validated['identity']);
+            if (strlen($digits) >= 6) {
+                $prefix = (int) $digits[6] >= 3 ? '20' : '19';
+                $birthDate = $prefix . substr($digits, 0, 6);
+            }
+        }
 
         try {
             $result = $this->predictionService->fetchHealthAge([
                 'customer' => $customer,
                 'customer_id' => $customer->customer_id,
                 'loginTypeLevel' => $validated['loginTypeLevel'],
-                'userName' => $customer->name,
-                'birthDate' => $customer->birth_date?->format('Ymd'),
-                'phoneNo' => $customer->phone,
+                'userName' => $validated['userName'] ?? $customer->name,
+                'birthDate' => $birthDate,
+                'phoneNo' => $validated['phoneNo'] ?? $customer->phone,
                 'telecom' => $validated['telecom'],
                 'type' => '0',
                 'date' => $validated['date'] ?? null,
