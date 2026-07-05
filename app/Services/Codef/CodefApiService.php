@@ -184,13 +184,16 @@ class CodefApiService
         $accumulatedInputs = $cachedData['accumulatedInputs'] ?? [];
         $accumulatedInputs = array_merge($accumulatedInputs, $twoWayInput);
 
-        // 간편인증 관련 필드 포함 (2-Way 응답에서 받은 값)
-        $simpleAuthFields = $cachedData['simpleAuthFields'] ?? [];
-
-        // 2차 요청 파라미터 구성: 원래 파라미터 + 누적 입력 + 간편인증 필드 + twoWayInfo + is2Way 플래그
-        $params = array_merge($originalParams, $accumulatedInputs, $simpleAuthFields);
+        // 2차 요청 파라미터 구성: 원래 파라미터 + 누적 입력 + twoWayInfo + is2Way 플래그
+        $params = array_merge($originalParams, $accumulatedInputs);
         $params['is2Way'] = true;
         $params['twoWayInfo'] = $twoWayInfo;
+
+        // 간편인증(commSimpleAuth)이 1차 응답에 있었으면 simpleAuth="1" 포함 (CODEF 필수)
+        $simpleAuthFields = $cachedData['simpleAuthFields'] ?? [];
+        if (!empty($simpleAuthFields['commSimpleAuth'])) {
+            $params['simpleAuth'] = $twoWayInput['simpleAuth'] ?? '1';
+        }
 
         // 누적 입력을 캐시에 저장 (다음 단계에서 사용)
         $cachedData['accumulatedInputs'] = $accumulatedInputs;
