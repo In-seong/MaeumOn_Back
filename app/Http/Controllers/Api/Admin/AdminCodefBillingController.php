@@ -19,9 +19,7 @@ class AdminCodefBillingController extends Controller
     {
         $month = $request->input('month', now()->format('Y-m'));
 
-        $summary = CodefApiLog::where('billing_month', $month)
-            ->where('status', CodefApiLog::STATUS_SUCCESS)
-            ->join('agent', 'codef_api_logs.agent_id', '=', 'agent.agent_id')
+        $query = CodefApiLog::join('agent', 'codef_api_logs.agent_id', '=', 'agent.agent_id')
             ->select(
                 'codef_api_logs.agent_id',
                 'agent.name as agent_name',
@@ -29,11 +27,18 @@ class AdminCodefBillingController extends Controller
                 DB::raw("SUM(CASE WHEN api_type = 'medical' THEN 1 ELSE 0 END) as medical_count"),
                 DB::raw("SUM(CASE WHEN api_type = 'checkup' THEN 1 ELSE 0 END) as checkup_count"),
                 DB::raw("SUM(CASE WHEN api_type = 'health_age' THEN 1 ELSE 0 END) as health_age_count"),
+                DB::raw("SUM(CASE WHEN status = 'success' THEN 1 ELSE 0 END) as success_count"),
+                DB::raw("SUM(CASE WHEN status = 'failed' THEN 1 ELSE 0 END) as failed_count"),
                 DB::raw('COUNT(*) as total_count'),
             )
             ->groupBy('codef_api_logs.agent_id', 'agent.name')
-            ->orderByDesc('total_count')
-            ->get();
+            ->orderByDesc('total_count');
+
+        if ($month) {
+            $query->where('billing_month', $month);
+        }
+
+        $summary = $query->get();
 
         $totalAll = $summary->sum('total_count');
 
