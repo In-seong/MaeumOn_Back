@@ -184,8 +184,11 @@ class CodefApiService
         $accumulatedInputs = $cachedData['accumulatedInputs'] ?? [];
         $accumulatedInputs = array_merge($accumulatedInputs, $twoWayInput);
 
-        // 2차 요청 파라미터 구성: 원래 파라미터 + 누적 입력 + twoWayInfo + is2Way 플래그
-        $params = array_merge($originalParams, $accumulatedInputs);
+        // 간편인증 관련 필드 포함 (2-Way 응답에서 받은 값)
+        $simpleAuthFields = $cachedData['simpleAuthFields'] ?? [];
+
+        // 2차 요청 파라미터 구성: 원래 파라미터 + 누적 입력 + 간편인증 필드 + twoWayInfo + is2Way 플래그
+        $params = array_merge($originalParams, $accumulatedInputs, $simpleAuthFields);
         $params['is2Way'] = true;
         $params['twoWayInfo'] = $twoWayInfo;
 
@@ -350,6 +353,12 @@ class CodefApiService
         $responseData = $data['data'] ?? [];
         $continue2Way = $responseData['continue2Way'] ?? false;
 
+        Log::debug('CODEF 2-Way 응답 data 상세', [
+            'data_keys' => is_array($responseData) ? array_keys($responseData) : 'not_array',
+            'continue2Way' => $continue2Way,
+            'commSimpleAuth' => $responseData['commSimpleAuth'] ?? 'N/A',
+        ]);
+
         if (!$continue2Way) {
             return [
                 'success' => false,
@@ -367,11 +376,20 @@ class CodefApiService
             }
         }
 
+        // 간편인증 관련 필드를 별도 저장 (confirm 시 포함 필요)
+        $simpleAuthFields = [];
+        foreach (['commSimpleAuth', 'reqSecureNo', 'reqSMSAuthNo'] as $field) {
+            if (isset($responseData[$field])) {
+                $simpleAuthFields[$field] = $responseData[$field];
+            }
+        }
+
         if ($customerId && $apiType) {
             $cacheKey = $this->getTwoWayCacheKey($customerId, $apiType);
             // 기존 캐시의 endpoint, originalParams는 유지하고 twoWayInfo만 업데이트
             $existing = Cache::get($cacheKey, []);
             $existing['twoWayInfo'] = $twoWayInfo;
+            $existing['simpleAuthFields'] = $simpleAuthFields;
             Cache::put($cacheKey, $existing, config('codef.two_way_cache_ttl', 300));
         }
 
