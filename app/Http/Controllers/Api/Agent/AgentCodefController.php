@@ -227,7 +227,7 @@ class AgentCodefController extends Controller
         $customer = $this->resolveCustomer($request, $customerId);
         $agentId = $request->user()->agent->agent_id;
 
-        $twoWayInput = $request->all();
+        $twoWayInput = $request->except(['is_confirm']);
 
         $result = $this->credit4uService->getContractInfoConfirm($twoWayInput, $customer->customer_id);
 
@@ -368,7 +368,7 @@ class AgentCodefController extends Controller
         $startDate = $validated['startDate'] ?? $defaults['start'];
         $endDate = $validated['endDate'] ?? $defaults['end'];
 
-        $twoWayInput = $request->except(['startDate', 'endDate']);
+        $twoWayInput = $request->except(['startDate', 'endDate', 'is_confirm']);
 
         $result = $this->hiraService->confirmMedicalInfo($twoWayInput, $customer->customer_id);
 
@@ -468,7 +468,7 @@ class AgentCodefController extends Controller
         $agentId = $request->user()->agent->agent_id;
 
         $result = $this->nhisHealthService->confirmCheckupResult(
-            $request->all(),
+            $request->except(['is_confirm']),
             $customer->customer_id
         );
 
@@ -569,7 +569,7 @@ class AgentCodefController extends Controller
         $agentId = $request->user()->agent->agent_id;
 
         $result = $this->predictionService->confirmHealthAge(
-            $request->all(),
+            $request->except(['is_confirm']),
             $customer->customer_id
         );
 
