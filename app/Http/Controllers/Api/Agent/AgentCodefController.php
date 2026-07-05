@@ -487,13 +487,24 @@ class AgentCodefController extends Controller
             $customer->customer_id
         );
 
+        Log::debug('confirmCheckup result 구조', [
+            'success' => $result['success'] ?? null,
+            'data_empty' => empty($result['data']),
+            'data_type' => isset($result['data']) ? gettype($result['data']) : 'not_set',
+            'keys' => array_keys($result),
+        ]);
+
         if ($result['success'] && !empty($result['data'])) {
             $this->logApiCall($agentId, $customer->customer_id, CodefApiLog::TYPE_CHECKUP, CodefApiLog::ACTION_CONFIRM, CodefApiLog::STATUS_SUCCESS, is_array($result['data']) ? count($result['data']) : 0);
-            return $this->saveCheckupAndRespond($customer->customer_id, $result['data']);
+            $response = $this->saveCheckupAndRespond($customer->customer_id, $result['data']);
+            Log::debug('confirmCheckup 최종 응답', ['content' => $response->getContent()]);
+            return $response;
         }
 
         $this->logApiCall($agentId, $customer->customer_id, CodefApiLog::TYPE_CHECKUP, CodefApiLog::ACTION_CONFIRM, CodefApiLog::STATUS_FAILED, 0, $result['message'] ?? null);
-        return $this->buildResponse($result);
+        $response = $this->buildResponse($result);
+        Log::debug('confirmCheckup 실패 응답', ['content' => $response->getContent()]);
+        return $response;
     }
 
     // ========================================================================
