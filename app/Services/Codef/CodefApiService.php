@@ -189,9 +189,12 @@ class CodefApiService
         $params['is2Way'] = true;
         $params['twoWayInfo'] = $twoWayInfo;
 
-        // 간편인증(commSimpleAuth)이 1차 응답에 있었으면 simpleAuth="1" 포함 (CODEF 필수)
+        // 간편인증 2-Way confirm: simpleAuth="1" 포함 (CODEF 필수)
+        // 조건: 1차 응답 extraInfo에 commSimpleAuth가 있거나, loginType이 "5"(간편인증)
         $simpleAuthFields = $cachedData['simpleAuthFields'] ?? [];
-        if (!empty($simpleAuthFields['commSimpleAuth'])) {
+        $isSimpleAuth = isset($simpleAuthFields['commSimpleAuth'])
+            || ($originalParams['loginType'] ?? '') === '5';
+        if ($isSimpleAuth) {
             $params['simpleAuth'] = $twoWayInput['simpleAuth'] ?? '1';
         }
 
@@ -356,10 +359,13 @@ class CodefApiService
         $responseData = $data['data'] ?? [];
         $continue2Way = $responseData['continue2Way'] ?? false;
 
+        $extraInfo = $responseData['extraInfo'] ?? [];
         Log::debug('CODEF 2-Way 응답 data 상세', [
             'data_keys' => is_array($responseData) ? array_keys($responseData) : 'not_array',
             'continue2Way' => $continue2Way,
-            'commSimpleAuth' => $responseData['commSimpleAuth'] ?? 'N/A',
+            'extraInfo_keys' => is_array($extraInfo) ? array_keys($extraInfo) : 'not_array',
+            'commSimpleAuth' => $extraInfo['commSimpleAuth'] ?? 'N/A',
+            'method' => $responseData['method'] ?? 'N/A',
         ]);
 
         if (!$continue2Way) {
@@ -379,11 +385,11 @@ class CodefApiService
             }
         }
 
-        // 간편인증 관련 필드를 별도 저장 (confirm 시 포함 필요)
+        // 간편인증 관련 필드를 extraInfo에서 추출하여 별도 저장 (confirm 시 simpleAuth 포함 판단)
         $simpleAuthFields = [];
-        foreach (['commSimpleAuth', 'reqSecureNo', 'reqSMSAuthNo'] as $field) {
-            if (isset($responseData[$field])) {
-                $simpleAuthFields[$field] = $responseData[$field];
+        foreach (['commSimpleAuth', 'reqSecureNo', 'reqSMSAuthNo', 'reqSignedData'] as $field) {
+            if (isset($extraInfo[$field])) {
+                $simpleAuthFields[$field] = $extraInfo[$field];
             }
         }
 
