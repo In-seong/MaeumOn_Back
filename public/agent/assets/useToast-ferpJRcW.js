@@ -1,0 +1,1 @@
+import{r as t}from"./agent-CabBh3sg.js";const e=t(!1),u=t(""),a=t("success");let s=null;function n(){function o(l,r="success",c=2e3){s&&clearTimeout(s),u.value=l,a.value=r,e.value=!0,s=setTimeout(()=>{e.value=!1},c)}return{visible:e,message:u,variant:a,showToast:o}}export{n as u};
