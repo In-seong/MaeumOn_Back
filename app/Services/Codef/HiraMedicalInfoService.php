@@ -356,13 +356,13 @@ class HiraMedicalInfoService
     }
 
     /**
-     * 기본 조회 구간 생성 (오늘 기준 5년 전 1월 1일 ~ 오늘)
+     * 기본 조회 구간 생성 (오늘 기준 5년 전 ~ 오늘)
      */
     public static function defaultDateRange(): array
     {
         $now = Carbon::now();
         return [
-            'start' => $now->copy()->subYear()->format('Ymd'),
+            'start' => $now->copy()->subYears(5)->format('Ymd'),
             'end' => $now->format('Ymd'),
         ];
     }
