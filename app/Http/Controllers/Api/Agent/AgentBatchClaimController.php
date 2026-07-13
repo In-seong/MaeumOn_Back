@@ -635,6 +635,15 @@ class AgentBatchClaimController extends Controller
         $sentCount = 0;
 
         foreach ($claims as $claim) {
+            if (in_array($claim->fax_status, ['pending', 'sending'])) {
+                $results[] = [
+                    'claim_id' => $claim->claim_id,
+                    'fax_status' => $claim->fax_status,
+                    'message' => '팩스 발송이 진행 중입니다.',
+                ];
+                continue;
+            }
+
             if (!$claim->generated_pdf_path) {
                 $results[] = [
                     'claim_id' => $claim->claim_id,
@@ -663,7 +672,7 @@ class AgentBatchClaimController extends Controller
 
                     $results[] = [
                         'claim_id' => $claim->claim_id,
-                        'fax_status' => 'sent',
+                        'fax_status' => 'pending',
                         'fax_number' => $result['fax_number'],
                     ];
                     $sentCount++;

@@ -5,7 +5,7 @@ return [
     'pwd' => env('BIZMOA_PWD', ''),
     'from_number' => env('BIZMOA_FROM_NUMBER', ''),
 
-    'fax_url' => env('BIZMOA_FAX_URL', 'https://biz.moashot.com/EXT/URLASP/faxsendUTF.asp'),
+    'fax_url' => env('BIZMOA_FAX_URL', 'http://biz.moashot.com/EXT/URLASP/faxsendUTF.asp'),
 
     // FTP 설정 (PDF 파일 전송용)
     'ftp_host' => env('BIZMOA_FTP_HOST', ''),
@@ -53,5 +53,7 @@ return [
         '56' => '문서 병합 오류',
         '57' => '커버 처리 오류',
         '70' => '지원되지 않는 서비스',
+        'RECEIPT_FAIL' => '접수 실패 (비즈모아샷 접수 단계에서 오류)',
+        'TIMEOUT' => '결과 수신 시간 초과',
     ],
 ];

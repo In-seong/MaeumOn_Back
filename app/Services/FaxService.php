@@ -231,23 +231,42 @@ class FaxService
 
     /**
      * 팩스 발송 결과 콜백 처리 (비즈모아샷 → 우리 서버)
+     *
+     * nType=3 설정 시 두 종류의 콜백이 순차적으로 도착:
+     * 1) nType=1 접수 확인: indexCode, title, toNumber, ErrMsg(실패시)
+     * 2) nType=2 전송 결과: data=indexCode,resultCode, Send_start, Send_end, page
      */
     public function handleCallback(array $params): void
     {
+        // nType=2 콜백: data 파라미터에 "indexCode,resultCode" 형태
         $data = $params['data'] ?? null;
 
-        if (!$data) {
-            Log::warning('BizMoaShot callback: data 파라미터 없음', $params);
+        if ($data) {
+            $this->handleResultCallback($params, $data);
             return;
         }
 
-        // data 형식: "indexCode,resultCode"
+        // nType=1 콜백: indexCode, ErrMsg 개별 파라미터
+        $indexCode = $params['indexCode'] ?? null;
+        if ($indexCode) {
+            $this->handleReceiptCallback($params, $indexCode);
+            return;
+        }
+
+        Log::warning('BizMoaShot callback: 알 수 없는 콜백 형식', $params);
+    }
+
+    /**
+     * nType=2 콜백: 전송 결과 (성공/실패)
+     */
+    private function handleResultCallback(array $params, string $data): void
+    {
         $parts = explode(',', $data);
         $indexCode = $parts[0] ?? '';
         $resultCode = $parts[1] ?? '';
 
         if (!$indexCode) {
-            Log::warning('BizMoaShot callback: indexCode 없음', $params);
+            Log::warning('BizMoaShot callback: data에서 indexCode 파싱 실패', $params);
             return;
         }
 
@@ -274,7 +293,7 @@ class FaxService
             ]);
         }
 
-        Log::info('BizMoaShot callback: 팩스 결과 수신', [
+        Log::info('BizMoaShot callback: 팩스 전송 결과 수신', [
             'claim_id' => $claim->claim_id,
             'index_code' => $indexCode,
             'result_code' => $resultCode,
@@ -283,6 +302,45 @@ class FaxService
             'send_end' => $params['Send_end'] ?? null,
             'page' => $params['page'] ?? null,
         ]);
+    }
+
+    /**
+     * nType=1 콜백: 접수 확인 (ErrMsg가 있으면 접수 실패)
+     */
+    private function handleReceiptCallback(array $params, string $indexCode): void
+    {
+        $errMsg = $params['ErrMsg'] ?? null;
+
+        $claim = InsuranceClaim::where('fax_batch_id', $indexCode)->first();
+
+        if (!$claim) {
+            Log::warning('BizMoaShot callback: 접수 확인 - 청구 건 없음', [
+                'index_code' => $indexCode,
+            ]);
+            return;
+        }
+
+        if ($errMsg) {
+            $claim->update([
+                'fax_status' => 'failed',
+                'fax_result_code' => 'RECEIPT_FAIL',
+            ]);
+
+            Log::error('BizMoaShot callback: 접수 실패', [
+                'claim_id' => $claim->claim_id,
+                'index_code' => $indexCode,
+                'err_msg' => $errMsg,
+            ]);
+        } else {
+            $claim->update([
+                'fax_status' => 'sending',
+            ]);
+
+            Log::info('BizMoaShot callback: 접수 성공, 전송 대기', [
+                'claim_id' => $claim->claim_id,
+                'index_code' => $indexCode,
+            ]);
+        }
     }
 
     /**

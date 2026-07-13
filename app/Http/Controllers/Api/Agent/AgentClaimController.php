@@ -374,6 +374,13 @@ class AgentClaimController extends Controller
         $claim = InsuranceClaim::where('agent_id', $agentId)->findOrFail($id);
         $claim->load('documents');
 
+        if (in_array($claim->fax_status, ['pending', 'sending'])) {
+            return response()->json([
+                'success' => false,
+                'message' => '팩스 발송이 진행 중입니다. 완료 후 재시도해주세요.',
+            ], 422);
+        }
+
         $validated = $request->validate([
             'fax_number' => 'nullable|string|max:20',
         ]);
