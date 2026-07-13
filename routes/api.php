@@ -58,6 +58,7 @@ use App\Http\Controllers\Api\Admin\AdminHealthCenterController;
 use App\Http\Controllers\Api\Admin\AdminClaimRequestController;
 use App\Http\Controllers\Api\Admin\AdminReservationController;
 use App\Http\Controllers\Api\Admin\AdminBannerController;
+use App\Http\Controllers\Api\FaxCallbackController;
 
 /*
 |--------------------------------------------------------------------------
@@ -92,6 +93,9 @@ Route::prefix('customer-auth')->group(function () {
     Route::post('/login-pin-new-device', [CustomerAuthController::class, 'loginPinNewDevice']);
     Route::post('/check-device', [CustomerAuthController::class, 'checkDevice']);
 });
+
+// 비즈모아샷 팩스 결과 콜백 (인증 불필요 — 비즈모아샷 서버에서 호출)
+Route::match(['get', 'post'], '/fax/callback', [FaxCallbackController::class, 'handleBizmoaCallback']);
 
 // 공개 API (인증 불필요)
 Route::get('/insurance-companies', [InsuranceCompanyController::class, 'publicIndex']);

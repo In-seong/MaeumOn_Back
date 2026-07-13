@@ -2,172 +2,65 @@
 
 namespace App\Services;
 
-use App\Models\FcMetaTran;
-use App\Models\FcMsgTran;
 use App\Models\InsuranceClaim;
-use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 
 class FaxService
 {
-    protected string $relayId;
-    protected string $senderFaxNumber;
-    protected string $senderName;
-    protected string $sendDocPath;
+    protected string $uid;
+    protected string $pwd;
+    protected string $fromNumber;
+    protected string $faxUrl;
 
     public function __construct()
     {
-        $this->relayId = config('webfax.relay_id');
-        $this->senderFaxNumber = config('webfax.sender_fax_number');
-        $this->senderName = config('webfax.sender_name');
-        $this->sendDocPath = config('webfax.send_doc_path');
+        $this->uid = config('bizmoa.uid');
+        $this->pwd = config('bizmoa.pwd');
+        $this->fromNumber = config('bizmoa.from_number');
+        $this->faxUrl = config('bizmoa.fax_url');
     }
 
     /**
-     * 팩스 발송 (FC 테이블 INSERT 방식)
+     * 팩스 발송 (S3의 PDF 파일)
      */
     public function sendFax(InsuranceClaim $claim, ?string $faxNumber = null): array
     {
         $claimForm = $claim->claimForm;
         $insuranceCompany = $claimForm->insuranceCompany;
 
-        // 팩스 번호 결정 (입력값 > 보험사 기본값)
         $targetFaxNumber = $faxNumber ?? $insuranceCompany->fax_number;
 
         if (!$targetFaxNumber) {
-            return [
-                'success' => false,
-                'message' => '팩스 번호가 없습니다.',
-            ];
+            return ['success' => false, 'message' => '팩스 번호가 없습니다.'];
         }
 
-        // 팩스번호 정규화 (하이픈 제거)
         $targetFaxNumber = preg_replace('/[^0-9]/', '', $targetFaxNumber);
 
-        // PDF 파일 존재 확인
         if (!$claim->generated_pdf_path) {
-            return [
-                'success' => false,
-                'message' => 'PDF 파일이 생성되지 않았습니다.',
-            ];
+            return ['success' => false, 'message' => 'PDF 파일이 생성되지 않았습니다.'];
         }
 
         if (!Storage::disk('s3')->exists($claim->generated_pdf_path)) {
-            return [
-                'success' => false,
-                'message' => 'PDF 파일을 찾을 수 없습니다.',
-            ];
+            return ['success' => false, 'message' => 'PDF 파일을 찾을 수 없습니다.'];
         }
-
-        // S3에서 PDF 다운로드 → TIFF 변환 → FaxClientNC SendDoc 디렉토리에 저장
-        $timestamp = time();
-        $pdfTempPath = sys_get_temp_dir() . "/claim_{$claim->claim_id}_{$timestamp}.pdf";
 
         try {
             $pdfContent = Storage::disk('s3')->get($claim->generated_pdf_path);
-            if (file_put_contents($pdfTempPath, $pdfContent) === false) {
-                throw new \RuntimeException('PDF 임시 파일 쓰기 실패');
-            }
         } catch (\Exception $e) {
-            Log::error('FaxClientNC: S3 → 임시 PDF 저장 실패', [
-                'claim_id' => $claim->claim_id,
-                's3_path' => $claim->generated_pdf_path,
-                'error' => $e->getMessage(),
-            ]);
-            return [
-                'success' => false,
-                'message' => '팩스 발송 파일 준비에 실패했습니다.',
-            ];
-        }
-
-        $docFileName = "claim_{$claim->claim_id}_{$timestamp}.tiff";
-        $sendDocFullPath = rtrim($this->sendDocPath, '/') . '/' . $docFileName;
-
-        $tiffResult = $this->convertPdfToTiff($pdfTempPath, $sendDocFullPath);
-        if (!$tiffResult) {
-            return [
-                'success' => false,
-                'message' => 'PDF를 TIFF로 변환하는 데 실패했습니다.',
-            ];
-        }
-
-        try {
-            DB::beginTransaction();
-
-            // 1. fc_meta_tran INSERT (tr_sendstat='-': 아직 FaxClientNC가 픽업하면 안됨)
-            $meta = FcMetaTran::create([
-                'tr_type' => '1',
-                'tr_senddate' => now(),
-                'tr_id' => $this->relayId,
-                'tr_title' => "Claim-{$claim->claim_id}",
-                'tr_sendname' => 'MaeumOn',
-                'tr_sendfaxnum' => $this->senderFaxNumber,
-                'tr_msgcount' => 1,
-                'tr_docname' => $docFileName,
-                'tr_sendstat' => '-',
-            ]);
-
-            $batchId = $meta->tr_batchid;
-
-            // 2. fc_msg_tran INSERT (수신자 정보)
-            FcMsgTran::create([
-                'tr_batchid' => $batchId,
-                'tr_serialno' => 1,
-                'tr_senddate' => now(),
-                'tr_name' => $insuranceCompany->company_name,
-                'tr_phone' => $targetFaxNumber,
-                'tr_sendstat' => '0',
-                'tr_rsltstat' => '-',
-            ]);
-
-            // 3. fc_meta_tran UPDATE tr_sendstat='0' (FaxClientNC가 픽업 가능)
-            $meta->update(['tr_sendstat' => '0']);
-
-            DB::commit();
-
-            Log::info('FaxClientNC: 팩스 발송 요청 등록', [
-                'claim_id' => $claim->claim_id,
-                'batch_id' => $batchId,
-                'customer_id' => $claim->customer_id,
-                'insurance_company' => $insuranceCompany->company_name,
-                'fax_number' => $targetFaxNumber,
-                'doc_name' => $docFileName,
-            ]);
-
-            // S3 파일 접근 제어
-            $this->makeClaimFilesPrivate($claim);
-
-            return [
-                'success' => true,
-                'message' => "팩스가 {$this->formatFaxNumber($targetFaxNumber)}로 발송 요청되었습니다.",
-                'fax_number' => $targetFaxNumber,
-                'reference_id' => (string) $batchId,
-                'sent_at' => now()->toDateTimeString(),
-            ];
-
-        } catch (\Exception $e) {
-            DB::rollBack();
-
-            // 실패 시 복사한 파일 정리
-            if (file_exists($sendDocFullPath)) {
-                @unlink($sendDocFullPath);
-            }
-
-            Log::error('FaxClientNC: 팩스 발송 요청 실패', [
+            Log::error('BizMoaShot: S3 PDF 다운로드 실패', [
                 'claim_id' => $claim->claim_id,
                 'error' => $e->getMessage(),
             ]);
-
-            return [
-                'success' => false,
-                'message' => '팩스 발송 요청 중 오류가 발생했습니다: ' . $e->getMessage(),
-            ];
+            return ['success' => false, 'message' => '팩스 발송 파일 준비에 실패했습니다.'];
         }
+
+        return $this->sendFaxViaBizmoa($claim, $pdfContent, $targetFaxNumber, $insuranceCompany->company_name);
     }
 
     /**
-     * 팩스 발송 (PDF 바이너리 직접 전달 방식 — 병합 PDF용)
+     * 팩스 발송 (PDF 바이너리 직접 전달 — 병합 PDF용)
      */
     public function sendFaxWithContent(InsuranceClaim $claim, string $pdfBinary, ?string $faxNumber = null): array
     {
@@ -177,101 +70,98 @@ class FaxService
         $targetFaxNumber = $faxNumber ?? $insuranceCompany->fax_number;
 
         if (!$targetFaxNumber) {
-            return [
-                'success' => false,
-                'message' => '팩스 번호가 없습니다.',
-            ];
+            return ['success' => false, 'message' => '팩스 번호가 없습니다.'];
         }
 
         $targetFaxNumber = preg_replace('/[^0-9]/', '', $targetFaxNumber);
 
-        // 병합 PDF → TIFF 변환 → FaxClientNC SendDoc 디렉토리에 저장
+        return $this->sendFaxViaBizmoa($claim, $pdfBinary, $targetFaxNumber, $insuranceCompany->company_name);
+    }
+
+    /**
+     * 비즈모아샷 URL연동 팩스 발송
+     */
+    private function sendFaxViaBizmoa(InsuranceClaim $claim, string $pdfBinary, string $toNumber, string $receiverName): array
+    {
+        $indexCode = "claim_{$claim->claim_id}_" . time();
         $timestamp = time();
-        $pdfTempPath = sys_get_temp_dir() . "/claim_{$claim->claim_id}_merged_{$timestamp}.pdf";
+        $fileName = "claim_{$claim->claim_id}_{$timestamp}.pdf";
+
+        // 1. FTP로 PDF 업로드
+        $ftpResult = $this->uploadToFtp($fileName, $pdfBinary);
+        if (!$ftpResult) {
+            return ['success' => false, 'message' => 'FTP 파일 업로드에 실패했습니다.'];
+        }
+
+        // 2. 비즈모아샷 API 호출
+        $params = [
+            'uid' => $this->uid,
+            'pwd' => $this->pwd,
+            'sendType' => '1',
+            'toNumber' => $toNumber,
+            'fromNumber' => $this->fromNumber,
+            'contType' => '1',
+            'fileName' => $fileName,
+            'title' => "Claim-{$claim->claim_id}",
+            'indexCode' => $indexCode,
+            'returnType' => '3',
+            'utfSave' => '1',
+            'nType' => '3',
+        ];
+
+        // 보안 설정 (commType=2)
+        $secCode = config('bizmoa.sec_code');
+        if ($secCode) {
+            $params['commType'] = '2';
+            $params['commCode'] = md5($this->uid . $toNumber . $secCode);
+        }
+
+        // 결과 콜백 URL
+        $returnUrl = config('bizmoa.return_url');
+        if ($returnUrl) {
+            $params['returnUrl'] = $returnUrl;
+        }
 
         try {
-            if (file_put_contents($pdfTempPath, $pdfBinary) === false) {
-                throw new \RuntimeException('PDF 임시 파일 쓰기 실패');
+            $response = Http::timeout(30)
+                ->asForm()
+                ->post($this->faxUrl, $params);
+
+            $responseBody = trim($response->body());
+
+            Log::info('BizMoaShot: 팩스 발송 요청', [
+                'claim_id' => $claim->claim_id,
+                'to_number' => $toNumber,
+                'index_code' => $indexCode,
+                'file_name' => $fileName,
+                'response' => $responseBody,
+                'status_code' => $response->status(),
+            ]);
+
+            if (str_starts_with($responseBody, 'SUCCESS')) {
+                $this->makeClaimFilesPrivate($claim);
+
+                return [
+                    'success' => true,
+                    'message' => "팩스가 {$this->formatFaxNumber($toNumber)}로 발송 요청되었습니다.",
+                    'fax_number' => $toNumber,
+                    'reference_id' => $indexCode,
+                    'sent_at' => now()->toDateTimeString(),
+                ];
             }
-        } catch (\Exception $e) {
-            Log::error('FaxClientNC: 병합 PDF 임시 저장 실패', [
+
+            Log::error('BizMoaShot: 팩스 발송 실패 응답', [
                 'claim_id' => $claim->claim_id,
-                'error' => $e->getMessage(),
+                'response' => $responseBody,
             ]);
+
             return [
                 'success' => false,
-                'message' => '팩스 발송 파일 준비에 실패했습니다.',
-            ];
-        }
-
-        $docFileName = "claim_{$claim->claim_id}_merged_{$timestamp}.tiff";
-        $sendDocFullPath = rtrim($this->sendDocPath, '/') . '/' . $docFileName;
-
-        $tiffResult = $this->convertPdfToTiff($pdfTempPath, $sendDocFullPath);
-        if (!$tiffResult) {
-            return [
-                'success' => false,
-                'message' => 'PDF를 TIFF로 변환하는 데 실패했습니다.',
-            ];
-        }
-
-        try {
-            DB::beginTransaction();
-
-            $meta = FcMetaTran::create([
-                'tr_type' => '1',
-                'tr_senddate' => now(),
-                'tr_id' => $this->relayId,
-                'tr_title' => "Claim-{$claim->claim_id}",
-                'tr_sendname' => 'MaeumOn',
-                'tr_sendfaxnum' => $this->senderFaxNumber,
-                'tr_msgcount' => 1,
-                'tr_docname' => $docFileName,
-                'tr_sendstat' => '-',
-            ]);
-
-            $batchId = $meta->tr_batchid;
-
-            FcMsgTran::create([
-                'tr_batchid' => $batchId,
-                'tr_serialno' => 1,
-                'tr_senddate' => now(),
-                'tr_name' => $insuranceCompany->company_name,
-                'tr_phone' => $targetFaxNumber,
-                'tr_sendstat' => '0',
-                'tr_rsltstat' => '-',
-            ]);
-
-            $meta->update(['tr_sendstat' => '0']);
-
-            DB::commit();
-
-            Log::info('FaxClientNC: 병합 팩스 발송 요청 등록', [
-                'claim_id' => $claim->claim_id,
-                'batch_id' => $batchId,
-                'fax_number' => $targetFaxNumber,
-                'doc_name' => $docFileName,
-                'documents_count' => $claim->documents->count(),
-            ]);
-
-            $this->makeClaimFilesPrivate($claim);
-
-            return [
-                'success' => true,
-                'message' => "팩스가 {$this->formatFaxNumber($targetFaxNumber)}로 발송 요청되었습니다.",
-                'fax_number' => $targetFaxNumber,
-                'reference_id' => (string) $batchId,
-                'sent_at' => now()->toDateTimeString(),
+                'message' => '팩스 발송 요청이 실패했습니다: ' . $responseBody,
             ];
 
         } catch (\Exception $e) {
-            DB::rollBack();
-
-            if (file_exists($sendDocFullPath)) {
-                @unlink($sendDocFullPath);
-            }
-
-            Log::error('FaxClientNC: 병합 팩스 발송 요청 실패', [
+            Log::error('BizMoaShot: 팩스 API 호출 실패', [
                 'claim_id' => $claim->claim_id,
                 'error' => $e->getMessage(),
             ]);
@@ -284,101 +174,131 @@ class FaxService
     }
 
     /**
-     * 팩스 발송 상태 확인 (FC_MSG_TRAN 조회)
+     * 비즈모아샷 FTP 서버에 파일 업로드
      */
-    public function checkFaxStatus(int $batchId): array
+    private function uploadToFtp(string $fileName, string $content): bool
     {
-        $messages = FcMsgTran::where('tr_batchid', $batchId)->get();
+        $host = config('bizmoa.ftp_host');
+        $port = (int) config('bizmoa.ftp_port', 21);
+        $user = config('bizmoa.ftp_user');
+        $pass = config('bizmoa.ftp_pass');
 
-        if ($messages->isEmpty()) {
-            return [
-                'success' => false,
-                'message' => '팩스 발송 정보를 찾을 수 없습니다.',
-            ];
+        if (!$host || !$user) {
+            Log::error('BizMoaShot: FTP 설정이 없습니다.');
+            return false;
         }
 
-        $meta = FcMetaTran::find($batchId);
-
-        $items = [];
-        foreach ($messages as $msg) {
-            $items[] = [
-                'serial_no' => $msg->tr_serialno,
-                'receiver_name' => $msg->tr_name,
-                'receiver_fax' => $msg->tr_phone,
-                'send_stat' => $msg->tr_sendstat,
-                'result_stat' => $msg->tr_rsltstat,
-                'result_message' => $this->getResultMessage($msg->tr_rsltstat),
-                'send_time' => $msg->tr_sendtime,
-                'recv_time' => $msg->tr_recvtime,
-                'page_count' => $msg->tr_pagecnt,
-            ];
-        }
-
-        return [
-            'success' => true,
-            'batch_id' => $batchId,
-            'meta_status' => $meta?->tr_sendstat,
-            'items' => $items,
-        ];
-    }
-
-    /**
-     * LG U+ 결과코드 → 한글 메시지 변환
-     */
-    public function getResultMessage(string $code): string
-    {
-        if ($code === '-') {
-            return '결과 대기중';
-        }
-
-        $resultCodes = config('webfax.result_codes', []);
-
-        return $resultCodes[$code] ?? "알 수 없는 결과 (코드: {$code})";
-    }
-
-    /**
-     * PDF → 멀티페이지 TIFF 변환 (pdftoppm + tiffcp)
-     */
-    private function convertPdfToTiff(string $pdfPath, string $tiffOutputPath): bool
-    {
         try {
-            $cmd = sprintf(
-                '/usr/bin/gs -dNOPAUSE -dBATCH -dQUIET -sDEVICE=tiffg4 -r200 -sOutputFile=%s %s 2>&1',
-                escapeshellarg($tiffOutputPath),
-                escapeshellarg($pdfPath)
-            );
-            exec($cmd, $output, $returnCode);
-
-            if ($returnCode !== 0) {
-                throw new \RuntimeException('Ghostscript 변환 실패: ' . implode("\n", $output));
+            $ftp = ftp_connect($host, $port, 30);
+            if (!$ftp) {
+                throw new \RuntimeException("FTP 연결 실패: {$host}:{$port}");
             }
 
-            if (!file_exists($tiffOutputPath) || filesize($tiffOutputPath) === 0) {
-                throw new \RuntimeException('TIFF 파일 생성 실패');
+            if (!ftp_login($ftp, $user, $pass)) {
+                ftp_close($ftp);
+                throw new \RuntimeException('FTP 로그인 실패');
             }
 
-            Log::info('PDF → TIFF 변환 완료 (Ghostscript G4)', [
-                'size' => round(filesize($tiffOutputPath) / 1024) . 'KB',
-                'output' => $tiffOutputPath,
+            ftp_pasv($ftp, true);
+
+            $tmpFile = tempnam(sys_get_temp_dir(), 'bizmoa_');
+            file_put_contents($tmpFile, $content);
+
+            $result = ftp_put($ftp, $fileName, $tmpFile, FTP_BINARY);
+
+            @unlink($tmpFile);
+            ftp_close($ftp);
+
+            if (!$result) {
+                throw new \RuntimeException('FTP 파일 업로드 실패');
+            }
+
+            Log::info('BizMoaShot: FTP 업로드 완료', [
+                'file' => $fileName,
+                'size' => round(strlen($content) / 1024) . 'KB',
             ]);
 
             return true;
 
         } catch (\Exception $e) {
-            Log::error('PDF → TIFF 변환 실패', [
-                'pdf' => $pdfPath,
+            Log::error('BizMoaShot: FTP 업로드 실패', [
+                'file' => $fileName,
                 'error' => $e->getMessage(),
             ]);
             return false;
-
-        } finally {
-            @unlink($pdfPath);
         }
     }
 
     /**
-     * 팩스번호 포맷팅
+     * 팩스 발송 결과 콜백 처리 (비즈모아샷 → 우리 서버)
      */
+    public function handleCallback(array $params): void
+    {
+        $data = $params['data'] ?? null;
+
+        if (!$data) {
+            Log::warning('BizMoaShot callback: data 파라미터 없음', $params);
+            return;
+        }
+
+        // data 형식: "indexCode,resultCode"
+        $parts = explode(',', $data);
+        $indexCode = $parts[0] ?? '';
+        $resultCode = $parts[1] ?? '';
+
+        if (!$indexCode) {
+            Log::warning('BizMoaShot callback: indexCode 없음', $params);
+            return;
+        }
+
+        $claim = InsuranceClaim::where('fax_batch_id', $indexCode)->first();
+
+        if (!$claim) {
+            Log::warning('BizMoaShot callback: 청구 건 없음', [
+                'index_code' => $indexCode,
+                'result_code' => $resultCode,
+            ]);
+            return;
+        }
+
+        if ($resultCode === '1') {
+            $claim->update([
+                'fax_status' => 'sent',
+                'fax_result_code' => $resultCode,
+                'claim_status' => 'processing',
+            ]);
+        } else {
+            $claim->update([
+                'fax_status' => 'failed',
+                'fax_result_code' => $resultCode,
+            ]);
+        }
+
+        Log::info('BizMoaShot callback: 팩스 결과 수신', [
+            'claim_id' => $claim->claim_id,
+            'index_code' => $indexCode,
+            'result_code' => $resultCode,
+            'result_message' => $this->getResultMessage($resultCode),
+            'send_start' => $params['Send_start'] ?? null,
+            'send_end' => $params['Send_end'] ?? null,
+            'page' => $params['page'] ?? null,
+        ]);
+    }
+
+    /**
+     * 팩스 발송 결과코드 → 한글 메시지
+     */
+    public function getResultMessage(string $code): string
+    {
+        if ($code === '' || $code === '-') {
+            return '결과 대기중';
+        }
+
+        $resultCodes = config('bizmoa.fax_result_codes', []);
+
+        return $resultCodes[$code] ?? "알 수 없는 결과 (코드: {$code})";
+    }
+
     private function formatFaxNumber(string $number): string
     {
         $number = preg_replace('/[^0-9]/', '', $number);
@@ -397,10 +317,6 @@ class FaxService
         return $number;
     }
 
-    /**
-     * S3 파일 접근 제어 (BucketOwnerEnforced - ACL 비활성 버킷)
-     * 파일은 기본적으로 private이며, pre-signed URL로 접근
-     */
     private function makeClaimFilesPrivate(InsuranceClaim $claim): void
     {
         // BucketOwnerEnforced 정책: ACL 사용 불가

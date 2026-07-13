@@ -414,7 +414,7 @@ class AgentClaimController extends Controller
     }
 
     /**
-     * 팩스 발송 상태 새로고침 (FC 테이블 즉시 조회)
+     * 팩스 발송 상태 조회 (비즈모아샷 콜백 결과 기반)
      */
     public function refreshFaxStatus(Request $request, int $id): JsonResponse
     {
@@ -428,45 +428,14 @@ class AgentClaimController extends Controller
             ], 400);
         }
 
-        $batchId = (int) $claim->fax_batch_id;
-        $msg = \App\Models\FcMsgTran::where('tr_batchid', $batchId)
-            ->where('tr_serialno', 1)
-            ->first();
-
-        if (!$msg) {
-            return response()->json([
-                'success' => true,
-                'data' => ['fax_status' => $claim->fax_status, 'result_message' => '발송 정보 조회 중'],
-            ]);
-        }
-
-        $sendStat = trim($msg->tr_sendstat);
-        $resultStat = trim($msg->tr_rsltstat ?? '');
-        $updated = false;
-
-        if ($sendStat === '1' && $claim->fax_status === 'pending') {
-            $claim->update(['fax_status' => 'sending']);
-            $updated = true;
-        } elseif ($sendStat === '2') {
-            if ($resultStat === '0') {
-                $claim->update(['fax_status' => 'sent', 'fax_result_code' => $resultStat]);
-                $updated = true;
-            } elseif ($resultStat !== '-' && $resultStat !== '') {
-                $claim->update(['fax_status' => 'failed', 'fax_result_code' => $resultStat]);
-                $updated = true;
-            }
-        }
-
-        $claim->refresh();
+        $resultCode = $claim->fax_result_code ?? '';
 
         return response()->json([
             'success' => true,
             'data' => [
                 'fax_status' => $claim->fax_status,
-                'result_message' => $this->faxService->getResultMessage($resultStat ?: '-'),
-                'send_stat' => $sendStat,
-                'result_stat' => $resultStat,
-                'updated' => $updated,
+                'result_message' => $this->faxService->getResultMessage($resultCode ?: '-'),
+                'result_code' => $resultCode,
             ],
         ]);
     }
