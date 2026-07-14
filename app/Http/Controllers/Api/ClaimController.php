@@ -530,20 +530,25 @@ class ClaimController extends Controller
     /**
      * 관리자: 청구 상세
      */
-    public function adminShow(int $id): JsonResponse
+    public function adminShow(int $id, FaxService $faxService): JsonResponse
     {
         $claim = InsuranceClaim::with([
             'customer:customer_id,name,phone,email',
             'agent:agent_id,name,phone',
             'claimForm:claim_form_id,form_name,company_id',
-            'claimForm.insuranceCompany:company_id,company_name,company_code',
+            'claimForm.insuranceCompany:company_id,company_name,company_code,fax_number',
             'fieldValues.formField:form_field_id,field_name,field_label,field_type,standard_field_code',
             'documents',
         ])->findOrFail($id);
 
+        $data = $claim->toArray();
+        if ($claim->fax_result_code) {
+            $data['fax_result_message'] = $faxService->getResultMessage($claim->fax_result_code);
+        }
+
         return response()->json([
             'success' => true,
-            'data' => $claim,
+            'data' => $data,
         ]);
     }
 
