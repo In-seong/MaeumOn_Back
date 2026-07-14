@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\InsuranceClaim;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Support\Facades\Storage;
+use Intervention\Image\Laravel\Facades\Image;
 
 class PdfGeneratorService
 {
@@ -106,17 +107,17 @@ class PdfGeneratorService
             $imagesHtml .= "<div {$pageBreak}><img src=\"{$imageBase64}\" class=\"claim-image\"></div>";
         }
 
-        // 3. 첨부파일 이미지 추가 (각각 새 페이지)
+        // 3. 첨부파일 이미지 추가 (각각 새 페이지) — 팩스 용량 최적화 적용
         $claim->load('documents');
 
         foreach ($claim->documents as $doc) {
             $mimeType = $this->guessMimeType($doc->document_file_name);
 
-            // 이미지 파일만 PDF에 추가 (PDF 첨부는 건너뜀)
             if (str_starts_with($mimeType, 'image/')) {
                 try {
                     $fileContent = Storage::disk('s3')->get($doc->document_file_url);
-                    $base64 = 'data:' . $mimeType . ';base64,' . base64_encode($fileContent);
+                    $optimized = $this->optimizeAttachmentForFax($fileContent);
+                    $base64 = 'data:image/jpeg;base64,' . base64_encode($optimized);
                     $imagesHtml .= "<div style=\"page-break-before: always;\"><img src=\"{$base64}\" class=\"claim-image\"></div>";
                 } catch (\Exception $e) {
                     // 첨부파일 로드 실패 시 건너뜀
@@ -134,6 +135,24 @@ class PdfGeneratorService
             ]);
 
         return $pdf->output();
+    }
+
+    /**
+     * 첨부파일 이미지를 팩스 전송에 적합한 크기로 최적화
+     * 비즈모아샷 과금: 100KB/장 초과 시 100KB당 1장 요금 → 페이지당 100KB 이하 목표
+     */
+    private function optimizeAttachmentForFax(string $fileContent): string
+    {
+        $image = Image::read($fileContent);
+
+        $maxWidth = 1728;
+        $maxHeight = 2333;
+
+        if ($image->width() > $maxWidth || $image->height() > $maxHeight) {
+            $image->scaleDown(width: $maxWidth, height: $maxHeight);
+        }
+
+        return $image->toJpeg(quality: 60)->toString();
     }
 
     /**
