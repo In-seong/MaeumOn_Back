@@ -73,7 +73,7 @@ class AgentBatchClaimController extends Controller
                 'claims' => function ($q) {
                     $q->with([
                         'claimForm:claim_form_id,form_name,company_id',
-                        'claimForm.insuranceCompany:company_id,company_name,fax_number',
+                        'claimForm.insuranceCompany:company_id,company_name,fax_number,contact_phone',
                         'fieldValues.formField:form_field_id,field_name,field_label,field_type,standard_field_code',
                         'documents',
                     ]);

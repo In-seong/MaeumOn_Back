@@ -118,7 +118,7 @@ class AgentClaimController extends Controller
             ->with([
                 'customer:customer_id,name,phone',
                 'claimForm:claim_form_id,form_name,company_id',
-                'claimForm.insuranceCompany:company_id,company_name',
+                'claimForm.insuranceCompany:company_id,company_name,fax_number,contact_phone',
                 'fieldValues.formField:form_field_id,field_name,field_label,field_type',
                 'documents',
             ])->findOrFail($id);
