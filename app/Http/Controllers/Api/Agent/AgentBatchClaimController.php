@@ -94,7 +94,7 @@ class AgentBatchClaimController extends Controller
         $agentId = $request->user()->agent->agent_id;
 
         $validated = $request->validate([
-            'customer_id' => 'required|string|exists:customer,customer_id',
+            'customer_id' => 'nullable|string|exists:customer,customer_id',
             'claims' => 'required|array|min:1',
             'claims.*.claim_form_id' => 'required|integer|exists:claim_form,claim_form_id',
             'claims.*.fields' => 'required|array',
@@ -107,9 +107,12 @@ class AgentBatchClaimController extends Controller
         ]);
 
         // 고객 검증
-        $customer = Customer::where('agent_id', $agentId)
-            ->where('customer_id', $validated['customer_id'])
-            ->firstOrFail();
+        $customer = null;
+        if (!empty($validated['customer_id'])) {
+            $customer = Customer::where('agent_id', $agentId)
+                ->where('customer_id', $validated['customer_id'])
+                ->firstOrFail();
+        }
 
         // 보험사 중복 체크
         $companyIds = [];
@@ -148,8 +151,9 @@ class AgentBatchClaimController extends Controller
         DB::beginTransaction();
         try {
             // 배치 생성
+            $customerId = $customer?->customer_id;
             $batch = BatchClaim::create([
-                'customer_id' => $customer->customer_id,
+                'customer_id' => $customerId,
                 'agent_id' => $agentId,
                 'batch_status' => BatchClaim::STATUS_PENDING,
                 'total_count' => count($validated['claims']),
@@ -164,7 +168,7 @@ class AgentBatchClaimController extends Controller
                 $claimNumber = 'CLM-' . now()->format('Ymd') . '-' . substr((string) time(), -4) . str_pad((string) random_int(0, 999), 3, '0', STR_PAD_LEFT);
 
                 $claim = InsuranceClaim::create([
-                    'customer_id' => $customer->customer_id,
+                    'customer_id' => $customerId,
                     'batch_claim_id' => $batch->batch_claim_id,
                     'company_id' => $claimForm->company_id,
                     'agent_id' => $agentId,
