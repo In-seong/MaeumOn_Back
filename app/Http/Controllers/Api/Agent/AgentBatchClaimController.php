@@ -95,7 +95,7 @@ class AgentBatchClaimController extends Controller
 
         $validated = $request->validate([
             'customer_id' => 'required|string|exists:customer,customer_id',
-            'claims' => 'required|array|min:1|max:5',
+            'claims' => 'required|array|min:1',
             'claims.*.claim_form_id' => 'required|integer|exists:claim_form,claim_form_id',
             'claims.*.fields' => 'required|array',
             'claims.*.fields.*.form_field_id' => 'required|integer|exists:form_field,form_field_id',
@@ -245,7 +245,7 @@ class AgentBatchClaimController extends Controller
 
         $validated = $request->validate([
             'customer_id' => 'nullable|string',
-            'claims' => 'required|array|min:1|max:5',
+            'claims' => 'required|array|min:1',
             'claims.*.claim_form_id' => 'required|integer|exists:claim_form,claim_form_id',
             'claims.*.fields' => 'required|array',
             'claims.*.fields.*.form_field_id' => 'required|integer|exists:form_field,form_field_id',
@@ -340,7 +340,7 @@ class AgentBatchClaimController extends Controller
 
         $validated = $request->validate([
             'customer_id' => 'nullable|string',
-            'claims' => 'required|array|min:1|max:5',
+            'claims' => 'required|array|min:1',
             'claims.*.claim_form_id' => 'required|integer|exists:claim_form,claim_form_id',
             'claims.*.fields' => 'required|array',
             'claims.*.fields.*.form_field_id' => 'required|integer|exists:form_field,form_field_id',
