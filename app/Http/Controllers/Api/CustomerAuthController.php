@@ -46,9 +46,9 @@ class CustomerAuthController extends Controller
     }
 
     /**
-     * Step 2: OTP 검증
-     * - 기존 회원: { is_new: false, has_pin: true/false }
-     * - 신규 회원: { is_new: true }
+     * Step 2: OTP 검증 + 기존 회원 자동 로그인
+     * - 기존 회원(account 있음): 토큰 발급하여 바로 로그인
+     * - 신규/미연결 회원: { is_new: true } → 회원가입 필요
      */
     public function verifyOtp(Request $request): JsonResponse
     {
@@ -64,50 +64,62 @@ class CustomerAuthController extends Controller
             ], 422);
         }
 
-        // 고객 조회
         $customer = Customer::where('phone', $request->phone)->first();
 
-        if (!$customer) {
+        // 기존 회원 (account 연결됨) → 바로 로그인
+        if ($customer && $customer->account_id) {
+            $account = $customer->account;
+
+            if (!$account || !$account->is_active) {
+                return response()->json([
+                    'success' => false,
+                    'message' => '비활성화된 계정입니다.',
+                ], 401);
+            }
+
+            $account->tokens()->delete();
+            $token = $account->createToken('customer-auth')->plainTextToken;
+            $account->update(['last_login_at' => now()]);
+            $account->load('customer');
+
             return response()->json([
                 'success' => true,
                 'data' => [
-                    'is_new' => true,
-                    'has_pin' => false,
-                    'phone' => $request->phone,
+                    'is_new' => false,
+                    'token' => $token,
+                    'account' => $account,
                 ],
-                'message' => '인증 성공. 신규 회원입니다.',
+                'message' => '로그인 성공.',
             ]);
         }
 
-        $account = $customer->account;
-        $hasPin = !empty($account->pin_hash);
-
+        // 신규 또는 설계사가 등록한 미연결 고객 → 회원가입 필요
         return response()->json([
             'success' => true,
             'data' => [
-                'is_new' => false,
-                'has_pin' => $hasPin,
+                'is_new' => true,
                 'phone' => $request->phone,
-                'customer_name' => $customer->name,
             ],
-            'message' => '인증 성공.',
+            'message' => '인증 성공. 회원가입을 진행해주세요.',
         ]);
     }
 
     /**
-     * Step 3-A: 신규 회원 등록 + PIN 설정 + 디바이스 등록
+     * Step 3: 신규 회원 등록 (OTP 인증 후)
+     * - 기존 고객 매칭: 이름(필수) + 전화번호 OR 주민등록번호
+     * - 매칭 시 기존 Customer에 account_id 연결
+     * - 미매칭 시 새 Customer 생성
      */
     public function register(Request $request): JsonResponse
     {
         $request->validate([
             'phone' => 'required|string|regex:/^01[0-9]{8,9}$/',
             'name' => 'required|string|max:100',
-            'pin' => 'required|string|size:6|regex:/^[0-9]{6}$/',
-            'device_uuid' => 'required|string|max:100',
-            'device_name' => 'nullable|string|max:100',
+            'resident_number' => 'required|string|max:20',
+            'telecom' => 'required|string|max:20',
+            'address' => 'required|string|max:500',
         ]);
 
-        // OTP 인증 완료 여부 확인
         if (!$this->otpService->isVerified($request->phone)) {
             return response()->json([
                 'success' => false,
@@ -115,56 +127,64 @@ class CustomerAuthController extends Controller
             ], 403);
         }
 
-        // 이미 등록된 번호인지 확인
-        if (Customer::where('phone', $request->phone)->exists()) {
+        // 이미 가입된 전화번호 확인 (account 연결된 고객)
+        $existing = Customer::where('phone', $request->phone)
+            ->whereNotNull('account_id')
+            ->first();
+        if ($existing) {
             return response()->json([
                 'success' => false,
-                'message' => '이미 등록된 전화번호입니다.',
+                'message' => '이미 가입된 전화번호입니다.',
             ], 409);
         }
 
-        // Account 생성 (username = phone)
+        // 기존 고객 매칭: 이름 + (전화번호 OR 주민등록번호)
+        $matched = $this->findMatchingCustomer(
+            $request->name,
+            $request->phone,
+            $request->resident_number
+        );
+
         $account = Account::create([
             'username' => $request->phone,
-            'password_hash' => Hash::make(Str::random(32)), // 임의 비밀번호 (사용 안 함)
-            'pin_hash' => Hash::make($request->pin),
+            'password_hash' => Hash::make(Str::random(32)),
             'role' => Account::ROLE_CUSTOMER,
             'is_active' => true,
         ]);
 
-        // Customer ID 생성 (C + 7자리)
-        $lastCustomer = Customer::where('customer_id', 'like', 'C%')
-            ->orderByRaw('CAST(SUBSTRING(customer_id, 2) AS UNSIGNED) DESC')
-            ->first();
-        $nextNum = $lastCustomer
-            ? (int) substr($lastCustomer->customer_id, 1) + 1
-            : 1;
-        $customerId = 'C' . str_pad((string) $nextNum, 7, '0', STR_PAD_LEFT);
+        if ($matched) {
+            // 기존 고객에 account 연결 + 정보 업데이트
+            $matched->update([
+                'account_id' => $account->account_id,
+                'phone' => $request->phone,
+                'resident_number' => $request->resident_number,
+                'telecom' => $request->telecom,
+                'address' => $request->address,
+            ]);
+        } else {
+            // 새 Customer 생성
+            $lastCustomer = Customer::where('customer_id', 'like', 'C%')
+                ->orderByRaw('CAST(SUBSTRING(customer_id, 2) AS UNSIGNED) DESC')
+                ->first();
+            $nextNum = $lastCustomer
+                ? (int) substr($lastCustomer->customer_id, 1) + 1
+                : 1;
+            $customerId = 'C' . str_pad((string) $nextNum, 7, '0', STR_PAD_LEFT);
 
-        // Customer 생성
-        Customer::create([
-            'customer_id' => $customerId,
-            'account_id' => $account->account_id,
-            'name' => $request->name,
-            'phone' => $request->phone,
-            'is_active' => true,
-        ]);
+            Customer::create([
+                'customer_id' => $customerId,
+                'account_id' => $account->account_id,
+                'name' => $request->name,
+                'phone' => $request->phone,
+                'resident_number' => $request->resident_number,
+                'telecom' => $request->telecom,
+                'address' => $request->address,
+                'is_active' => true,
+            ]);
+        }
 
-        // 디바이스 토큰 등록
-        $deviceTokenPlain = Str::random(64);
-        DeviceToken::create([
-            'account_id' => $account->account_id,
-            'device_uuid' => $request->device_uuid,
-            'token_hash' => Hash::make($deviceTokenPlain),
-            'device_name' => $request->device_name,
-            'is_active' => true,
-            'last_used_at' => now(),
-        ]);
-
-        // OTP 인증 플래그 소모
         $this->otpService->consumeVerification($request->phone);
 
-        // Sanctum 토큰 발급
         $token = $account->createToken('customer-auth')->plainTextToken;
         $account->load('customer');
 
@@ -173,10 +193,47 @@ class CustomerAuthController extends Controller
             'data' => [
                 'account' => $account,
                 'token' => $token,
-                'device_token' => $deviceTokenPlain,
             ],
-            'message' => '회원가입이 완료되었습니다.',
+            'message' => $matched
+                ? '기존 고객 정보와 연결되었습니다.'
+                : '회원가입이 완료되었습니다.',
         ], 201);
+    }
+
+    /**
+     * 기존 고객 매칭: 이름(필수) + 전화번호 OR 주민등록번호
+     */
+    private function findMatchingCustomer(string $name, string $phone, string $residentNumber): ?Customer
+    {
+        // 1) 이름 + 전화번호 매칭
+        $matched = Customer::where('name', $name)
+            ->where('phone', $phone)
+            ->whereNull('account_id')
+            ->first();
+        if ($matched) {
+            return $matched;
+        }
+
+        // 2) 이름 + 주민등록번호 매칭 (암호화 컬럼이라 복호화 후 비교)
+        $cleanInput = preg_replace('/\D/', '', $residentNumber);
+        if (!$cleanInput) {
+            return null;
+        }
+
+        $candidates = Customer::where('name', $name)
+            ->whereNull('account_id')
+            ->whereNotNull('resident_number')
+            ->where('resident_number', '!=', '')
+            ->get();
+
+        foreach ($candidates as $candidate) {
+            $cleanStored = preg_replace('/\D/', '', $candidate->resident_number ?? '');
+            if ($cleanStored && $cleanInput === $cleanStored) {
+                return $candidate;
+            }
+        }
+
+        return null;
     }
 
     /**
