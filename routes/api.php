@@ -56,6 +56,7 @@ use App\Http\Controllers\Api\HospitalPortalController;
 use App\Http\Controllers\Api\Admin\AdminHospitalController;
 use App\Http\Controllers\Api\Admin\AdminHealthCenterController;
 use App\Http\Controllers\Api\Admin\AdminClaimRequestController;
+use App\Http\Controllers\Api\Admin\AdminSettingController;
 use App\Http\Controllers\Api\Admin\AdminReservationController;
 use App\Http\Controllers\Api\Admin\AdminBannerController;
 use App\Http\Controllers\Api\FaxCallbackController;
@@ -268,6 +269,10 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/codef-billing/summary', [AdminCodefBillingController::class, 'monthlySummary']);
         Route::get('/codef-billing/logs', [AdminCodefBillingController::class, 'logs']);
         Route::post('/codef-billing/mark-billed', [AdminCodefBillingController::class, 'markBilled']);
+
+        // 사이트 설정
+        Route::get('/settings', [AdminSettingController::class, 'index']);
+        Route::put('/settings', [AdminSettingController::class, 'update']);
     });
 
     // 설계사 API
