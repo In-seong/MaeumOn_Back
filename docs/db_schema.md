@@ -1,8 +1,8 @@
 # MaeumOn DB 스키마 (운영 기준)
 
-> **최종 업데이트**: 2026-07-04
+> **최종 업데이트**: 2026-07-27
 > **DB**: MySQL (MariaDB)
-> **총 테이블**: 61개 (비즈니스 53개 + Laravel 시스템 8개)
+> **총 테이블**: 62개 (비즈니스 54개 + Laravel 시스템 8개)
 
 ---
 
@@ -23,6 +23,7 @@
 12. [팩스](#12-팩스-faxclientnc) — FC_META_TRAN, FC_MSG_TRAN, FC_RECV_TRAN
 15. [개인정보 로그](#15-개인정보-로그) — pii_logs
 16. [CODEF API 사용 로그](#16-codef-api-사용-로그) — codef_api_logs
+17. [사이트 설정](#17-사이트-설정) — site_settings
 13. [Laravel 시스템](#13-laravel-시스템-테이블) — sessions, cache, jobs 등
 
 ---
@@ -1302,3 +1303,22 @@ FaxClientNC 연동용 테이블. **테이블명 반드시 대문자 유지**.
 | updated_at | timestamp | YES | | NULL | |
 
 **인덱스**: `billing_month` + `agent_id` (월별 설계사 조회), `status` (성공 건만 정산), `api_type`
+
+---
+
+## 17. 사이트 설정
+
+### site_settings
+> 시스템 운영 설정값을 key-value로 관리. Model: `SiteSetting` ✅
+
+| 컬럼 | 타입 | Null | Key | 기본값 | 설명 |
+|------|------|------|-----|--------|------|
+| id | bigint unsigned | NO | PRI | auto_increment | |
+| key | varchar(100) | NO | UNI | | 설정 키 (예: codef_unit_price) |
+| value | varchar(500) | NO | | '' | 설정 값 |
+| label | varchar(200) | YES | | NULL | 관리자 표시용 라벨 |
+| type | varchar(50) | YES | | 'text' | 입력 타입 (text, number 등) |
+| created_at | timestamp | YES | | CURRENT_TIMESTAMP | |
+| updated_at | timestamp | YES | | CURRENT_TIMESTAMP | |
+
+**초기 데이터**: `codef_unit_price` = 600 (CODEF API 건당 단가, 원)
