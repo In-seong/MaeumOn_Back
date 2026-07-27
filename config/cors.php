@@ -33,6 +33,8 @@ return [
         'https://user.bohumon.co.kr',
         'https://agent.bohumon.co.kr',
         'https://admin.bohumon.co.kr',
+        'https://www.kbiz-finance.com',
+        'https://kbiz-finance.com',
     ],
 
     'allowed_origins_patterns' => [],

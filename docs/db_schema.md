@@ -2,7 +2,7 @@
 
 > **최종 업데이트**: 2026-07-27
 > **DB**: MySQL (MariaDB)
-> **총 테이블**: 62개 (비즈니스 54개 + Laravel 시스템 8개)
+> **총 테이블**: 63개 (비즈니스 55개 + Laravel 시스템 8개)
 
 ---
 
@@ -1322,3 +1322,30 @@ FaxClientNC 연동용 테이블. **테이블명 반드시 대문자 유지**.
 | updated_at | timestamp | YES | | CURRENT_TIMESTAMP | |
 
 **초기 데이터**: `codef_unit_price` = 600 (CODEF API 건당 단가, 원)
+
+---
+
+## 18. 기업용 보험 문의
+
+### corporate_inquiries
+> 외부 사이트(kbiz-finance.com)에서 접수된 기업용 보험 상담 문의. Model: `CorporateInquiry` ✅
+
+| 컬럼 | 타입 | Null | Key | 기본값 | 설명 |
+|------|------|------|-----|--------|------|
+| id | bigint unsigned | NO | PRI | auto_increment | |
+| company_name | varchar(100) | NO | | | 업체명 |
+| address | varchar(255) | YES | | NULL | 주소 |
+| ceo_name | varchar(50) | NO | | | 대표자명 |
+| phone | varchar(20) | NO | | | 연락처 (010-0000-0000) |
+| annual_revenue | varchar(20) | YES | | NULL | 연매출 (4억 미만/4~10억/10~30억/30억 이상) |
+| industry | varchar(20) | YES | | NULL | 업종 (제조업/도소매업/서비스업/음식점업/기타) |
+| consultation_field | varchar(30) | YES | | NULL | 상담분야 (운영자금/시설자금/특허 및 인증/증여·상속·가업승계/기타) |
+| privacy_agreed | tinyint(1) | NO | | 1 | 개인정보 동의 여부 |
+| status | varchar(20) | NO | MUL | NEW | 상태 (NEW/IN_PROGRESS/COMPLETED) |
+| agent_id | char(8) | YES | MUL | NULL | 배분된 설계사 ID |
+| assigned_at | timestamp | YES | | NULL | 배분 일시 |
+| notes | text | YES | | NULL | 관리자 메모 |
+| created_at | timestamp | YES | | NULL | |
+| updated_at | timestamp | YES | | NULL | |
+
+**인덱스**: `status`, `agent_id`, `created_at`

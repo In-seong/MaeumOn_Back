@@ -59,6 +59,8 @@ use App\Http\Controllers\Api\Admin\AdminClaimRequestController;
 use App\Http\Controllers\Api\Admin\AdminSettingController;
 use App\Http\Controllers\Api\Admin\AdminReservationController;
 use App\Http\Controllers\Api\Admin\AdminBannerController;
+use App\Http\Controllers\Api\CorporateInquiryController;
+use App\Http\Controllers\Api\Admin\AdminCorporateInquiryController;
 use App\Http\Controllers\Api\FaxCallbackController;
 
 /*
@@ -141,6 +143,13 @@ Route::prefix('hospital-portal')->group(function () {
     Route::get('/schedule', [HospitalPortalController::class, 'getSchedule']);
     Route::put('/schedule', [HospitalPortalController::class, 'updateSchedule']);
     Route::post('/image', [HospitalPortalController::class, 'uploadImage']);
+});
+
+// 외부 API — 기업용 보험 문의 (API 키 인증)
+Route::prefix('corporate-inquiries')->middleware('api-key')->group(function () {
+    Route::post('/', [CorporateInquiryController::class, 'store']);
+    Route::get('/', [CorporateInquiryController::class, 'index']);
+    Route::get('/{id}', [CorporateInquiryController::class, 'show']);
 });
 
 // 인증 필요 API
@@ -269,6 +278,13 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/codef-billing/summary', [AdminCodefBillingController::class, 'monthlySummary']);
         Route::get('/codef-billing/logs', [AdminCodefBillingController::class, 'logs']);
         Route::post('/codef-billing/mark-billed', [AdminCodefBillingController::class, 'markBilled']);
+
+        // 기업용 보험 문의 관리
+        Route::get('/corporate-inquiries', [AdminCorporateInquiryController::class, 'index']);
+        Route::get('/corporate-inquiries/unassigned', [AdminCorporateInquiryController::class, 'unassigned']);
+        Route::get('/corporate-inquiries/{id}', [AdminCorporateInquiryController::class, 'show']);
+        Route::put('/corporate-inquiries/{id}', [AdminCorporateInquiryController::class, 'update']);
+        Route::post('/corporate-inquiries/assign', [AdminCorporateInquiryController::class, 'assign']);
 
         // 사이트 설정
         Route::get('/settings', [AdminSettingController::class, 'index']);

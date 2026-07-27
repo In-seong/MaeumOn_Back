@@ -17,6 +17,7 @@ return Application::configure(basePath: dirname(__DIR__))
         // 미들웨어 alias 등록
         $middleware->alias([
             'role' => \App\Http\Middleware\CheckRole::class,
+            'api-key' => \App\Http\Middleware\CheckApiKey::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
