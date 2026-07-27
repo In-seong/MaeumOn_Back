@@ -301,7 +301,7 @@ class AgentCodefController extends Controller
 
         $validated = $request->validate([
             'loginTypeLevel' => 'required|string|in:1,3,4,5,6,7,8,10',
-            'telecom' => 'required|string|in:0,1,2',
+            'telecom' => 'required|string|in:0,1,2,3,4,5',
             'startDate' => 'nullable|string',
             'endDate' => 'nullable|string',
             'includeSensitive' => 'nullable|boolean',
@@ -419,7 +419,7 @@ class AgentCodefController extends Controller
 
         $validated = $request->validate([
             'loginTypeLevel' => 'required|string|in:1,3,4,5,6,7,8,10',
-            'telecom' => 'required|string|in:0,1,2',
+            'telecom' => 'required|string|in:0,1,2,3,4,5',
             'searchStartYear' => 'nullable|string|regex:/^\d{4}$/',
             'searchEndYear' => 'nullable|string|regex:/^\d{4}$/',
             'userName' => 'nullable|string',
@@ -544,7 +544,7 @@ class AgentCodefController extends Controller
 
         $validated = $request->validate([
             'loginTypeLevel' => 'required|string|in:1,3,4,5,6,7,8,10',
-            'telecom' => 'required|string|in:0,1,2',
+            'telecom' => 'required|string|in:0,1,2,3,4,5',
             'date' => 'nullable|string',
             'userName' => 'nullable|string',
             'phoneNo' => 'nullable|string',

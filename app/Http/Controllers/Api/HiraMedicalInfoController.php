@@ -57,7 +57,7 @@ class HiraMedicalInfoController extends Controller
             'userName' => 'required|string|max:50',
             'identity' => 'required|string|regex:/^\d{13}$/',
             'phoneNo' => 'required|string',
-            'telecom' => 'required|string|in:0,1,2',
+            'telecom' => 'required|string|in:0,1,2,3,4,5',
             'startDate' => 'nullable|string',
             'endDate' => 'nullable|string',
             'includeSensitive' => 'nullable|boolean',
