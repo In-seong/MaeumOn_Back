@@ -111,12 +111,29 @@ class CodefApiService
                 ];
             }
 
+            $resultCode1 = $data['result']['code'] ?? 'UNKNOWN';
+            $resultMessage1 = $data['result']['message'] ?? '';
+
             Log::info('CODEF API 응답 수신', [
                 'endpoint' => $endpoint,
                 'api_type' => $apiType,
-                'result_code' => $data['result']['code'] ?? 'UNKNOWN',
-                'result_message' => $data['result']['message'] ?? '',
+                'result_code' => $resultCode1,
+                'result_message' => $resultMessage1,
             ]);
+
+            if ($resultCode1 !== self::CODE_SUCCESS && $resultCode1 !== self::CODE_TWO_WAY) {
+                Log::error('CODEF 1-Way 에러 상세', [
+                    'endpoint' => $endpoint,
+                    'customer_id' => $customerId,
+                    'api_type' => $apiType,
+                    'result_code' => $resultCode1,
+                    'result_message' => $resultMessage1,
+                    'extra_message' => $data['result']['extraMessage'] ?? '',
+                    'response_data' => $data['data'] ?? [],
+                    'http_status' => $response->status(),
+                    'full_result' => $data['result'] ?? [],
+                ]);
+            }
 
             return $this->handleResponse($data, $customerId, $apiType);
 
@@ -267,12 +284,30 @@ class CodefApiService
                 ];
             }
 
+            $resultCode = $data['result']['code'] ?? 'UNKNOWN';
+            $resultMessage = $data['result']['message'] ?? '';
+            $extraMessage = $data['result']['extraMessage'] ?? '';
+
             Log::info('CODEF 2-Way 응답 수신', [
                 'endpoint' => $endpoint,
                 'api_type' => $apiType,
-                'result_code' => $data['result']['code'] ?? 'UNKNOWN',
-                'result_message' => $data['result']['message'] ?? '',
+                'result_code' => $resultCode,
+                'result_message' => $resultMessage,
             ]);
+
+            if ($resultCode !== self::CODE_SUCCESS && $resultCode !== self::CODE_TWO_WAY) {
+                Log::error('CODEF 2-Way 에러 상세', [
+                    'endpoint' => $endpoint,
+                    'customer_id' => $customerId,
+                    'api_type' => $apiType,
+                    'result_code' => $resultCode,
+                    'result_message' => $resultMessage,
+                    'extra_message' => $extraMessage,
+                    'response_data' => $data['data'] ?? [],
+                    'http_status' => $response->status(),
+                    'full_result' => $data['result'] ?? [],
+                ]);
+            }
 
             $result = $this->handleResponse($data, $customerId, $apiType);
 
@@ -341,6 +376,7 @@ class CodefApiService
             'message' => $resultMessage,
             'extra' => $extraMessage,
             'raw_data_keys' => is_array($responseData) ? array_keys($responseData) : 'not_array',
+            'raw_data' => is_array($responseData) ? $responseData : $responseData,
         ]);
 
         return [
