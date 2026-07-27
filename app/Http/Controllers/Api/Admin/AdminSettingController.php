@@ -24,7 +24,7 @@ class AdminSettingController extends Controller
         $validated = $request->validate([
             'settings' => 'required|array',
             'settings.*.key' => 'required|string|max:100',
-            'settings.*.value' => 'required|string|max:500',
+            'settings.*.value' => 'required|max:500',
         ]);
 
         foreach ($validated['settings'] as $item) {
