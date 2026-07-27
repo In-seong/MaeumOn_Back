@@ -296,6 +296,12 @@ class AgentCodefController extends Controller
      */
     public function fetchMedical(Request $request, string $customerId): JsonResponse
     {
+        Log::info('CODEF fetchMedical 진입', [
+            'customer_id' => $customerId,
+            'agent_id' => $request->user()?->agent?->agent_id,
+            'request_data' => $request->except(['identity']),
+        ]);
+
         $customer = $this->resolveCustomer($request, $customerId);
         $agentId = $request->user()->agent->agent_id;
 
@@ -415,6 +421,12 @@ class AgentCodefController extends Controller
      */
     public function fetchCheckup(Request $request, string $customerId): JsonResponse
     {
+        Log::info('CODEF fetchCheckup 진입', [
+            'customer_id' => $customerId,
+            'agent_id' => $request->user()?->agent?->agent_id,
+            'request_data' => $request->except(['identity']),
+        ]);
+
         $customer = $this->resolveCustomer($request, $customerId);
 
         $validated = $request->validate([
@@ -540,6 +552,12 @@ class AgentCodefController extends Controller
      */
     public function fetchHealthAge(Request $request, string $customerId): JsonResponse
     {
+        Log::info('CODEF fetchHealthAge 진입', [
+            'customer_id' => $customerId,
+            'agent_id' => $request->user()?->agent?->agent_id,
+            'request_data' => $request->except(['identity']),
+        ]);
+
         $customer = $this->resolveCustomer($request, $customerId);
 
         $validated = $request->validate([
