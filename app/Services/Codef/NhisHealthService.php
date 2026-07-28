@@ -400,7 +400,7 @@ class NhisHealthService
         $phoneNo = $data['phoneNo'] ?? $customer?->phone;
         $telecom = $data['telecom'] ?? $customer?->telecom;
 
-        if (empty($userName) || empty($birthDate) || empty($phoneNo) || empty($telecom)) {
+        if ($userName === null || $userName === '' || $birthDate === null || $birthDate === '' || $phoneNo === null || $phoneNo === '' || $telecom === null || $telecom === '') {
             throw new \RuntimeException('인증정보(이름/생년월일/전화번호/통신사)를 입력해주세요.');
         }
 

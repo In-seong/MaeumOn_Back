@@ -296,7 +296,7 @@ class HiraMedicalInfoService
         $phoneNo = $data['phoneNo'] ?? $customer?->phone;
         $telecom = $data['telecom'] ?? $customer?->telecom;
 
-        if (empty($identity) || empty($userName) || empty($phoneNo) || empty($telecom)) {
+        if ($identity === null || $identity === '' || $userName === null || $userName === '' || $phoneNo === null || $phoneNo === '' || $telecom === null || $telecom === '') {
             throw new \RuntimeException('인증정보(이름/주민번호/전화번호/통신사)를 입력해주세요.');
         }
 
