@@ -76,6 +76,41 @@ class AdminClaimRequestController extends Controller
     }
 
     /**
+     * 청구신청 대량 배정
+     */
+    public function bulkAssign(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'request_ids' => 'required|array|min:1',
+            'request_ids.*' => 'required|integer',
+            'agent_id' => 'required|string|exists:agent,agent_id',
+        ]);
+
+        $agentId = $validated['agent_id'];
+        $assignedCount = 0;
+
+        foreach ($validated['request_ids'] as $requestId) {
+            $claimRequest = ClaimRequest::where('request_id', $requestId)
+                ->where('status', 'pending')
+                ->first();
+
+            if ($claimRequest) {
+                $claimRequest->update([
+                    'assigned_agent_id' => $agentId,
+                    'status' => 'assigned',
+                ]);
+                $assignedCount++;
+            }
+        }
+
+        return response()->json([
+            'success' => true,
+            'data' => ['assigned_count' => $assignedCount],
+            'message' => "{$assignedCount}건의 청구신청이 배정되었습니다.",
+        ]);
+    }
+
+    /**
      * 상태 변경
      */
     public function updateStatus(Request $request, int $id): JsonResponse

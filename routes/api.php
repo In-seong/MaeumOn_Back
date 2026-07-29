@@ -272,6 +272,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/claim-requests', [AdminClaimRequestController::class, 'index']);
         Route::get('/claim-requests/{id}', [AdminClaimRequestController::class, 'show']);
         Route::put('/claim-requests/{id}/assign', [AdminClaimRequestController::class, 'assign']);
+        Route::post('/claim-requests/bulk-assign', [AdminClaimRequestController::class, 'bulkAssign']);
         Route::put('/claim-requests/{id}/status', [AdminClaimRequestController::class, 'updateStatus']);
 
         // CODEF API 사용량/정산
