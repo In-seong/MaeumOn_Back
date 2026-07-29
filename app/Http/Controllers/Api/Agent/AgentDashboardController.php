@@ -9,6 +9,7 @@ use App\Models\Consultation;
 use App\Models\Customer;
 use App\Models\CustomerAssignment;
 use App\Models\DisclosureObligation;
+use App\Models\ClaimRequest;
 use App\Models\InsuranceClaim;
 use App\Models\Notification;
 use Illuminate\Http\JsonResponse;
@@ -217,13 +218,41 @@ class AgentDashboardController extends Controller
             ];
         }
 
+        // 6) 청구 배정 (관리자가 배정한 청구신청)
+        $claimRequests = ClaimRequest::where('assigned_agent_id', $agentId)
+            ->where('status', 'assigned')
+            ->orderByDesc('updated_at')
+            ->limit(10)
+            ->get();
+
+        foreach ($claimRequests as $cr) {
+            $date = $cr->updated_at ? Carbon::parse($cr->updated_at)->format('m/d') : '';
+            $subtitle = $date;
+            if ($cr->phone) {
+                $subtitle .= ($subtitle ? ' · ' : '') . $cr->phone;
+            }
+
+            $tasks[] = [
+                'id' => 'claim_request_' . $cr->request_id,
+                'type' => 'claim_request',
+                'title' => $cr->name . ' 청구신청 배정',
+                'subtitle' => $subtitle,
+                'is_completed' => false,
+                'can_toggle' => false,
+                'related_id' => $cr->request_id,
+                'due_time' => null,
+                'route' => '/db-distribution',
+            ];
+        }
+
         // 시간순 정렬: due_time이 있는 것 먼저, 없는 것은 타입 우선순위
         $typePriority = [
             'obligation' => 1,
             'consultation' => 2,
-            'claim' => 3,
-            'calendar' => 4,
-            'assignment' => 5,
+            'claim_request' => 3,
+            'claim' => 4,
+            'calendar' => 5,
+            'assignment' => 6,
         ];
 
         usort($tasks, function ($a, $b) use ($typePriority) {
