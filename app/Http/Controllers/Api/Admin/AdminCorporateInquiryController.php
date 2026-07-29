@@ -104,6 +104,42 @@ class AdminCorporateInquiryController extends Controller
         ]);
     }
 
+    public function store(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'company_name' => 'required|string|max:100',
+            'address' => 'nullable|string|max:200',
+            'ceo_name' => 'required|string|max:50',
+            'phone' => 'required|string|max:20',
+            'industry' => 'nullable|string|max:50',
+            'annual_revenue' => 'nullable|string|max:50',
+            'consultation_field' => 'nullable|string|max:100',
+            'agent_id' => 'nullable|string|exists:agent,agent_id',
+        ]);
+
+        if (!empty($validated['phone'])) {
+            $validated['phone'] = preg_replace('/\D/', '', $validated['phone']);
+        }
+
+        $data = array_merge($validated, [
+            'privacy_agreed' => true,
+            'status' => 'NEW',
+        ]);
+
+        if (!empty($validated['agent_id'])) {
+            $data['assigned_at'] = now();
+            $data['status'] = 'IN_PROGRESS';
+        }
+
+        $inquiry = CorporateInquiry::create($data);
+
+        return response()->json([
+            'success' => true,
+            'data' => $inquiry->load('agent:agent_id,name,phone'),
+            'message' => '기업 문의가 등록되었습니다.',
+        ], 201);
+    }
+
     public function unassigned(Request $request): JsonResponse
     {
         $query = CorporateInquiry::whereNull('agent_id')

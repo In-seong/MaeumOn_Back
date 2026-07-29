@@ -286,6 +286,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/corporate-inquiries/{id}', [AdminCorporateInquiryController::class, 'show']);
         Route::put('/corporate-inquiries/{id}', [AdminCorporateInquiryController::class, 'update']);
         Route::post('/corporate-inquiries/assign', [AdminCorporateInquiryController::class, 'assign']);
+        Route::post('/corporate-inquiries', [AdminCorporateInquiryController::class, 'store']);
 
         // 사이트 설정
         Route::get('/settings', [AdminSettingController::class, 'index']);
