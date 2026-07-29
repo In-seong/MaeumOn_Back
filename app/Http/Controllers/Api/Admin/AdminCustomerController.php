@@ -36,6 +36,11 @@ class AdminCustomerController extends Controller
             }
         }
 
+        // 등록일 필터 (이후)
+        if ($request->has('created_after')) {
+            $query->where('created_at', '>', $request->created_after);
+        }
+
         // 활성 상태 필터
         if ($request->has('is_active')) {
             $query->where('is_active', filter_var($request->is_active, FILTER_VALIDATE_BOOLEAN));
