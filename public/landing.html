@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>보험ON - CareOn Co., Ltd.</title>
+<meta name="description" content="보험ON은 보험 청구부터 관리까지 설계사와 고객을 연결하는 디지털 보험 플랫폼입니다.">
+<style>
+*, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+:root {
+  --brand: #FF7B22;
+  --brand-light: #FFF6EF;
+  --dark: #1A1A1A;
+  --text: #444;
+  --text-light: #777;
+  --bg: #FAFAFA;
+  --card-bg: #FFF;
+  --border: #EAEAEA;
+  --footer-bg: #1A1A1A;
+  --footer-text: #AAA;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Apple SD Gothic Neo', 'Malgun Gothic', sans-serif;
+  color: var(--text);
+  background: var(--bg);
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Hero */
+.hero {
+  background: linear-gradient(135deg, var(--dark) 0%, #2A2A2A 100%);
+  color: #FFF;
+  text-align: center;
+  padding: 100px 24px 80px;
+}
+.hero-logo {
+  font-size: 42px;
+  font-weight: 800;
+  letter-spacing: -1px;
+  margin-bottom: 8px;
+}
+.hero-logo span { color: var(--brand); }
+.hero-sub {
+  font-size: 15px;
+  color: #999;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  margin-bottom: 32px;
+}
+.hero h1 {
+  font-size: 28px;
+  font-weight: 700;
+  line-height: 1.4;
+  max-width: 520px;
+  margin: 0 auto 16px;
+  text-wrap: balance;
+}
+.hero p {
+  font-size: 16px;
+  color: #BBB;
+  max-width: 480px;
+  margin: 0 auto;
+}
+
+/* Services */
+.services {
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 72px 24px;
+}
+.services h2 {
+  text-align: center;
+  font-size: 24px;
+  font-weight: 700;
+  color: var(--dark);
+  margin-bottom: 48px;
+}
+.services-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 24px;
+}
+.service-card {
+  background: var(--card-bg);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 32px 28px;
+  transition: box-shadow 0.2s;
+}
+.service-card:hover {
+  box-shadow: 0 4px 20px rgba(0,0,0,0.06);
+}
+.service-icon {
+  width: 48px;
+  height: 48px;
+  background: var(--brand-light);
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 20px;
+  font-size: 22px;
+}
+.service-card h3 {
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--dark);
+  margin-bottom: 10px;
+}
+.service-card p {
+  font-size: 14px;
+  color: var(--text-light);
+  line-height: 1.7;
+}
+
+/* About */
+.about {
+  background: var(--card-bg);
+  border-top: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+  padding: 64px 24px;
+}
+.about-inner {
+  max-width: 720px;
+  margin: 0 auto;
+  text-align: center;
+}
+.about h2 {
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--dark);
+  margin-bottom: 20px;
+}
+.about p {
+  font-size: 15px;
+  color: var(--text);
+  line-height: 1.8;
+}
+
+/* Footer */
+footer {
+  background: var(--footer-bg);
+  color: var(--footer-text);
+  padding: 48px 24px;
+}
+.footer-inner {
+  max-width: 720px;
+  margin: 0 auto;
+  text-align: center;
+}
+.footer-company {
+  font-size: 15px;
+  font-weight: 600;
+  color: #DDD;
+  margin-bottom: 16px;
+}
+.footer-info {
+  font-size: 13px;
+  line-height: 2;
+}
+.footer-copy {
+  margin-top: 24px;
+  padding-top: 24px;
+  border-top: 1px solid #333;
+  font-size: 12px;
+  color: #666;
+}
+
+@media (max-width: 600px) {
+  .hero { padding: 72px 20px 56px; }
+  .hero-logo { font-size: 34px; }
+  .hero h1 { font-size: 22px; }
+  .services { padding: 48px 20px; }
+  .services h2 { font-size: 20px; margin-bottom: 32px; }
+}
+</style>
+</head>
+<body>
+
+<section class="hero">
+  <div class="hero-logo">보험<span>ON</span></div>
+  <div class="hero-sub">CareOn Co., Ltd.</div>
+  <h1>보험 청구부터 관리까지,<br>설계사와 고객을 연결합니다</h1>
+  <p>디지털 보험 플랫폼 보험ON으로 보험 업무를 더 빠르고 간편하게 처리하세요.</p>
+</section>
+
+<section class="services">
+  <h2>주요 서비스</h2>
+  <div class="services-grid">
+    <div class="service-card">
+      <div class="service-icon">📋</div>
+      <h3>보험 청구 관리</h3>
+      <p>실손보험 청구를 모바일에서 간편하게 접수하고, 팩스 발송까지 원스톱으로 처리할 수 있습니다.</p>
+    </div>
+    <div class="service-card">
+      <div class="service-icon">👥</div>
+      <h3>고객 · 설계사 연결</h3>
+      <p>설계사가 고객의 보험 현황을 실시간으로 관리하고, 필요한 서비스를 신속하게 제공합니다.</p>
+    </div>
+    <div class="service-card">
+      <div class="service-icon">🏥</div>
+      <h3>병원 연계 서비스</h3>
+      <p>제휴 병원과 건강검진 예약 연계로 고객의 건강 관리까지 함께합니다.</p>
+    </div>
+  </div>
+</section>
+
+<section class="about">
+  <div class="about-inner">
+    <h2>보험ON 소개</h2>
+    <p>보험ON은 보험 설계사와 고객 간의 소통을 디지털화하여 보험 청구, 고객 관리, 병원 연계 등 보험 관련 업무를 효율적으로 처리할 수 있도록 지원하는 플랫폼입니다. 설계사 전용 앱과 고객 전용 앱을 통해 양방향 서비스를 제공합니다.</p>
+  </div>
+</section>
+
+<footer>
+  <div class="footer-inner">
+    <div class="footer-company">CareOn Co., Ltd. (주식회사 케어온)</div>
+    <div class="footer-info">
+      광주광역시 북구 면앙로6번길 77, 61189<br>
+      77 Myeonang-ro 6beon-gil, Buk-gu, Gwangju 61189, Republic of Korea<br>
+      사업자등록번호: 문의 바랍니다 &nbsp;|&nbsp; 대표: 최재영
+    </div>
+    <div class="footer-copy">&copy; 2026 CareOn Co., Ltd. All rights reserved.</div>
+  </div>
+</footer>
+
+</body>
+</html>
