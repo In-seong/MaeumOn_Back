@@ -18,8 +18,14 @@ class AdminAgentController extends Controller
     public function index(Request $request): JsonResponse
     {
         $query = Agent::query()
-            ->where('is_active', true)
             ->withCount(['customers', 'contracts']);
+
+        // 활성 상태 필터 (기본값: 활성화만)
+        if ($request->has('is_active') && $request->is_active !== 'all') {
+            $query->where('is_active', filter_var($request->is_active, FILTER_VALIDATE_BOOLEAN));
+        } elseif (!$request->has('is_active')) {
+            $query->where('is_active', true);
+        }
 
         // 검색 (이름, 사번, 전화번호)
         if ($request->has('search')) {
@@ -29,11 +35,6 @@ class AdminAgentController extends Controller
                   ->orWhere('employee_number', 'like', "%{$search}%")
                   ->orWhere('phone', 'like', "%{$search}%");
             });
-        }
-
-        // 활성 상태 필터
-        if ($request->has('is_active')) {
-            $query->where('is_active', filter_var($request->is_active, FILTER_VALIDATE_BOOLEAN));
         }
 
         // 정렬
