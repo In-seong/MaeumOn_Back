@@ -1,0 +1,1 @@
+import{J as o,c as s,o as r,a8 as t}from"./agent-BzzQW9Sl.js";const c={},a={class:"bg-white rounded-[16px] shadow-[0_0_10px_rgba(0,0,0,0.1)] p-5"};function n(e,_){return r(),s("div",a,[t(e.$slots,"default")])}const i=o(c,[["render",n]]);export{i as C};
