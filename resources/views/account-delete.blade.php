@@ -57,7 +57,7 @@
                     </svg>
                 </div>
                 <div class="logo-name">ON:CARE</div>
-                <div class="logo-sub">(주)뱅크다이어리</div>
+                <div class="logo-sub">(주)케어온</div>
             </div>
 
             <div id="form-section">
@@ -115,7 +115,7 @@
         </div>
 
         <div class="footer">
-            <p>&copy; 2026 (주)뱅크다이어리 &middot; <a href="/privacy">개인정보 처리방침</a></p>
+            <p>&copy; 2026 (주)케어온 &middot; <a href="/privacy">개인정보 처리방침</a></p>
             <p style="margin-top: 4px;">문의: support@bohumon.co.kr</p>
         </div>
     </div>
