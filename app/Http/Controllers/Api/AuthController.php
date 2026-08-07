@@ -184,7 +184,7 @@ class AuthController extends Controller
                 'username' => $request->username,
                 'password_hash' => Hash::make($request->password),
                 'role' => Account::ROLE_AGENT,
-                'is_active' => true,
+                'is_active' => false,
             ]);
 
             $lastAgent = Agent::where('agent_id', 'like', 'A%')
@@ -200,21 +200,13 @@ class AuthController extends Controller
                 'account_id' => $account->account_id,
                 'name' => $request->name,
                 'phone' => $phone,
-                'is_active' => true,
+                'is_active' => false,
             ]);
         });
 
-        $account = $agent->account;
-        $token = $account->createToken('auth-token')->plainTextToken;
-        $account->load('agent');
-
         return response()->json([
             'success' => true,
-            'data' => [
-                'account' => $account,
-                'token' => $token,
-            ],
-            'message' => '회원가입 성공',
+            'message' => '회원가입이 완료되었습니다. 관리자 승인 후 로그인할 수 있습니다.',
         ], 201);
     }
 
