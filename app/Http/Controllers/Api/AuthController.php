@@ -141,6 +141,31 @@ class AuthController extends Controller
     }
 
     /**
+     * 계정 삭제
+     */
+    public function deleteAccount(Request $request): JsonResponse
+    {
+        $account = $request->user();
+
+        DB::transaction(function () use ($account) {
+            if ($account->role === Account::ROLE_AGENT && $account->agent) {
+                $account->agent->update(['is_active' => false]);
+                $account->agent->delete();
+            } elseif ($account->role === Account::ROLE_CUSTOMER && $account->customer) {
+                $account->customer->delete();
+            }
+
+            $account->tokens()->delete();
+            $account->delete();
+        });
+
+        return response()->json([
+            'success' => true,
+            'message' => '계정이 삭제되었습니다.',
+        ]);
+    }
+
+    /**
      * 설계사 회원가입
      */
     public function agentRegister(Request $request): JsonResponse
