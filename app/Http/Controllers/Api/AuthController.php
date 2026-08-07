@@ -4,9 +4,11 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\Account;
+use App\Models\Agent;
 use App\Models\Customer;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\ValidationException;
 
@@ -136,6 +138,59 @@ class AuthController extends Controller
             'success' => true,
             'data' => $account,
         ]);
+    }
+
+    /**
+     * 설계사 회원가입
+     */
+    public function agentRegister(Request $request): JsonResponse
+    {
+        $request->validate([
+            'username' => 'required|string|max:50|unique:account,username',
+            'password' => 'required|min:6|confirmed',
+            'name' => 'required|string|max:50',
+            'phone' => 'nullable|string|max:20',
+        ]);
+
+        $phone = $request->phone ? preg_replace('/\D/', '', $request->phone) : null;
+
+        $agent = DB::transaction(function () use ($request, $phone) {
+            $account = Account::create([
+                'username' => $request->username,
+                'password_hash' => Hash::make($request->password),
+                'role' => Account::ROLE_AGENT,
+                'is_active' => true,
+            ]);
+
+            $lastAgent = Agent::where('agent_id', 'like', 'A%')
+                ->orderByRaw('CAST(SUBSTRING(agent_id, 2) AS UNSIGNED) DESC')
+                ->first();
+            $nextNum = $lastAgent
+                ? (int) substr($lastAgent->agent_id, 1) + 1
+                : 1;
+            $agentId = 'A' . str_pad((string) $nextNum, 7, '0', STR_PAD_LEFT);
+
+            return Agent::create([
+                'agent_id' => $agentId,
+                'account_id' => $account->account_id,
+                'name' => $request->name,
+                'phone' => $phone,
+                'is_active' => true,
+            ]);
+        });
+
+        $account = $agent->account;
+        $token = $account->createToken('auth-token')->plainTextToken;
+        $account->load('agent');
+
+        return response()->json([
+            'success' => true,
+            'data' => [
+                'account' => $account,
+                'token' => $token,
+            ],
+            'message' => '회원가입 성공',
+        ], 201);
     }
 
     /**
