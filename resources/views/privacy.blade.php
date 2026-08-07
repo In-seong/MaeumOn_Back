@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>개인정보 처리방침 - 보험청구 ON</title>
+    <title>개인정보 처리방침 - ON:CARE</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; color: #333; line-height: 1.8; background: #f9f9f9; }
@@ -21,7 +21,7 @@
 <body>
     <div class="container">
         <h1>개인정보 처리방침</h1>
-        <p class="date">시행일: 2026년 3월 1일 | 최종 수정: 2026년 5월 19일</p>
+        <p class="date">시행일: 2026년 3월 1일 | 최종 수정: 2026년 8월 7일</p>
 
         <div class="section">
             <p>(주)뱅크다이어리(이하 "회사")는 「개인정보 보호법」, 「신용정보의 이용 및 보호에 관한 법률」, 「정보통신망 이용촉진 및 정보보호 등에 관한 법률」 등 관련 법령에 따라 이용자의 개인정보 및 권익을 보호하고, 개인정보와 관련한 이용자의 고충을 원활하게 처리할 수 있도록 다음과 같이 개인정보 처리방침을 수립하여 공개합니다.</p>
@@ -142,7 +142,7 @@
         <div class="section">
             <ul>
                 <li>회사명: (주)뱅크다이어리</li>
-                <li>서비스명: 보험청구 ON</li>
+                <li>서비스명: ON:CARE</li>
                 <li>이메일: support@bohumon.co.kr</li>
             </ul>
         </div>
@@ -154,7 +154,7 @@
 
         <div class="footer">
             <p>&copy; 2026 (주)뱅크다이어리. All rights reserved.</p>
-            <p>보험청구 ON 서비스</p>
+            <p>ON:CARE 서비스</p>
         </div>
     </div>
 </body>
