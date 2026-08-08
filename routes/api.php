@@ -135,6 +135,9 @@ Route::prefix('public')->group(function () {
     Route::post('/reservations', [HospitalReservationController::class, 'store']);
     Route::get('/my-reservations', [HospitalReservationController::class, 'myReservations']);
     Route::put('/reservations/{id}/cancel', [HospitalReservationController::class, 'cancel']);
+
+    // 활성 설계사 목록 (간편 청구 시 선택용)
+    Route::get('/agents', [ClaimRequestController::class, 'agents']);
 });
 
 // ========== 병원 포털 API ==========

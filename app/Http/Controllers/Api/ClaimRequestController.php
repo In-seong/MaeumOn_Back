@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Models\Agent;
 use App\Models\ClaimRequest;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -22,14 +23,18 @@ class ClaimRequestController extends Controller
             'memo' => 'nullable|string|max:2000',
             'files' => 'nullable|array|max:10',
             'files.*' => 'file|max:10240', // 10MB
+            'agent_id' => 'nullable|string|exists:agent,agent_id',
         ]);
+
+        $agentId = $validated['agent_id'] ?? null;
 
         $claimRequest = ClaimRequest::create([
             'name' => $validated['name'],
             'phone' => $validated['phone'],
             'hospital_id' => $validated['hospital_id'] ?? null,
             'memo' => $validated['memo'] ?? null,
-            'status' => 'pending',
+            'status' => $agentId ? 'assigned' : 'pending',
+            'assigned_agent_id' => $agentId,
         ]);
 
         // 파일 업로드 처리
@@ -55,5 +60,15 @@ class ClaimRequestController extends Controller
             'data' => $claimRequest,
             'message' => '청구 신청이 접수되었습니다. 설계사가 연락드리겠습니다.',
         ], 201);
+    }
+
+    public function agents(): JsonResponse
+    {
+        $agents = Agent::where('is_active', true)
+            ->select('agent_id', 'name')
+            ->orderBy('name')
+            ->get();
+
+        return response()->json(['data' => $agents]);
     }
 }
