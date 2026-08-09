@@ -42,12 +42,28 @@ class AdminClaimRequestController extends Controller
 
     public function show(int $id): JsonResponse
     {
-        $claimRequest = ClaimRequest::with('files', 'assignedAgent', 'linkedClaim')
+        $claimRequest = ClaimRequest::with('files', 'assignedAgent', 'hospital', 'linkedClaim')
             ->findOrFail($id);
+
+        $matchedAgent = null;
+        if ($claimRequest->phone) {
+            $customer = \App\Models\Customer::with('agent:agent_id,name')
+                ->where('phone', preg_replace('/\D/', '', $claimRequest->phone))
+                ->first();
+            if ($customer?->agent) {
+                $matchedAgent = [
+                    'agent_id' => $customer->agent->agent_id,
+                    'name' => $customer->agent->name,
+                ];
+            }
+        }
+
+        $data = $claimRequest->toArray();
+        $data['matched_agent'] = $matchedAgent;
 
         return response()->json([
             'success' => true,
-            'data' => $claimRequest,
+            'data' => $data,
         ]);
     }
 
