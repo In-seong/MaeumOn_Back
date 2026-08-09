@@ -18,6 +18,7 @@ class ClaimRequest extends Model
         'hospital_id',
         'status',
         'assigned_agent_id',
+        'agent_name',
         'linked_claim_id',
     ];
 

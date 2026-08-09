@@ -23,10 +23,17 @@ class ClaimRequestController extends Controller
             'memo' => 'nullable|string|max:2000',
             'files' => 'nullable|array|max:10',
             'files.*' => 'file|max:10240', // 10MB
-            'agent_id' => 'nullable|string|exists:agent,agent_id',
+            'agent_name' => 'nullable|string|max:50',
         ]);
 
-        $agentId = $validated['agent_id'] ?? null;
+        $agentName = $validated['agent_name'] ?? null;
+        $agentId = null;
+        if ($agentName) {
+            $agent = Agent::where('name', $agentName)->where('is_active', true)->first();
+            if ($agent) {
+                $agentId = $agent->agent_id;
+            }
+        }
 
         $claimRequest = ClaimRequest::create([
             'name' => $validated['name'],
@@ -35,6 +42,7 @@ class ClaimRequestController extends Controller
             'memo' => $validated['memo'] ?? null,
             'status' => $agentId ? 'assigned' : 'pending',
             'assigned_agent_id' => $agentId,
+            'agent_name' => $agentName,
         ]);
 
         // 파일 업로드 처리
