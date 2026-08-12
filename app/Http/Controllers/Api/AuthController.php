@@ -150,13 +150,12 @@ class AuthController extends Controller
         DB::transaction(function () use ($account) {
             if ($account->role === Account::ROLE_AGENT && $account->agent) {
                 $account->agent->update(['is_active' => false]);
-                $account->agent->delete();
             } elseif ($account->role === Account::ROLE_CUSTOMER && $account->customer) {
-                $account->customer->delete();
+                $account->customer->update(['is_active' => false]);
             }
 
             $account->tokens()->delete();
-            $account->delete();
+            $account->update(['is_active' => false]);
         });
 
         return response()->json([
