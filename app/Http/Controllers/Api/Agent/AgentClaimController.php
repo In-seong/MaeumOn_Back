@@ -708,6 +708,7 @@ class AgentClaimController extends Controller
 
         } catch (\Exception $e) {
             DB::rollBack();
+            \Log::error('임시저장 오류', ['error' => $e->getMessage(), 'trace' => $e->getTraceAsString()]);
 
             $message = app()->isProduction()
                 ? '임시저장 중 오류가 발생했습니다.'
@@ -765,6 +766,7 @@ class AgentClaimController extends Controller
 
         } catch (\Exception $e) {
             DB::rollBack();
+            \Log::error('임시저장 갱신 오류', ['error' => $e->getMessage(), 'trace' => $e->getTraceAsString()]);
 
             $message = app()->isProduction()
                 ? '임시저장 갱신 중 오류가 발생했습니다.'
