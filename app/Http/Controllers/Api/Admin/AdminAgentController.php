@@ -67,6 +67,7 @@ class AdminAgentController extends Controller
     {
         $agent = Agent::with([
                 'account:account_id,username,role,is_active',
+                'branches:branch_id,branch_name',
                 'performances' => function ($query) {
                     $query->orderByDesc('year')
                           ->orderByDesc('month')
@@ -98,6 +99,7 @@ class AdminAgentController extends Controller
             'office_location' => 'nullable|string|max:100',
             'specialization' => 'nullable|string|max:100',
             'hire_date' => 'nullable|date',
+            'branch_id' => 'nullable|integer|exists:branch,branch_id',
         ]);
 
         // 전화번호 하이픈 제거
@@ -105,7 +107,9 @@ class AdminAgentController extends Controller
             $validated['phone'] = preg_replace('/\D/', '', $validated['phone']);
         }
 
-        $agent = DB::transaction(function () use ($validated) {
+        $branchId = $this->resolveBranchIdForAgent($request, $validated);
+
+        $agent = DB::transaction(function () use ($validated, $branchId) {
             // Account 생성
             $account = Account::create([
                 'username' => $validated['username'],
@@ -137,7 +141,11 @@ class AdminAgentController extends Controller
                 'is_active' => true,
             ]);
 
-            return $agent->load('account:account_id,username,role,is_active');
+            if ($branchId) {
+                $agent->branches()->sync([$branchId]);
+            }
+
+            return $agent->load(['account:account_id,username,role,is_active', 'branches:branch_id,branch_name']);
         });
 
         return response()->json([
@@ -164,6 +172,7 @@ class AdminAgentController extends Controller
             'office_location' => 'nullable|string|max:100',
             'specialization' => 'nullable|string|max:100',
             'hire_date' => 'nullable|date',
+            'branch_id' => 'nullable|integer|exists:branch,branch_id',
         ]);
 
         // 전화번호 하이픈 제거
@@ -171,7 +180,9 @@ class AdminAgentController extends Controller
             $validated['phone'] = preg_replace('/\D/', '', $validated['phone']);
         }
 
-        DB::transaction(function () use ($agent, $validated) {
+        $branchId = $this->resolveBranchIdForAgent($request, $validated);
+
+        DB::transaction(function () use ($agent, $validated, $branchId) {
             // Account 정보 수정 (username, password)
             if ($agent->account_id && (isset($validated['username']) || isset($validated['password']))) {
                 $accountUpdate = [];
@@ -184,18 +195,38 @@ class AdminAgentController extends Controller
                 Account::where('account_id', $agent->account_id)->update($accountUpdate);
             }
 
-            // Agent 정보 수정 (username, password 제외)
-            $agentData = array_diff_key($validated, array_flip(['username', 'password']));
+            // Agent 정보 수정 (username, password, branch_id 제외)
+            $agentData = array_diff_key($validated, array_flip(['username', 'password', 'branch_id']));
             if (!empty($agentData)) {
                 $agent->update($agentData);
+            }
+
+            if ($branchId) {
+                $agent->branches()->sync([$branchId]);
             }
         });
 
         return response()->json([
             'success' => true,
-            'data' => $agent->fresh()->load('account:account_id,username,role,is_active'),
+            'data' => $agent->fresh()->load(['account:account_id,username,role,is_active', 'branches:branch_id,branch_name']),
             'message' => '설계사 정보가 수정되었습니다.',
         ]);
+    }
+
+    /**
+     * 설계사 등록/수정 시 지사 ID 결정
+     * 지사 관리자: 자기 지사 강제 적용 (요청값 무시)
+     * 슈퍼 관리자: 요청에서 받은 branch_id 사용
+     */
+    private function resolveBranchIdForAgent(Request $request, array $validated): ?int
+    {
+        $admin = $request->user()?->admin;
+
+        if ($admin && $admin->admin_role === 'BRANCH' && $admin->branch_id) {
+            return (int) $admin->branch_id;
+        }
+
+        return isset($validated['branch_id']) ? (int) $validated['branch_id'] : null;
     }
 
     /**
