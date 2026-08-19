@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Http\Traits\BranchFilterable;
 use App\Models\Agent;
 use App\Models\Notification;
 use App\Services\FcmService;
@@ -11,6 +12,7 @@ use Illuminate\Http\Request;
 
 class AdminNotificationController extends Controller
 {
+    use BranchFilterable;
     /**
      * 발송 이력 조회
      */
@@ -55,8 +57,12 @@ class AdminNotificationController extends Controller
 
         $adminId = $request->user()->admin->admin_id;
 
+        $branchId = $this->resolveBranchId($request);
+
         if ($validated['target'] === 'ALL') {
-            $agents = Agent::where('is_active', true)->get();
+            $agentQuery = Agent::where('is_active', true);
+            $this->applyAgentBranchFilter($agentQuery, $branchId);
+            $agents = $agentQuery->get();
         } else {
             $agents = Agent::whereIn('agent_id', $validated['agent_ids'])
                 ->where('is_active', true)

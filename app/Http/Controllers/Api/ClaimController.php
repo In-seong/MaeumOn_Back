@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Http\Traits\BranchFilterable;
 use App\Models\ClaimDocument;
 use App\Models\ClaimFieldValue;
 use App\Models\ClaimForm;
@@ -17,6 +18,7 @@ use Illuminate\Support\Facades\Storage;
 
 class ClaimController extends Controller
 {
+    use BranchFilterable;
     protected ClaimGeneratorService $claimGenerator;
     protected PdfGeneratorService $pdfGenerator;
     protected FaxService $faxService;
@@ -478,6 +480,11 @@ class ClaimController extends Controller
             'claimForm:claim_form_id,form_name,company_id',
             'claimForm.insuranceCompany:company_id,company_name,company_code',
         ]);
+
+        $branchId = $this->resolveBranchId($request);
+        if ($branchId !== null) {
+            $query->whereHas('customer.agent.branches', fn($q) => $q->where('branch.branch_id', $branchId));
+        }
 
         // 검색
         if ($request->has('search')) {

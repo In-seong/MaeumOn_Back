@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Http\Traits\BranchFilterable;
 use App\Models\Customer;
 use App\Models\Contract;
 use App\Models\InsuranceClaim;
@@ -14,6 +15,7 @@ use Carbon\Carbon;
 
 class AdminAdditionalContractController extends Controller
 {
+    use BranchFilterable;
     /**
      * 추가계약 발굴 목록 조회 (SFR-040, 041)
      *
@@ -24,6 +26,7 @@ class AdminAdditionalContractController extends Controller
     {
         $type = $request->get('type', 'unclaimed');
         $perPage = min(max((int) $request->get('per_page', 15), 1), 100);
+        $branchId = $this->resolveBranchId($request);
 
         // 정렬
         $sortField = $request->get('sort_by', 'created_at');
@@ -35,11 +38,11 @@ class AdminAdditionalContractController extends Controller
         $sortDirection = $sortDirection === 'asc' ? 'asc' : 'desc';
 
         $result = match ($type) {
-            'unclaimed' => $this->getUnclaimedCustomers($perPage, $sortField, $sortDirection),
-            'renewal' => $this->getRenewalCustomers($perPage, $sortField, $sortDirection),
-            'undercovered' => $this->getUndercoveredCustomers($perPage, $sortField, $sortDirection),
-            'abnormal' => $this->getAbnormalCustomers($perPage, $sortField, $sortDirection),
-            default => $this->getUnclaimedCustomers($perPage, $sortField, $sortDirection),
+            'unclaimed' => $this->getUnclaimedCustomers($perPage, $sortField, $sortDirection, $branchId),
+            'renewal' => $this->getRenewalCustomers($perPage, $sortField, $sortDirection, $branchId),
+            'undercovered' => $this->getUndercoveredCustomers($perPage, $sortField, $sortDirection, $branchId),
+            'abnormal' => $this->getAbnormalCustomers($perPage, $sortField, $sortDirection, $branchId),
+            default => $this->getUnclaimedCustomers($perPage, $sortField, $sortDirection, $branchId),
         };
 
         return response()->json([
@@ -51,15 +54,18 @@ class AdminAdditionalContractController extends Controller
     /**
      * 미청구 고객: 계약이 있지만 최근 6개월 내 청구 이력 없는 고객
      */
-    private function getUnclaimedCustomers(int $perPage, string $sortField = 'created_at', string $sortDirection = 'desc')
+    private function getUnclaimedCustomers(int $perPage, string $sortField = 'created_at', string $sortDirection = 'desc', ?int $branchId = null)
     {
-        $customers = Customer::where('is_active', true)
+        $query = Customer::where('is_active', true)
             ->whereHas('contracts')
             ->whereDoesntHave('insuranceClaims', function ($q) {
                 $q->where('created_at', '>=', Carbon::now()->subMonths(6));
             })
-            ->with('agent:agent_id,name')
-            ->orderBy($sortField, $sortDirection)
+            ->with('agent:agent_id,name');
+
+        $this->applyAgentBranchFilter($query, $branchId, 'agent.branches');
+
+        $customers = $query->orderBy($sortField, $sortDirection)
             ->paginate($perPage);
 
         $customers->getCollection()->transform(function ($customer) {
@@ -72,17 +78,20 @@ class AdminAdditionalContractController extends Controller
     /**
      * 갱신대상 고객: 계약 만기 3개월 이내 도래 고객
      */
-    private function getRenewalCustomers(int $perPage, string $sortField = 'created_at', string $sortDirection = 'desc')
+    private function getRenewalCustomers(int $perPage, string $sortField = 'created_at', string $sortDirection = 'desc', ?int $branchId = null)
     {
         $threeMonthsLater = Carbon::now()->addMonths(3);
 
-        $customers = Customer::where('is_active', true)
+        $query = Customer::where('is_active', true)
             ->whereHas('contracts', function ($q) use ($threeMonthsLater) {
                 $q->whereRaw('DATE_ADD(contract_date, INTERVAL 1 YEAR) <= ?', [$threeMonthsLater->toDateString()])
                   ->where('contract_status', '!=', 'cancelled');
             })
-            ->with('agent:agent_id,name')
-            ->orderBy($sortField, $sortDirection)
+            ->with('agent:agent_id,name');
+
+        $this->applyAgentBranchFilter($query, $branchId, 'agent.branches');
+
+        $customers = $query->orderBy($sortField, $sortDirection)
             ->paginate($perPage);
 
         $customers->getCollection()->transform(function ($customer) {
@@ -95,16 +104,19 @@ class AdminAdditionalContractController extends Controller
     /**
      * 보장부족 고객: 총 진료비가 총 계약금액보다 큰 고객
      */
-    private function getUndercoveredCustomers(int $perPage, string $sortField = 'created_at', string $sortDirection = 'desc')
+    private function getUndercoveredCustomers(int $perPage, string $sortField = 'created_at', string $sortDirection = 'desc', ?int $branchId = null)
     {
-        $customers = Customer::where('is_active', true)
+        $query = Customer::where('is_active', true)
             ->whereHas('medicalRecords')
             ->whereHas('contracts')
             ->with('agent:agent_id,name')
             ->withSum('medicalRecords', 'medical_cost')
             ->withSum('contracts', 'contract_amount')
-            ->havingRaw('medical_records_sum_medical_cost > contracts_sum_contract_amount')
-            ->orderBy($sortField, $sortDirection)
+            ->havingRaw('medical_records_sum_medical_cost > contracts_sum_contract_amount');
+
+        $this->applyAgentBranchFilter($query, $branchId, 'agent.branches');
+
+        $customers = $query->orderBy($sortField, $sortDirection)
             ->paginate($perPage);
 
         $customers->getCollection()->transform(function ($customer) {
@@ -117,14 +129,17 @@ class AdminAdditionalContractController extends Controller
     /**
      * 검진이상 고객: 중요 진료 기록이 있는 고객
      */
-    private function getAbnormalCustomers(int $perPage, string $sortField = 'created_at', string $sortDirection = 'desc')
+    private function getAbnormalCustomers(int $perPage, string $sortField = 'created_at', string $sortDirection = 'desc', ?int $branchId = null)
     {
-        $customers = Customer::where('is_active', true)
+        $query = Customer::where('is_active', true)
             ->whereHas('medicalRecords', function ($q) {
                 $q->where('is_important', true);
             })
-            ->with('agent:agent_id,name')
-            ->orderBy($sortField, $sortDirection)
+            ->with('agent:agent_id,name');
+
+        $this->applyAgentBranchFilter($query, $branchId, 'agent.branches');
+
+        $customers = $query->orderBy($sortField, $sortDirection)
             ->paginate($perPage);
 
         $customers->getCollection()->transform(function ($customer) {

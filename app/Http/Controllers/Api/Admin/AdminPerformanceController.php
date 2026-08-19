@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Http\Traits\BranchFilterable;
 use App\Models\Agent;
 use App\Models\Performance;
 use App\Models\CustomerAssignment;
@@ -14,6 +15,7 @@ use Carbon\Carbon;
 
 class AdminPerformanceController extends Controller
 {
+    use BranchFilterable;
     /**
      * 실적 요약 (SFR-043)
      *
@@ -23,6 +25,7 @@ class AdminPerformanceController extends Controller
     public function summary(Request $request): JsonResponse
     {
         $period = $request->get('period', 'month');
+        $branchId = $this->resolveBranchId($request);
 
         $startDate = match ($period) {
             'day' => Carbon::today(),
@@ -30,9 +33,19 @@ class AdminPerformanceController extends Controller
             default => Carbon::now()->startOfMonth(),
         };
 
-        $totalAssignments = CustomerAssignment::where('created_at', '>=', $startDate)->count();
-        $totalContracts = Contract::where('created_at', '>=', $startDate)->count();
-        $totalContractAmount = Contract::where('created_at', '>=', $startDate)->sum('contract_amount');
+        $assignmentQuery = CustomerAssignment::where('created_at', '>=', $startDate);
+        $contractQuery = Contract::where('created_at', '>=', $startDate);
+        $contractAmountQuery = Contract::where('created_at', '>=', $startDate);
+
+        if ($branchId !== null) {
+            $assignmentQuery->whereHas('agent.branches', fn($q) => $q->where('branch.branch_id', $branchId));
+            $contractQuery->whereHas('customer.agent.branches', fn($q) => $q->where('branch.branch_id', $branchId));
+            $contractAmountQuery->whereHas('customer.agent.branches', fn($q) => $q->where('branch.branch_id', $branchId));
+        }
+
+        $totalAssignments = $assignmentQuery->count();
+        $totalContracts = $contractQuery->count();
+        $totalContractAmount = $contractAmountQuery->sum('contract_amount');
         $dbProcessingRate = $totalAssignments > 0
             ? round(($totalContracts / $totalAssignments) * 100, 1)
             : 0;
@@ -60,9 +73,12 @@ class AdminPerformanceController extends Controller
     {
         $now = Carbon::now();
         $perPage = min(max((int) $request->get('per_page', 15), 1), 100);
+        $branchId = $this->resolveBranchId($request);
 
-        $agents = Agent::where('is_active', true)
-            ->with(['performances' => function ($q) use ($now) {
+        $query = Agent::where('is_active', true);
+        $this->applyAgentBranchFilter($query, $branchId);
+
+        $agents = $query->with(['performances' => function ($q) use ($now) {
                 $q->where('year', $now->year)->where('month', $now->month);
             }])
             ->withCount(['customers', 'contracts'])

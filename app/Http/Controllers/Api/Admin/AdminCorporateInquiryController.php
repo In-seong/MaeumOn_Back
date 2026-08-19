@@ -3,16 +3,22 @@
 namespace App\Http\Controllers\Api\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Http\Traits\BranchFilterable;
 use App\Models\CorporateInquiry;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
 class AdminCorporateInquiryController extends Controller
 {
+    use BranchFilterable;
+
     public function index(Request $request): JsonResponse
     {
         $query = CorporateInquiry::with('agent:agent_id,name,phone')
             ->orderByDesc('created_at');
+
+        $branchId = $this->resolveBranchId($request);
+        $this->applyAgentBranchFilter($query, $branchId, 'agent.branches');
 
         if ($request->filled('status')) {
             $query->where('status', $request->status);

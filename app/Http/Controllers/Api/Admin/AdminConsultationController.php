@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Http\Traits\BranchFilterable;
 use App\Models\Agent;
 use App\Models\Consultation;
 use App\Services\ConsultationNotifier;
@@ -11,6 +12,8 @@ use Illuminate\Http\Request;
 
 class AdminConsultationController extends Controller
 {
+    use BranchFilterable;
+
     public function __construct(private ConsultationNotifier $notifier)
     {
     }
@@ -18,6 +21,11 @@ class AdminConsultationController extends Controller
     public function index(Request $request): JsonResponse
     {
         $query = Consultation::with(['customer']);
+
+        $branchId = $this->resolveBranchId($request);
+        if ($branchId !== null) {
+            $query->whereHas('customer.agent.branches', fn($q) => $q->where('branch.branch_id', $branchId));
+        }
 
         if ($request->filled('consultation_status')) {
             $query->where('consultation_status', $request->consultation_status);

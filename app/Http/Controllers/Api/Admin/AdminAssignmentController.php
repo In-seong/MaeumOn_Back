@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Http\Traits\BranchFilterable;
 use App\Models\ClaimRequest;
 use App\Models\Customer;
 use App\Models\Agent;
@@ -14,6 +15,8 @@ use Illuminate\Support\Facades\DB;
 
 class AdminAssignmentController extends Controller
 {
+    use BranchFilterable;
+
     /**
      * DB 배분 이력 목록 조회
      */
@@ -23,6 +26,9 @@ class AdminAssignmentController extends Controller
             'customer:customer_id,name,phone',
             'agent:agent_id,name,phone',
         ]);
+
+        $branchId = $this->resolveBranchId($request);
+        $this->applyAgentBranchFilter($query, $branchId, 'agent.branches');
 
         // 검색 (고객 이름)
         if ($request->has('search') && $request->search) {

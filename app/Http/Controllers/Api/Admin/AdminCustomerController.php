@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Http\Traits\BranchFilterable;
 use App\Models\Customer;
 use App\Models\PiiLog;
 use Illuminate\Http\JsonResponse;
@@ -10,12 +11,17 @@ use Illuminate\Http\Request;
 
 class AdminCustomerController extends Controller
 {
+    use BranchFilterable;
+
     /**
      * 고객 목록 조회 (관리자 - 전체 고객)
      */
     public function index(Request $request): JsonResponse
     {
         $query = Customer::with('agent:agent_id,name');
+
+        $branchId = $this->resolveBranchId($request);
+        $this->applyAgentBranchFilter($query, $branchId, 'agent.branches');
 
         // 검색 (이름, 전화번호, 주민번호)
         if ($request->has('search')) {

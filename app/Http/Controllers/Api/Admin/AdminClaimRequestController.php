@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Http\Traits\BranchFilterable;
 use App\Models\Agent;
 use App\Models\ClaimRequest;
 use Illuminate\Http\JsonResponse;
@@ -11,6 +12,7 @@ use Illuminate\Support\Facades\Storage;
 
 class AdminClaimRequestController extends Controller
 {
+    use BranchFilterable;
     /**
      * 관리자가 직접 청구 신청 등록
      */
@@ -66,6 +68,9 @@ class AdminClaimRequestController extends Controller
     public function index(Request $request): JsonResponse
     {
         $query = ClaimRequest::with('files', 'assignedAgent', 'hospital');
+
+        $branchId = $this->resolveBranchId($request);
+        $this->applyAgentBranchFilter($query, $branchId, 'assignedAgent.branches');
 
         if ($status = $request->input('status')) {
             $query->where('status', $status);

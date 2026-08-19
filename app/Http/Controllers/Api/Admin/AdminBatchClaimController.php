@@ -3,15 +3,21 @@
 namespace App\Http\Controllers\Api\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Http\Traits\BranchFilterable;
 use App\Models\BatchClaim;
 use Illuminate\Http\Request;
 
 class AdminBatchClaimController extends Controller
 {
+    use BranchFilterable;
+
     public function index(Request $request)
     {
         $query = BatchClaim::with(['customer', 'agent'])
             ->withCount('claims');
+
+        $branchId = $this->resolveBranchId($request);
+        $this->applyAgentBranchFilter($query, $branchId, 'agent.branches');
 
         // 상태 필터
         if ($request->filled('batch_status')) {

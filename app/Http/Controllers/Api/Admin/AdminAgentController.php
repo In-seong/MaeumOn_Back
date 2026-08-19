@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Http\Traits\BranchFilterable;
 use App\Models\Account;
 use App\Models\Agent;
 use Illuminate\Http\JsonResponse;
@@ -12,6 +13,8 @@ use Illuminate\Support\Facades\Hash;
 
 class AdminAgentController extends Controller
 {
+    use BranchFilterable;
+
     /**
      * 설계사 목록 조회 (관리자)
      */
@@ -19,6 +22,9 @@ class AdminAgentController extends Controller
     {
         $query = Agent::query()
             ->withCount(['customers', 'contracts']);
+
+        $branchId = $this->resolveBranchId($request);
+        $this->applyAgentBranchFilter($query, $branchId);
 
         // 활성 상태 필터 (기본값: 활성화만)
         if ($request->has('is_active') && $request->is_active !== 'all') {
