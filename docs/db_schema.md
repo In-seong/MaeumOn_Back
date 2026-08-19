@@ -1,8 +1,8 @@
 # MaeumOn DB 스키마 (운영 기준)
 
-> **최종 업데이트**: 2026-07-27
+> **최종 업데이트**: 2026-08-19
 > **DB**: MySQL (MariaDB)
-> **총 테이블**: 63개 (비즈니스 55개 + Laravel 시스템 8개)
+> **총 테이블**: 65개 (비즈니스 57개 + Laravel 시스템 8개)
 
 ---
 
@@ -25,6 +25,7 @@
 16. [CODEF API 사용 로그](#16-codef-api-사용-로그) — codef_api_logs
 17. [사이트 설정](#17-사이트-설정) — site_settings
 13. [Laravel 시스템](#13-laravel-시스템-테이블) — sessions, cache, jobs 등
+19. [지사 관리](#19-지사-관리) — branch, agent_branch
 
 ---
 
@@ -1277,6 +1278,7 @@ FaxClientNC 연동용 테이블. **테이블명 반드시 대문자 유지**.
 | 2026-06-25 | health_center에 thumbnail_path VARCHAR(255) NULL, is_deleted TINYINT(1) NOT NULL DEFAULT 1 컬럼 추가. 삭제(forceDelete), 썸네일 업로드/삭제 API 추가 |
 | 2026-06-25 | partner_hospital, health_center에 reservation_enabled TINYINT(1) NOT NULL DEFAULT 1 컬럼 추가. 예약 기능 on/off 토글 (비활성 시 사용자 앱에서 예약 섹션 숨김) |
 | 2026-07-04 | codef_api_logs 테이블 신규 생성 — 설계사별 CODEF API 사용 로그 (월별 정산용). Model: CodefApiLog. 관리자 정산 API 3개 추가 (summary/logs/mark-billed) |
+| 2026-08-19 | 지사(Branch) 분리 아키텍처 Phase 1: branch 테이블 신규 (Model: Branch), agent_branch 중간 테이블 신규 (설계사-지사 N:N). admin에 branch_id/admin_role 컬럼 추가. notice에 branch_id 추가. performance에 branch_id 추가. Admin/Agent/Notice/Performance 모델 업데이트. AdminBranchController, AdminAccountController 추가 |
 
 ---
 
@@ -1349,3 +1351,58 @@ FaxClientNC 연동용 테이블. **테이블명 반드시 대문자 유지**.
 | updated_at | timestamp | YES | | NULL | |
 
 **인덱스**: `status`, `agent_id`, `created_at`
+
+---
+
+## 19. 지사 관리
+
+### branch
+
+지사 정보 테이블. **Model: `Branch`** (구현 완료).
+
+| 컬럼 | 타입 | NULL | Key | Default | 비고 |
+|------|------|------|-----|---------|------|
+| branch_id | int(11) | NO | PRI | auto_increment | |
+| branch_name | varchar(50) | NO | UNI | | 광주, 창원, 전주 등 |
+| branch_code | varchar(10) | NO | UNI | | GJ, CW, JJ (약어) |
+| region | varchar(50) | YES | | NULL | 광역 지역 (호남, 경남 등) |
+| address | varchar(255) | YES | | NULL | 지사 주소 |
+| contact_phone | varchar(20) | YES | | NULL | 지사 연락처 |
+| manager_admin_id | char(8) | YES | MUL | NULL | FK → admin.admin_id (지사장) |
+| is_active | tinyint(1) | NO | | 1 | |
+| created_at | timestamp | YES | | NULL | |
+| updated_at | timestamp | YES | | NULL | |
+
+**관계**: manager → Admin(BelongsTo), agents → Agent(BelongsToMany via agent_branch), admins → Admin(HasMany)
+
+### agent_branch
+
+설계사-지사 다대다 중간 테이블. 설계사 1명이 여러 지사에 소속 가능.
+
+| 컬럼 | 타입 | NULL | Key | Default | 비고 |
+|------|------|------|-----|---------|------|
+| id | int(11) | NO | PRI | auto_increment | |
+| agent_id | char(8) | NO | MUL | | FK → agent.agent_id |
+| branch_id | int(11) | NO | MUL | | FK → branch.branch_id |
+| created_at | timestamp | YES | | NULL | |
+
+**인덱스**: UNIQUE(agent_id, branch_id)
+
+### admin 테이블 추가 컬럼
+
+| 컬럼 | 타입 | NULL | Default | 비고 |
+|------|------|------|---------|------|
+| branch_id | int(11) | YES | NULL | FK → branch.branch_id. NULL = 슈퍼 관리자 |
+| admin_role | enum('SUPER','BRANCH') | NO | 'BRANCH' | 관리자 역할 구분 |
+
+### notice 테이블 추가 컬럼
+
+| 컬럼 | 타입 | NULL | Default | 비고 |
+|------|------|------|---------|------|
+| branch_id | int(11) | YES | NULL | NULL = 전체 공지, 값 = 해당 지사만 |
+
+### performance 테이블 추가 컬럼
+
+| 컬럼 | 타입 | NULL | Default | 비고 |
+|------|------|------|---------|------|
+| branch_id | int(11) | YES | NULL | 실적 발생 지사. 다중 지사 설계사 중복 집계 방지 |
