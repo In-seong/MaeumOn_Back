@@ -275,6 +275,7 @@ Route::middleware('auth:sanctum')->group(function () {
 
         // 청구 신청 관리
         Route::get('/claim-requests', [AdminClaimRequestController::class, 'index']);
+        Route::post('/claim-requests', [AdminClaimRequestController::class, 'store']);
         Route::get('/claim-requests/{id}', [AdminClaimRequestController::class, 'show']);
         Route::put('/claim-requests/{id}/assign', [AdminClaimRequestController::class, 'assign']);
         Route::post('/claim-requests/bulk-assign', [AdminClaimRequestController::class, 'bulkAssign']);

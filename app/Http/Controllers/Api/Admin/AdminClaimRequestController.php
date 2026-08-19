@@ -3,12 +3,64 @@
 namespace App\Http\Controllers\Api\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Models\Agent;
 use App\Models\ClaimRequest;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
 
 class AdminClaimRequestController extends Controller
 {
+    /**
+     * 관리자가 직접 청구 신청 등록
+     */
+    public function store(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'name' => 'required|string|max:50',
+            'phone' => 'required|string|max:20',
+            'hospital_id' => 'nullable|integer|exists:partner_hospital,hospital_id',
+            'memo' => 'nullable|string|max:2000',
+            'files' => 'nullable|array|max:10',
+            'files.*' => 'file|max:10240',
+            'agent_id' => 'nullable|string|exists:agent,agent_id',
+        ]);
+
+        $agentId = $validated['agent_id'] ?? null;
+
+        $claimRequest = ClaimRequest::create([
+            'name' => $validated['name'],
+            'phone' => $validated['phone'],
+            'hospital_id' => $validated['hospital_id'] ?? null,
+            'memo' => $validated['memo'] ?? null,
+            'status' => $agentId ? 'assigned' : 'pending',
+            'assigned_agent_id' => $agentId,
+        ]);
+
+        if ($request->hasFile('files')) {
+            foreach ($request->file('files') as $file) {
+                $path = Storage::disk('s3')->put(
+                    'claim-requests/' . $claimRequest->request_id,
+                    $file
+                );
+
+                $claimRequest->files()->create([
+                    'file_url' => $path,
+                    'file_name' => $file->getClientOriginalName(),
+                    'file_size' => $file->getSize(),
+                ]);
+            }
+        }
+
+        $claimRequest->load('files', 'assignedAgent', 'hospital');
+
+        return response()->json([
+            'success' => true,
+            'data' => $claimRequest,
+            'message' => '청구 신청이 등록되었습니다.',
+        ], 201);
+    }
+
     public function index(Request $request): JsonResponse
     {
         $query = ClaimRequest::with('files', 'assignedAgent', 'hospital');
