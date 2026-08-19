@@ -81,16 +81,25 @@ class AdminNoticeController extends Controller
             'display_end_date' => 'nullable|date',
         ]);
 
-        $adminId = $request->user()->admin->admin_id;
+        $admin = $request->user()->admin;
+        $adminId = $admin->admin_id;
+
+        $branchId = ($admin->admin_role === 'BRANCH' && $admin->branch_id)
+            ? $admin->branch_id
+            : null;
 
         $notice = Notice::create(array_merge($validated, [
             'author_id' => $adminId,
+            'branch_id' => $branchId,
             'is_pinned' => $validated['is_pinned'] ?? false,
             'view_count' => 0,
         ]));
 
-        // 모든 활성 설계사에게 알림 전송
-        $agents = Agent::where('is_active', true)->get();
+        $agentQuery = Agent::where('is_active', true);
+        if ($branchId) {
+            $this->applyAgentBranchFilter($agentQuery, $branchId);
+        }
+        $agents = $agentQuery->get();
 
         foreach ($agents as $agent) {
             Notification::create([
