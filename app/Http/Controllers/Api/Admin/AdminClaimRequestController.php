@@ -24,6 +24,7 @@ class AdminClaimRequestController extends Controller
             'files' => 'nullable|array|max:10',
             'files.*' => 'file|max:10240',
             'agent_id' => 'nullable|string|exists:agent,agent_id',
+            'source_type' => 'nullable|in:resident,distribution',
         ]);
 
         $agentId = $validated['agent_id'] ?? null;
@@ -34,6 +35,7 @@ class AdminClaimRequestController extends Controller
             'hospital_id' => $validated['hospital_id'] ?? null,
             'memo' => $validated['memo'] ?? null,
             'status' => $agentId ? 'assigned' : 'pending',
+            'source_type' => $validated['source_type'] ?? 'resident',
             'assigned_agent_id' => $agentId,
         ]);
 

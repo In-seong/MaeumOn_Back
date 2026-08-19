@@ -41,6 +41,7 @@ class ClaimRequestController extends Controller
             'hospital_id' => $validated['hospital_id'] ?? null,
             'memo' => $validated['memo'] ?? null,
             'status' => $agentId ? 'assigned' : 'pending',
+            'source_type' => 'distribution',
             'assigned_agent_id' => $agentId,
             'agent_name' => $agentName,
         ]);

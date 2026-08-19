@@ -17,6 +17,7 @@ class ClaimRequest extends Model
         'memo',
         'hospital_id',
         'status',
+        'source_type',
         'assigned_agent_id',
         'agent_name',
         'linked_claim_id',
