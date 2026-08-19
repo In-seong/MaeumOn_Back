@@ -479,6 +479,7 @@ class ClaimController extends Controller
             'customer:customer_id,name,phone,email',
             'claimForm:claim_form_id,form_name,company_id',
             'claimForm.insuranceCompany:company_id,company_name,company_code',
+            'batchClaim:batch_claim_id,total_count',
         ]);
 
         $branchId = $this->resolveBranchId($request);
