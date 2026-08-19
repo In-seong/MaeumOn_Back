@@ -18,6 +18,7 @@ class Notice extends Model
         'is_pinned',
         'display_start_date',
         'display_end_date',
+        'branch_id',
         'view_count',
     ];
 
@@ -31,5 +32,10 @@ class Notice extends Model
     public function author(): BelongsTo
     {
         return $this->belongsTo(Admin::class, 'author_id', 'admin_id');
+    }
+
+    public function branch(): BelongsTo
+    {
+        return $this->belongsTo(Branch::class, 'branch_id', 'branch_id');
     }
 }

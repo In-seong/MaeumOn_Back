@@ -59,6 +59,8 @@ use App\Http\Controllers\Api\Admin\AdminClaimRequestController;
 use App\Http\Controllers\Api\Admin\AdminSettingController;
 use App\Http\Controllers\Api\Admin\AdminReservationController;
 use App\Http\Controllers\Api\Admin\AdminBannerController;
+use App\Http\Controllers\Api\Admin\AdminBranchController;
+use App\Http\Controllers\Api\Admin\AdminAccountController;
 use App\Http\Controllers\Api\CorporateInquiryController;
 use App\Http\Controllers\Api\Admin\AdminCorporateInquiryController;
 use App\Http\Controllers\Api\FaxCallbackController;
@@ -297,6 +299,14 @@ Route::middleware('auth:sanctum')->group(function () {
         // 사이트 설정
         Route::get('/settings', [AdminSettingController::class, 'index']);
         Route::put('/settings', [AdminSettingController::class, 'update']);
+
+        // 지사 관리 (슈퍼 관리자)
+        Route::get('/branches/dropdown', [AdminBranchController::class, 'dropdown']);
+        Route::apiResource('branches', AdminBranchController::class);
+        Route::post('/branches/{id}/transfer-agents', [AdminBranchController::class, 'transferAgents']);
+
+        // 관리자 계정 관리 (슈퍼 관리자)
+        Route::apiResource('admin-accounts', AdminAccountController::class);
     });
 
     // 설계사 API

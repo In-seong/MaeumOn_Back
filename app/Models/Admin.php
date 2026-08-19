@@ -5,7 +5,6 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
-
 class Admin extends Model
 {
     protected $table = 'admin';
@@ -20,6 +19,8 @@ class Admin extends Model
         'phone',
         'email',
         'department',
+        'branch_id',
+        'admin_role',
         'position',
         'is_active',
     ];
@@ -27,6 +28,16 @@ class Admin extends Model
     protected $casts = [
         'is_active' => 'boolean',
     ];
+
+    public function isSuperAdmin(): bool
+    {
+        return $this->admin_role === 'SUPER';
+    }
+
+    public function branch(): BelongsTo
+    {
+        return $this->belongsTo(Branch::class, 'branch_id', 'branch_id');
+    }
 
     public function account(): BelongsTo
     {

@@ -64,7 +64,7 @@ class AuthController extends Controller
         if ($account->role === 'AGENT') {
             $account->load('agent');
         } elseif ($account->role === 'ADMIN') {
-            $account->load('admin');
+            $account->load('admin.branch');
         } else {
             $account->load('customer');
         }
@@ -129,7 +129,7 @@ class AuthController extends Controller
         if ($account->role === 'AGENT') {
             $account->load('agent');
         } elseif ($account->role === 'ADMIN') {
-            $account->load('admin');
+            $account->load('admin.branch');
         } else {
             $account->load('customer');
         }

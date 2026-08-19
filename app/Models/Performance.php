@@ -17,6 +17,7 @@ class Performance extends Model
         'db_assigned_count',
         'contract_count',
         'contract_amount',
+        'branch_id',
         'consultation_count',
     ];
 
@@ -32,5 +33,10 @@ class Performance extends Model
     public function agent(): BelongsTo
     {
         return $this->belongsTo(Agent::class, 'agent_id', 'agent_id');
+    }
+
+    public function branch(): BelongsTo
+    {
+        return $this->belongsTo(Branch::class, 'branch_id', 'branch_id');
     }
 }
