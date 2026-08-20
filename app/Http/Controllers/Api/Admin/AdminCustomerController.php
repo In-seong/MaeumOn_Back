@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Traits\BranchFilterable;
 use App\Models\Customer;
 use App\Models\PiiLog;
+use App\Services\DistributionService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -117,6 +118,13 @@ class AdminCustomerController extends Controller
             'customer_id' => $customerId,
             'is_active' => true,
         ]));
+
+        if (empty($validated['agent_id'])) {
+            $branchId = $this->resolveBranchId($request);
+            if ($branchId) {
+                app(DistributionService::class)->enqueueCustomer($customerId, $branchId);
+            }
+        }
 
         return response()->json([
             'success' => true,

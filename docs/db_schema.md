@@ -1,8 +1,8 @@
 # MaeumOn DB 스키마 (운영 기준)
 
-> **최종 업데이트**: 2026-08-19
+> **최종 업데이트**: 2026-08-20
 > **DB**: MySQL (MariaDB)
-> **총 테이블**: 65개 (비즈니스 57개 + Laravel 시스템 8개)
+> **총 테이블**: 69개 (비즈니스 61개 + Laravel 시스템 8개)
 
 ---
 
@@ -26,6 +26,7 @@
 17. [사이트 설정](#17-사이트-설정) — site_settings
 13. [Laravel 시스템](#13-laravel-시스템-테이블) — sessions, cache, jobs 등
 19. [지사 관리](#19-지사-관리) — branch, agent_branch
+20. [자동배분](#20-자동배분) — distribution_config, distribution_list, distribution_list_item, distribution_queue
 
 ---
 
@@ -1406,3 +1407,70 @@ FaxClientNC 연동용 테이블. **테이블명 반드시 대문자 유지**.
 | 컬럼 | 타입 | NULL | Default | 비고 |
 |------|------|------|---------|------|
 | branch_id | int(11) | YES | NULL | 실적 발생 지사. 다중 지사 설계사 중복 집계 방지 |
+
+---
+
+## 20. 자동배분
+
+### distribution_config
+
+지사별 자동배분 설정. **Model: `DistributionConfig`** (2026-08-20 구현).
+
+| 컬럼 | 타입 | NULL | Key | Default | 비고 |
+|------|------|------|-----|---------|------|
+| config_id | int | NO | PRI | auto_increment | |
+| branch_id | int | NO | UNI | | → branch FK |
+| is_active | tinyint(1) | NO | | 0 | on/off |
+| current_list_id | int | YES | MUL | NULL | → distribution_list FK |
+| current_position | int | NO | | 0 | 현재 회기 위치 |
+| delay_minutes | int | NO | | 60 | 대기열 → 배분 대기시간(분) |
+| timeout_hours | int | NO | | 24 | 미확인 재배분 시간 |
+| created_at | timestamp | YES | | NULL | |
+| updated_at | timestamp | YES | | NULL | |
+
+### distribution_list
+
+배분 순서 리스트 프리셋. **Model: `DistributionList`** (2026-08-20 구현).
+
+| 컬럼 | 타입 | NULL | Key | Default | 비고 |
+|------|------|------|-----|---------|------|
+| list_id | int | NO | PRI | auto_increment | |
+| branch_id | int | NO | MUL | | → branch FK |
+| name | varchar(100) | NO | | | 리스트 이름 |
+| content_hash | varchar(64) | NO | | '' | 수정 감지용 해시 |
+| created_at | timestamp | YES | | NULL | |
+| updated_at | timestamp | YES | | NULL | |
+
+### distribution_list_item
+
+리스트 내 설계사 순서. **Model: `DistributionListItem`** (2026-08-20 구현).
+
+| 컬럼 | 타입 | NULL | Key | Default | 비고 |
+|------|------|------|-----|---------|------|
+| item_id | int | NO | PRI | auto_increment | |
+| list_id | int | NO | MUL | | → distribution_list FK (CASCADE) |
+| agent_id | char(8) | NO | MUL | | → agent FK |
+| position | int | NO | | | 순서 (1부터) |
+| created_at | timestamp | YES | | NULL | |
+
+**UK**: (list_id, position), (list_id, agent_id)
+
+### distribution_queue
+
+배분 대기열. **Model: `DistributionQueue`** (2026-08-20 구현).
+
+| 컬럼 | 타입 | NULL | Key | Default | 비고 |
+|------|------|------|-----|---------|------|
+| queue_id | int | NO | PRI | auto_increment | |
+| customer_id | char(8) | NO | MUL | | → customer FK |
+| branch_id | int | NO | MUL | | → branch FK |
+| status | enum | NO | MUL | 'pending' | pending/assigned/completed/failed |
+| scheduled_at | datetime | NO | | | 배분 예정 시각 |
+| assigned_agent_id | char(8) | YES | MUL | NULL | → agent FK |
+| assigned_at | datetime | YES | | NULL | 배분 시각 |
+| viewed_at | datetime | YES | | NULL | 설계사 확인 시각 |
+| timeout_count | int | NO | | 0 | 타임아웃 재배분 횟수 |
+| created_at | timestamp | YES | | NULL | |
+| updated_at | timestamp | YES | | NULL | |
+
+**변경 이력**: 2026-08-20 자동배분 기능 신규 추가 (4개 테이블)

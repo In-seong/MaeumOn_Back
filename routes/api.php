@@ -14,6 +14,7 @@ use App\Http\Controllers\Api\Agent\AgentMemoController;
 use App\Http\Controllers\Api\Agent\AgentConsultationController;
 use App\Http\Controllers\Api\Agent\AgentClaimController;
 use App\Http\Controllers\Api\Agent\AgentMessageController;
+use App\Http\Controllers\Api\Agent\AgentDistributionController;
 use App\Http\Controllers\Api\Agent\AgentNotificationController;
 use App\Http\Controllers\Api\Agent\AgentObligationController;
 use App\Http\Controllers\Api\Agent\AgentSatisfactionController;
@@ -22,6 +23,7 @@ use App\Http\Controllers\Api\Agent\AgentDbDistributionController;
 use App\Http\Controllers\Api\Admin\AdminNoticeController;
 use App\Http\Controllers\Api\Admin\AdminCustomerController;
 use App\Http\Controllers\Api\Admin\AdminAgentController;
+use App\Http\Controllers\Api\Admin\AdminDistributionController;
 use App\Http\Controllers\Api\Admin\AdminMemoController;
 use App\Http\Controllers\Api\Admin\AdminAssignmentController;
 use App\Http\Controllers\Api\Admin\AdminAdditionalContractController;
@@ -301,6 +303,18 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/settings', [AdminSettingController::class, 'index']);
         Route::put('/settings', [AdminSettingController::class, 'update']);
 
+        // 자동배분 관리
+        Route::get('/distribution/config', [AdminDistributionController::class, 'getConfig']);
+        Route::post('/distribution/{branchId}/toggle', [AdminDistributionController::class, 'toggleActive']);
+        Route::put('/distribution/{branchId}/position', [AdminDistributionController::class, 'setPosition']);
+        Route::get('/distribution/{branchId}/lists', [AdminDistributionController::class, 'getLists']);
+        Route::get('/distribution/{branchId}/lists/{listId}', [AdminDistributionController::class, 'getList']);
+        Route::post('/distribution/{branchId}/lists', [AdminDistributionController::class, 'saveList']);
+        Route::put('/distribution/{branchId}/lists/{listId}', [AdminDistributionController::class, 'updateList']);
+        Route::delete('/distribution/{branchId}/lists/{listId}', [AdminDistributionController::class, 'deleteList']);
+        Route::post('/distribution/{branchId}/lists/{listId}/activate', [AdminDistributionController::class, 'activateList']);
+        Route::get('/distribution/queue', [AdminDistributionController::class, 'getQueue']);
+
         // 지사 관리 (슈퍼 관리자)
         Route::get('/branches/dropdown', [AdminBranchController::class, 'dropdown']);
         Route::apiResource('branches', AdminBranchController::class);
@@ -358,6 +372,10 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/messages', [AgentMessageController::class, 'index']);
         Route::post('/messages', [AgentMessageController::class, 'store']);
         Route::get('/messages/{id}', [AgentMessageController::class, 'show']);
+
+        // 자동배분 확인
+        Route::get('/distribution/pending', [AgentDistributionController::class, 'pending']);
+        Route::post('/distribution/{queueId}/confirm', [AgentDistributionController::class, 'confirm']);
 
         // 알림 (SFR-003)
         Route::get('/notifications', [AgentNotificationController::class, 'index']);
