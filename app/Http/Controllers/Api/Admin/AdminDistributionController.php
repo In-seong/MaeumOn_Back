@@ -66,13 +66,17 @@ class AdminDistributionController extends Controller
                     $nextPosition = $config->current_position;
                     $nextItem = $list->items->firstWhere('position', $nextPosition + 1);
 
+                    $message = $config->current_position === 0
+                        ? "배분 기록 없음. 1번부터 시작합니다."
+                        : "{$config->current_position}번까지 배분했습니다. " . ($nextPosition + 1) . "번부터 시작합니다.";
+
                     $resumeInfo = [
                         'list_changed' => false,
                         'last_position' => $config->current_position,
                         'next_position' => $nextPosition + 1,
                         'next_agent' => $nextItem?->agent?->name ?? null,
                         'total_agents' => $totalAgents,
-                        'message' => "{$config->current_position}번까지 배분했습니다. " . ($nextPosition + 1) . "번부터 시작합니다.",
+                        'message' => $message,
                     ];
                 }
             }

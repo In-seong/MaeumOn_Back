@@ -21,7 +21,7 @@ Schedule::command('calendar:generate-reminders')->dailyAt('08:00');
 Schedule::command('health:notify-risks')->dailyAt('09:00');
 
 // 자동배분 대기열 처리 (매분 실행)
-Schedule::command('distribution:process')->everyMinute();
+Schedule::command('distribution:process')->everyMinute()->withoutOverlapping();
 
 // 자동배분 미확인 타임아웃 체크 (매시간)
-Schedule::command('distribution:check-timeout')->hourly();
+Schedule::command('distribution:check-timeout')->hourly()->withoutOverlapping();

@@ -118,6 +118,15 @@ class DistributionService
                 return false;
             }
 
+            $updated = DistributionQueue::where('queue_id', $item->queue_id)
+                ->where('status', 'pending')
+                ->lockForUpdate()
+                ->first();
+
+            if (!$updated) {
+                return false;
+            }
+
             $list = DistributionList::with('items')->find($config->current_list_id);
             if (!$list || $list->items->isEmpty()) {
                 return false;
@@ -146,7 +155,7 @@ class DistributionService
                 return false;
             }
 
-            $item->update([
+            $updated->update([
                 'status' => 'assigned',
                 'assigned_agent_id' => $listItem->agent_id,
                 'assigned_at' => now(),
