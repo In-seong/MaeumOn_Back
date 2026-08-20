@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Models\Agent;
 use App\Models\Customer;
 use App\Models\CustomerAssignment;
 use App\Models\DistributionConfig;
@@ -123,14 +124,25 @@ class DistributionService
             }
 
             $totalAgents = $list->items->count();
-            $nextPosition = $config->current_position % $totalAgents;
+            $startPosition = $config->current_position % $totalAgents;
 
-            $listItem = $list->items->firstWhere('position', $nextPosition + 1);
-            if (!$listItem) {
-                $listItem = $list->items->sortBy('position')->first();
+            $listItem = null;
+            $finalPosition = $startPosition;
+            for ($i = 0; $i < $totalAgents; $i++) {
+                $tryPosition = ($startPosition + $i) % $totalAgents;
+                $candidate = $list->items->firstWhere('position', $tryPosition + 1);
+                if ($candidate) {
+                    $agent = Agent::where('agent_id', $candidate->agent_id)->first();
+                    if ($agent && $agent->is_active) {
+                        $listItem = $candidate;
+                        $finalPosition = $tryPosition;
+                        break;
+                    }
+                }
             }
 
             if (!$listItem) {
+                Log::warning('자동배분 실패: 활성 설계사 없음', ['branch_id' => $item->branch_id]);
                 return false;
             }
 
@@ -156,7 +168,7 @@ class DistributionService
             ]);
 
             $config->update([
-                'current_position' => ($nextPosition + 1) % $totalAgents,
+                'current_position' => ($finalPosition + 1) % $totalAgents,
             ]);
 
             $this->sendDistributionNotification($listItem->agent_id, $item->customer_id);
@@ -175,16 +187,18 @@ class DistributionService
 
         Notification::create([
             'receiver_id' => $agentId,
-            'receiver_type' => 'agent',
+            'receiver_type' => 'AGENT',
+            'sender_type' => 'SYSTEM',
             'notification_type' => 'distribution',
             'title' => '새 고객 배분',
             'content' => "새로운 고객이 배분되었습니다: {$customerName}",
             'is_read' => false,
             'sent_at' => now(),
+            'created_at' => now(),
         ]);
 
         try {
-            $this->fcmService->sendToUsers('agent', [$agentId], '새 고객 배분', "새로운 고객이 배분되었습니다: {$customerName}");
+            $this->fcmService->sendToUsers('AGENT', [$agentId], '새 고객 배분', "새로운 고객이 배분되었습니다: {$customerName}");
         } catch (\Exception $e) {
             Log::error('배분 알림 FCM 발송 실패', ['agent_id' => $agentId, 'error' => $e->getMessage()]);
         }
