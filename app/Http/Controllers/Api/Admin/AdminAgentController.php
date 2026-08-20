@@ -7,12 +7,15 @@ use App\Http\Traits\BranchFilterable;
 use App\Models\Account;
 use App\Models\Agent;
 use App\Models\BatchClaim;
+use App\Models\CalendarEvent;
+use App\Models\ClaimRequest;
 use App\Models\Consultation;
 use App\Models\Contract;
 use App\Models\Customer;
 use App\Models\CustomerAssignment;
 use App\Models\CustomerStatus;
 use App\Models\InsuranceClaim;
+use App\Models\Reminder;
 use App\Models\SatisfactionSurvey;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -338,7 +341,34 @@ class AdminAgentController extends Controller
                 ->whereIn('customer_id', $validCustomerIds)
                 ->update(['agent_id' => $toAgentId]);
 
-            // 8. 재배분 이력 기록
+            // 8. 캘린더 일정
+            $counts['calendar_events'] = CalendarEvent::where('agent_id', $fromAgentId)
+                ->whereIn('customer_id', $validCustomerIds)
+                ->update(['agent_id' => $toAgentId]);
+
+            // 9. 캘린더 알림 (이관된 일정의 알림)
+            $eventIds = CalendarEvent::where('agent_id', $toAgentId)
+                ->whereIn('customer_id', $validCustomerIds)
+                ->pluck('event_id')
+                ->toArray();
+            if (!empty($eventIds)) {
+                $counts['reminders'] = Reminder::where('agent_id', $fromAgentId)
+                    ->whereIn('event_id', $eventIds)
+                    ->update(['agent_id' => $toAgentId]);
+            }
+
+            // 10. 청구 요청 (insurance_claim에 연결된 건)
+            $claimIds = InsuranceClaim::where('agent_id', $toAgentId)
+                ->whereIn('customer_id', $validCustomerIds)
+                ->pluck('claim_id')
+                ->toArray();
+            if (!empty($claimIds)) {
+                $counts['claim_requests'] = ClaimRequest::where('assigned_agent_id', $fromAgentId)
+                    ->whereIn('linked_claim_id', $claimIds)
+                    ->update(['assigned_agent_id' => $toAgentId]);
+            }
+
+            // 11. 재배분 이력 기록
             $now = now();
             foreach ($validCustomerIds as $customerId) {
                 CustomerAssignment::create([
