@@ -85,7 +85,11 @@ class AdminDistributionController extends Controller
             ], 422);
         }
 
-        $config->update(['is_active' => $newActive]);
+        $updateData = ['is_active' => $newActive];
+        if ($newActive && $resumeInfo && ($resumeInfo['list_changed'] ?? false)) {
+            $updateData['current_position'] = 0;
+        }
+        $config->update($updateData);
 
         return response()->json([
             'success' => true,

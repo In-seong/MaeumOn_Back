@@ -95,14 +95,7 @@ class DistributionService
                 'scheduled_at' => now(),
             ]);
 
-            if ($this->assignToNextAgent($item)) {
-                CustomerAssignment::create([
-                    'customer_id' => $item->customer_id,
-                    'agent_id' => $item->assigned_agent_id,
-                    'assignment_type' => 'auto_timeout_reassign',
-                    'assignment_date' => now()->toDateString(),
-                    'notes' => "자동재배분(미확인): {$oldAgentId} → {$item->assigned_agent_id}",
-                ]);
+            if ($this->assignToNextAgent($item, 'auto_timeout_reassign', "자동재배분(미확인): {$oldAgentId}")) {
                 $processed++;
             }
         }
@@ -113,9 +106,9 @@ class DistributionService
     /**
      * 다음 순서 설계사에게 배분
      */
-    private function assignToNextAgent(DistributionQueue $item): bool
+    private function assignToNextAgent(DistributionQueue $item, string $assignmentType = 'auto_distribute', ?string $notePrefix = null): bool
     {
-        return DB::transaction(function () use ($item) {
+        return DB::transaction(function () use ($item, $assignmentType, $notePrefix) {
             $config = DistributionConfig::where('branch_id', $item->branch_id)
                 ->lockForUpdate()
                 ->first();
@@ -150,12 +143,16 @@ class DistributionService
             Customer::where('customer_id', $item->customer_id)
                 ->update(['agent_id' => $listItem->agent_id]);
 
+            $notes = $notePrefix
+                ? "{$notePrefix} → {$listItem->agent_id} (순서: {$listItem->position})"
+                : "자동배분 (순서: {$listItem->position})";
+
             CustomerAssignment::create([
                 'customer_id' => $item->customer_id,
                 'agent_id' => $listItem->agent_id,
-                'assignment_type' => 'auto_distribute',
+                'assignment_type' => $assignmentType,
                 'assignment_date' => now()->toDateString(),
-                'notes' => "자동배분 (순서: {$listItem->position})",
+                'notes' => $notes,
             ]);
 
             $config->update([
