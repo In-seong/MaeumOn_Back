@@ -210,6 +210,7 @@ Route::middleware('auth:sanctum')->group(function () {
 
         // 설계사 관리 (SFR-042)
         Route::apiResource('agents', AdminAgentController::class);
+        Route::post('agents/{id}/reassign', [AdminAgentController::class, 'reassignCustomers']);
 
         // DB 배분 (SFR-039)
         Route::get('/assignments', [AdminAssignmentController::class, 'index']);

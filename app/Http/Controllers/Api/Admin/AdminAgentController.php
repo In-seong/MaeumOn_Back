@@ -6,6 +6,14 @@ use App\Http\Controllers\Controller;
 use App\Http\Traits\BranchFilterable;
 use App\Models\Account;
 use App\Models\Agent;
+use App\Models\BatchClaim;
+use App\Models\Consultation;
+use App\Models\Contract;
+use App\Models\Customer;
+use App\Models\CustomerAssignment;
+use App\Models\CustomerStatus;
+use App\Models\InsuranceClaim;
+use App\Models\SatisfactionSurvey;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -251,6 +259,106 @@ class AdminAgentController extends Controller
             'success' => true,
             'data' => $agent->fresh(),
             'message' => '설계사가 비활성화되었습니다.',
+        ]);
+    }
+
+    /**
+     * 고객 재배분: 특정 설계사의 고객(및 관련 데이터)을 다른 설계사에게 이관
+     */
+    public function reassignCustomers(Request $request, string $fromAgentId): JsonResponse
+    {
+        $validated = $request->validate([
+            'to_agent_id' => 'required|string|exists:agent,agent_id',
+            'customer_ids' => 'required|array|min:1',
+            'customer_ids.*' => 'string|exists:customer,customer_id',
+        ]);
+
+        $toAgentId = $validated['to_agent_id'];
+        $customerIds = $validated['customer_ids'];
+
+        if ($fromAgentId === $toAgentId) {
+            return response()->json([
+                'success' => false,
+                'message' => '같은 설계사에게 재배분할 수 없습니다.',
+            ], 422);
+        }
+
+        Agent::where('agent_id', $fromAgentId)->firstOrFail();
+        $toAgent = Agent::where('agent_id', $toAgentId)->firstOrFail();
+
+        // 실제로 원래 설계사에 속한 고객만 필터
+        $validCustomerIds = Customer::where('agent_id', $fromAgentId)
+            ->whereIn('customer_id', $customerIds)
+            ->pluck('customer_id')
+            ->toArray();
+
+        if (empty($validCustomerIds)) {
+            return response()->json([
+                'success' => false,
+                'message' => '이관할 고객이 없습니다.',
+            ], 422);
+        }
+
+        $adminId = $request->user()->admin->admin_id ?? null;
+
+        $counts = DB::transaction(function () use ($fromAgentId, $toAgentId, $validCustomerIds, $adminId) {
+            $counts = ['customers' => count($validCustomerIds)];
+
+            // 1. 고객 담당자 변경
+            Customer::whereIn('customer_id', $validCustomerIds)
+                ->update(['agent_id' => $toAgentId]);
+
+            // 2. 보험 청구
+            $counts['claims'] = InsuranceClaim::where('agent_id', $fromAgentId)
+                ->whereIn('customer_id', $validCustomerIds)
+                ->update(['agent_id' => $toAgentId]);
+
+            // 3. 배치 청구
+            $counts['batch_claims'] = BatchClaim::where('agent_id', $fromAgentId)
+                ->whereIn('customer_id', $validCustomerIds)
+                ->update(['agent_id' => $toAgentId]);
+
+            // 4. 계약
+            $counts['contracts'] = Contract::where('agent_id', $fromAgentId)
+                ->whereIn('customer_id', $validCustomerIds)
+                ->update(['agent_id' => $toAgentId]);
+
+            // 5. 상담
+            $counts['consultations'] = Consultation::where('assignee_id', $fromAgentId)
+                ->whereIn('customer_id', $validCustomerIds)
+                ->update(['assignee_id' => $toAgentId]);
+
+            // 6. 고객 상태
+            CustomerStatus::where('agent_id', $fromAgentId)
+                ->whereIn('customer_id', $validCustomerIds)
+                ->update(['agent_id' => $toAgentId]);
+
+            // 7. 만족도 조사
+            SatisfactionSurvey::where('agent_id', $fromAgentId)
+                ->whereIn('customer_id', $validCustomerIds)
+                ->update(['agent_id' => $toAgentId]);
+
+            // 8. 재배분 이력 기록
+            $now = now();
+            foreach ($validCustomerIds as $customerId) {
+                CustomerAssignment::create([
+                    'customer_id' => $customerId,
+                    'agent_id' => $toAgentId,
+                    'admin_id' => $adminId,
+                    'assignment_type' => 'reassign',
+                    'assignment_date' => $now->toDateString(),
+                    'notes' => "재배분: {$fromAgentId} → {$toAgentId}",
+                    'created_by_id' => $adminId,
+                ]);
+            }
+
+            return $counts;
+        });
+
+        return response()->json([
+            'success' => true,
+            'data' => $counts,
+            'message' => "{$counts['customers']}명의 고객이 {$toAgent->name} 설계사에게 재배분되었습니다.",
         ]);
     }
 }
