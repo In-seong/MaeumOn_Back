@@ -88,13 +88,22 @@ class DistributionService
         foreach ($timeoutItems as $item) {
             $oldAgentId = $item->assigned_agent_id;
 
-            $item->update([
-                'status' => 'pending',
-                'assigned_agent_id' => null,
-                'assigned_at' => null,
-                'timeout_count' => $item->timeout_count + 1,
-                'scheduled_at' => now(),
-            ]);
+            $affected = DistributionQueue::where('queue_id', $item->queue_id)
+                ->where('status', 'assigned')
+                ->whereNull('viewed_at')
+                ->update([
+                    'status' => 'pending',
+                    'assigned_agent_id' => null,
+                    'assigned_at' => null,
+                    'timeout_count' => $item->timeout_count + 1,
+                    'scheduled_at' => now(),
+                ]);
+
+            if ($affected === 0) {
+                continue;
+            }
+
+            $item->refresh();
 
             if ($this->assignToNextAgent($item, 'auto_timeout_reassign', "자동재배분(미확인): {$oldAgentId}")) {
                 $processed++;
@@ -218,20 +227,14 @@ class DistributionService
      */
     public function confirmDistribution(string $agentId, int $queueId): bool
     {
-        $item = DistributionQueue::where('queue_id', $queueId)
+        $affected = DistributionQueue::where('queue_id', $queueId)
             ->where('assigned_agent_id', $agentId)
             ->where('status', 'assigned')
-            ->first();
+            ->update([
+                'viewed_at' => now(),
+                'status' => 'completed',
+            ]);
 
-        if (!$item) {
-            return false;
-        }
-
-        $item->update([
-            'viewed_at' => now(),
-            'status' => 'completed',
-        ]);
-
-        return true;
+        return $affected > 0;
     }
 }
