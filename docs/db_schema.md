@@ -612,7 +612,7 @@ DB 배분 (고객 배정).
 | assignment_id | int(11) | NO | PRI | auto_increment | |
 | customer_id | char(8) | NO | MUL | | → customer FK |
 | agent_id | char(8) | NO | MUL | | → agent FK (배정 설계사) |
-| admin_id | char(8) | NO | MUL | | → admin FK (배정자) |
+| admin_id | char(8) | YES | MUL | NULL | → admin FK (배정자, 자동배분 시 NULL) |
 | assignment_type | varchar(50) | NO | | | 배분 유형 |
 | assignment_date | date | NO | MUL | | 배분일 |
 | notes | text | YES | | | |
@@ -1474,3 +1474,4 @@ FaxClientNC 연동용 테이블. **테이블명 반드시 대문자 유지**.
 | updated_at | timestamp | YES | | NULL | |
 
 **변경 이력**: 2026-08-20 자동배분 기능 신규 추가 (4개 테이블)
+**변경 이력**: 2026-08-20 customer_assignment.admin_id: NOT NULL → NULL 허용 (자동배분 시 배정자 없음)
