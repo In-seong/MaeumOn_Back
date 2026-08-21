@@ -204,6 +204,7 @@ Route::middleware('auth:sanctum')->group(function () {
 
         // 고객 관리 (SFR-032~038)
         Route::apiResource('customers', AdminCustomerController::class)->names('admin.customers');
+        Route::patch('/customers/{id}/toggle-active', [AdminCustomerController::class, 'toggleActive']);
         Route::get('/customers/{customerId}/resident-number', [AdminCustomerController::class, 'unmaskResidentNumber']);
         Route::get('/customers/{customerId}/memos', [AdminMemoController::class, 'index']);
         Route::post('/customers/{customerId}/memos', [AdminMemoController::class, 'store']);
@@ -212,6 +213,7 @@ Route::middleware('auth:sanctum')->group(function () {
 
         // 설계사 관리 (SFR-042)
         Route::apiResource('agents', AdminAgentController::class);
+        Route::patch('/agents/{id}/toggle-active', [AdminAgentController::class, 'toggleActive']);
         Route::post('agents/{id}/reassign', [AdminAgentController::class, 'reassignCustomers']);
 
         // DB 배분 (SFR-039)

@@ -242,7 +242,32 @@ class AdminAgentController extends Controller
     }
 
     /**
-     * 설계사 비활성화 (소프트 삭제)
+     * 설계사 활성화/비활성화 토글
+     */
+    public function toggleActive(Request $request, string $id): JsonResponse
+    {
+        $agent = Agent::where('agent_id', $id)->firstOrFail();
+
+        $newStatus = !$agent->is_active;
+
+        DB::transaction(function () use ($agent, $newStatus) {
+            $agent->update(['is_active' => $newStatus]);
+
+            if ($agent->account_id) {
+                Account::where('account_id', $agent->account_id)
+                    ->update(['is_active' => $newStatus]);
+            }
+        });
+
+        return response()->json([
+            'success' => true,
+            'data' => $agent->fresh()->load(['account:account_id,username,role,is_active', 'branches:branch_id,branch_name']),
+            'message' => $newStatus ? '설계사가 활성화되었습니다.' : '설계사가 비활성화되었습니다.',
+        ]);
+    }
+
+    /**
+     * 설계사 완전 삭제 (소프트 삭제)
      */
     public function destroy(Request $request, string $id): JsonResponse
     {
@@ -251,17 +276,26 @@ class AdminAgentController extends Controller
         DB::transaction(function () use ($agent) {
             $agent->update(['is_active' => false]);
 
-            // 연결된 Account도 비활성화
+            // 담당 고객의 agent_id 해제
+            Customer::where('agent_id', $agent->agent_id)->update(['agent_id' => null]);
+
+            $agent->delete();
+
             if ($agent->account_id) {
-                Account::where('account_id', $agent->account_id)
-                    ->update(['is_active' => false]);
+                $account = Account::where('account_id', $agent->account_id)->first();
+                if ($account) {
+                    $account->update([
+                        'is_active' => false,
+                        'username' => 'deleted_' . $account->username . '_' . time(),
+                    ]);
+                    $account->delete();
+                }
             }
         });
 
         return response()->json([
             'success' => true,
-            'data' => $agent->fresh(),
-            'message' => '설계사가 비활성화되었습니다.',
+            'message' => '설계사가 완전 삭제되었습니다.',
         ]);
     }
 

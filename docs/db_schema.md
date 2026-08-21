@@ -34,7 +34,7 @@
 
 - **PK 네이밍**: `{테이블명}_id` (예: `customer_id`, `claim_id`)
 - **타임스탬프**: 모든 비즈니스 테이블에 `created_at`, `updated_at` 존재
-- **Soft Delete**: `is_active` 컬럼 사용 (실제 DELETE 하지 않음)
+- **Soft Delete**: `is_active` 컬럼으로 비활성화, `deleted_at` 컬럼으로 완전삭제 (DB 데이터 유지, 리스트 비노출)
 - **CHAR(8) ID**: customer(`C`), agent(`A`), admin(`D`) + 7자리 순번 (예: `C0000001`)
 - **FK 컬럼명**: `{참조테이블}_id`
 
@@ -57,6 +57,7 @@
 | last_login_at | datetime | YES | | | |
 | created_at | datetime | NO | | CURRENT_TIMESTAMP | |
 | updated_at | datetime | YES | | CURRENT_TIMESTAMP ON UPDATE | |
+| deleted_at | timestamp | YES | | NULL | 소프트 삭제 (완전삭제 시 설정) |
 
 ### admin
 
@@ -95,6 +96,7 @@
 | is_active | tinyint(1) | NO | MUL | 1 | |
 | created_at | datetime | NO | | CURRENT_TIMESTAMP | |
 | updated_at | datetime | YES | | CURRENT_TIMESTAMP ON UPDATE | |
+| deleted_at | timestamp | YES | | NULL | 소프트 삭제 (완전삭제 시 설정) |
 
 ### customer
 
@@ -121,6 +123,7 @@
 | is_active | tinyint(1) | NO | MUL | 1 | |
 | created_at | datetime | NO | | CURRENT_TIMESTAMP | |
 | updated_at | datetime | YES | | CURRENT_TIMESTAMP ON UPDATE | |
+| deleted_at | timestamp | YES | | NULL | 소프트 삭제 (완전삭제 시 설정) |
 
 ### device_token
 
@@ -1477,3 +1480,4 @@ FaxClientNC 연동용 테이블. **테이블명 반드시 대문자 유지**.
 **변경 이력**: 2026-08-20 자동배분 기능 신규 추가 (4개 테이블)
 **변경 이력**: 2026-08-20 customer_assignment.admin_id: NOT NULL → NULL 허용 (자동배분 시 배정자 없음)
 **변경 이력**: 2026-08-21 customer 테이블에 acquisition_note VARCHAR(500) NULL 컬럼 추가 (가입경로 기타 메모)
+**변경 이력**: 2026-08-21 account, agent, customer 테이블에 deleted_at TIMESTAMP NULL 컬럼 추가 (3단계 상태관리: 활성화/비활성화/완전삭제)

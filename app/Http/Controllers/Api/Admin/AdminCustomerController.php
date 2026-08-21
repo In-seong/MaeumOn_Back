@@ -4,11 +4,13 @@ namespace App\Http\Controllers\Api\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Http\Traits\BranchFilterable;
+use App\Models\Account;
 use App\Models\Customer;
 use App\Models\PiiLog;
 use App\Services\DistributionService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 
 class AdminCustomerController extends Controller
 {
@@ -239,18 +241,53 @@ class AdminCustomerController extends Controller
     }
 
     /**
-     * 고객 비활성화 (소프트 삭제)
+     * 고객 활성화/비활성화 토글
+     */
+    public function toggleActive(Request $request, string $id): JsonResponse
+    {
+        $customer = Customer::where('customer_id', $id)->firstOrFail();
+
+        $newStatus = !$customer->is_active;
+        $customer->update(['is_active' => $newStatus]);
+
+        if ($customer->account_id) {
+            Account::where('account_id', $customer->account_id)
+                ->update(['is_active' => $newStatus]);
+        }
+
+        return response()->json([
+            'success' => true,
+            'data' => $customer->fresh(),
+            'message' => $newStatus ? '고객이 활성화되었습니다.' : '고객이 비활성화되었습니다.',
+        ]);
+    }
+
+    /**
+     * 고객 완전 삭제 (소프트 삭제)
      */
     public function destroy(Request $request, string $id): JsonResponse
     {
         $customer = Customer::where('customer_id', $id)->firstOrFail();
 
-        $customer->update(['is_active' => false]);
+        DB::transaction(function () use ($customer) {
+            $customer->update(['is_active' => false]);
+            $customer->delete();
+
+            if ($customer->account_id) {
+                $account = Account::where('account_id', $customer->account_id)->first();
+                if ($account) {
+                    $account->update([
+                        'is_active' => false,
+                        'username' => 'deleted_' . $account->username . '_' . time(),
+                    ]);
+                    $account->delete();
+                }
+            }
+        });
 
         return response()->json([
             'success' => true,
-            'data' => $customer->fresh(),
-            'message' => '고객이 비활성화되었습니다.',
+            'message' => '고객이 완전 삭제되었습니다.',
         ]);
     }
 }
