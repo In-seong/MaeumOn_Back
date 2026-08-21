@@ -116,6 +116,7 @@
 | job | varchar(100) | YES | | | 직업 |
 | telecom | varchar(20) | YES | | | 통신사 |
 | acquisition_channel | varchar(50) | YES | | | 고객정보취득경로(병원 등) |
+| acquisition_note | varchar(500) | YES | | | 가입경로 기타 메모 |
 | last_contact_date | date | YES | | | 최근 연락일 |
 | is_active | tinyint(1) | NO | MUL | 1 | |
 | created_at | datetime | NO | | CURRENT_TIMESTAMP | |
@@ -1475,3 +1476,4 @@ FaxClientNC 연동용 테이블. **테이블명 반드시 대문자 유지**.
 
 **변경 이력**: 2026-08-20 자동배분 기능 신규 추가 (4개 테이블)
 **변경 이력**: 2026-08-20 customer_assignment.admin_id: NOT NULL → NULL 허용 (자동배분 시 배정자 없음)
+**변경 이력**: 2026-08-21 customer 테이블에 acquisition_note VARCHAR(500) NULL 컬럼 추가 (가입경로 기타 메모)
