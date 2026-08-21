@@ -26,6 +26,7 @@ class Customer extends Model
         'job',
         'telecom',
         'acquisition_channel',
+        'acquisition_note',
         'last_contact_date',
         'is_active',
     ];

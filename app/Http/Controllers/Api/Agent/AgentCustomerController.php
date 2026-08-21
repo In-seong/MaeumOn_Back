@@ -77,6 +77,7 @@ class AgentCustomerController extends Controller
             'job' => 'nullable|string|max:50',
             'telecom' => 'nullable|string|max:20',
             'acquisition_channel' => 'nullable|string|max:50',
+            'acquisition_note' => 'nullable|string|max:500',
         ]);
 
         // Customer ID 생성 (C + 7자리 순번)
@@ -200,6 +201,7 @@ class AgentCustomerController extends Controller
             'job' => 'nullable|string|max:50',
             'telecom' => 'nullable|string|max:20',
             'acquisition_channel' => 'nullable|string|max:50',
+            'acquisition_note' => 'nullable|string|max:500',
         ]);
 
         // 주민번호/전화번호 하이픈 제거

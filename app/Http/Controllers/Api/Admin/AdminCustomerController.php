@@ -92,6 +92,7 @@ class AdminCustomerController extends Controller
             'job' => 'nullable|string|max:50',
             'telecom' => 'nullable|string|max:20',
             'acquisition_channel' => 'nullable|string|max:50',
+            'acquisition_note' => 'nullable|string|max:500',
             'agent_id' => 'nullable|string|max:8',
         ]);
 
@@ -183,6 +184,7 @@ class AdminCustomerController extends Controller
             'job' => 'nullable|string|max:50',
             'telecom' => 'nullable|string|max:20',
             'acquisition_channel' => 'nullable|string|max:50',
+            'acquisition_note' => 'nullable|string|max:500',
             'agent_id' => 'nullable|string|max:8',
         ]);
 
