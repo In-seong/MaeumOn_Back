@@ -190,7 +190,7 @@ class AdminAssignmentController extends Controller
     public function claimAssignments(Request $request): JsonResponse
     {
         $query = ClaimRequest::whereNotNull('assigned_agent_id')
-            ->with(['assignedAgent:agent_id,name,phone', 'hospital:hospital_id,hospital_name']);
+            ->with(['assignedAgent:agent_id,name,phone', 'hospital:hospital_id,hospital_name', 'files']);
 
         if ($request->has('search') && $request->search) {
             $search = $request->search;
