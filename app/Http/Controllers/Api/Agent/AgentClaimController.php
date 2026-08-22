@@ -945,10 +945,12 @@ class AgentClaimController extends Controller
     }
 
     /**
-     * 바로 청구: 폼 필드에서 고객 정보를 추출하여 고객 자동 생성
+     * 바로 청구: 폼 필드에서 고객 정보를 추출하여 기존 고객 매칭 또는 자동 생성
      *
      * Step 3(계약자) 필드에서 이름, 전화번호, 주민번호 등을 추출하고
-     * 해당 정보로 새 고객을 등록한 뒤 반환합니다.
+     * 이름+전화번호로 기존 고객 매칭을 시도합니다.
+     * 매칭되면 담당 설계사를 현재 설계사로 변경하고 기존 고객을 반환,
+     * 매칭되지 않으면 새 고객을 등록한 뒤 반환합니다.
      */
     private function createCustomerFromFields(string $agentId, $formFields, $inputFields): Customer
     {
@@ -1060,6 +1062,22 @@ class AgentClaimController extends Controller
                 0,
                 13
             );
+        }
+
+        // 이름+전화번호로 기존 고객 매칭 시도
+        if (!empty($customerData['name']) && $customerData['name'] !== '미입력' && !empty($customerData['phone'])) {
+            $existingCustomer = Customer::where('name', $customerData['name'])
+                ->where('phone', $customerData['phone'])
+                ->first();
+
+            if ($existingCustomer) {
+                $updates = ['agent_id' => $agentId];
+                if (!$existingCustomer->is_active) {
+                    $updates['is_active'] = true;
+                }
+                $existingCustomer->update($updates);
+                return $existingCustomer;
+            }
         }
 
         // Customer ID 생성 (C + 7자리 순번)
