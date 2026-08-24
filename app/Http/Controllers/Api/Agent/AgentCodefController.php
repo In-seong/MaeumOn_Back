@@ -695,12 +695,16 @@ class AgentCodefController extends Controller
             return $rec->treatment_date && $rec->treatment_date->gte($threeMonthsAgo);
         });
 
-        // 2) N년 이내 입원/수술 (0=1년이내, 1=2년이내, ... 10=11년이내)
+        // 2) N년 구간별 입원/수술 (해당 연도 구간에만 해당하는 건수)
+        // 0: 0~1년, 1: 1~2년, 2: 2~3년, ... 10: 10~11년
         $hospitalizationSurgery = [];
         for ($n = 0; $n <= 10; $n++) {
-            $yearsAgo = $now->copy()->subYears($n + 1);
-            $periodRecords = $records->filter(function ($rec) use ($yearsAgo) {
-                return $rec->treatment_date && $rec->treatment_date->gte($yearsAgo);
+            $periodStart = $now->copy()->subYears($n + 1);
+            $periodEnd = $now->copy()->subYears($n);
+            $periodRecords = $records->filter(function ($rec) use ($periodStart, $periodEnd) {
+                return $rec->treatment_date
+                    && $rec->treatment_date->gte($periodStart)
+                    && $rec->treatment_date->lt($periodEnd);
             });
 
             $hospitalizationCount = $periodRecords->filter(function ($rec) {
