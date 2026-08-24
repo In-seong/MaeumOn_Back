@@ -75,20 +75,34 @@ class AgentDbDistributionController extends Controller
 
         $agentCustomers = Customer::where('agent_id', $agentId)
             ->where('is_active', true)
-            ->get(['customer_id', 'phone']);
+            ->get(['customer_id', 'name', 'phone']);
 
-        $phoneToCustomerId = [];
+        // 전화번호 → 고객 목록 (동일 번호에 여러 고객 가능)
+        $phoneToCustomers = [];
         foreach ($agentCustomers as $c) {
             $normalized = preg_replace('/\D/', '', $c->phone ?? '');
             if ($normalized) {
-                $phoneToCustomerId[$normalized] = $c->customer_id;
+                $phoneToCustomers[$normalized][] = $c;
             }
         }
 
-        $assignments->each(function ($a) use ($phoneToCustomerId) {
+        $assignments->each(function ($a) use ($phoneToCustomers) {
             $phone = preg_replace('/\D/', '', $a->phone ?? '');
-            $a->is_registered = isset($phoneToCustomerId[$phone]);
-            $a->registered_customer_id = $phoneToCustomerId[$phone] ?? null;
+            $candidates = $phoneToCustomers[$phone] ?? [];
+            if (count($candidates) === 0) {
+                $a->is_registered = false;
+                $a->registered_customer_id = null;
+            } elseif (count($candidates) === 1) {
+                $a->is_registered = true;
+                $a->registered_customer_id = $candidates[0]->customer_id;
+            } else {
+                // 동일 전화번호에 여러 고객: 이름까지 일치하는 고객 우선
+                $nameMatch = collect($candidates)->first(fn ($c) => $c->name === $a->name);
+                $a->is_registered = true;
+                $a->registered_customer_id = $nameMatch
+                    ? $nameMatch->customer_id
+                    : $candidates[0]->customer_id;
+            }
         });
 
         return response()->json([
