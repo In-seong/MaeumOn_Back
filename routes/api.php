@@ -447,6 +447,9 @@ Route::middleware('auth:sanctum')->group(function () {
                 Route::post('/checkup/fetch', [AgentCodefController::class, 'fetchCheckup']);
                 Route::post('/checkup/confirm', [AgentCodefController::class, 'confirmCheckup']);
 
+                // 알릴의무 체크
+                Route::get('/disclosure-check', [AgentCodefController::class, 'getDisclosureCheck']);
+
                 // 건강나이
                 Route::get('/health-age', [AgentCodefController::class, 'getHealthAge']);
                 Route::post('/health-age/fetch', [AgentCodefController::class, 'fetchHealthAge']);

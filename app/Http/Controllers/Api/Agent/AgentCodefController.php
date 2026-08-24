@@ -17,6 +17,7 @@ use App\Services\Codef\NhisPredictionService;
 use App\Services\Insurance\InsuranceContractService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Log;
 
 /**
@@ -673,6 +674,101 @@ class AgentCodefController extends Controller
                 'error' => $e->getMessage(),
             ]);
         }
+    }
+
+    /**
+     * 알릴의무 체크 데이터 조회
+     * GET /api/agent/codef/{customerId}/disclosure-check
+     */
+    public function getDisclosureCheck(Request $request, string $customerId): JsonResponse
+    {
+        $customer = $this->resolveCustomer($request, $customerId);
+        $now = Carbon::now();
+
+        $records = MedicalRecord::where('customer_id', $customer->customer_id)
+            ->orderBy('treatment_date', 'desc')
+            ->get();
+
+        // 1) 3개월 이내 병원 방문
+        $threeMonthsAgo = $now->copy()->subMonths(3);
+        $hospitalVisit3Months = $records->contains(function ($rec) use ($threeMonthsAgo) {
+            return $rec->treatment_date && $rec->treatment_date->gte($threeMonthsAgo);
+        });
+
+        // 2) N년 이내 입원/수술 (0=1년이내, 1=2년이내, ... 10=11년이내)
+        $hospitalizationSurgery = [];
+        for ($n = 0; $n <= 10; $n++) {
+            $yearsAgo = $now->copy()->subYears($n + 1);
+            $periodRecords = $records->filter(function ($rec) use ($yearsAgo) {
+                return $rec->treatment_date && $rec->treatment_date->gte($yearsAgo);
+            });
+
+            $hospitalizationCount = $periodRecords->filter(function ($rec) {
+                return $rec->treatment_type === '입원';
+            })->count();
+
+            $surgeryCount = 0;
+            foreach ($periodRecords as $rec) {
+                $details = $rec->detail_treat_list;
+                foreach ($details as $detail) {
+                    if (isset($detail['resTreatType']) && str_contains($detail['resTreatType'], '수술')) {
+                        $surgeryCount++;
+                        break;
+                    }
+                }
+            }
+
+            $hospitalizationSurgery[$n] = [
+                'hospitalization' => $hospitalizationCount,
+                'surgery' => $surgeryCount,
+            ];
+        }
+
+        // 3) 중대 질환 체크
+        $criticalDiseases = [
+            'cancer' => ['암', '악성종양', '악성신생물', '카르시노마', 'carcinoma'],
+            'stroke' => ['뇌졸중', '뇌경색', '뇌출혈', '뇌혈관'],
+            'angina' => ['협심증'],
+            'myocardial_infarction' => ['심근경색'],
+            'heart_valve' => ['심장판막', '판막증', '판막질환'],
+            'liver_cirrhosis' => ['간경화', '간경변'],
+            'chronic_kidney' => ['투석', '만성신장', '신부전', '만성콩팥병'],
+        ];
+
+        $criticalResults = [];
+        foreach ($criticalDiseases as $key => $keywords) {
+            $found = false;
+            $foundYear = null;
+            foreach ($records as $rec) {
+                $diagnosisName = $rec->diagnosis_name ?? '';
+                foreach ($keywords as $keyword) {
+                    if (mb_stripos($diagnosisName, $keyword) !== false) {
+                        $found = true;
+                        if ($rec->treatment_date) {
+                            $yearsAgo = $now->diffInYears($rec->treatment_date);
+                            if ($foundYear === null || $yearsAgo < $foundYear) {
+                                $foundYear = (int) $yearsAgo;
+                            }
+                        }
+                        break;
+                    }
+                }
+            }
+            $criticalResults[$key] = [
+                'found' => $found,
+                'year' => $foundYear,
+            ];
+        }
+
+        return response()->json([
+            'success' => true,
+            'data' => [
+                'hospital_visit_3months' => $hospitalVisit3Months,
+                'hospitalization_surgery' => $hospitalizationSurgery,
+                'critical_diseases' => $criticalResults,
+                'total_records' => $records->count(),
+            ],
+        ]);
     }
 
     /**
