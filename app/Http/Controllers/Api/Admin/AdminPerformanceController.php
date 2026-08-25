@@ -34,8 +34,8 @@ class AdminPerformanceController extends Controller
         };
 
         $assignmentQuery = CustomerAssignment::where('created_at', '>=', $startDate);
-        $contractQuery = Contract::where('created_at', '>=', $startDate);
-        $contractAmountQuery = Contract::where('created_at', '>=', $startDate);
+        $contractQuery = Contract::where('contract_date', '>=', $startDate);
+        $contractAmountQuery = Contract::where('contract_date', '>=', $startDate);
 
         if ($branchId !== null) {
             $assignmentQuery->whereHas('agent.branches', fn($q) => $q->where('branch.branch_id', $branchId));
