@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Facades\Storage;
 use App\Models\Traits\HasScheduleConfig;
@@ -28,6 +29,7 @@ class PartnerHospital extends Model
         'schedule_config',
         'image_path',
         'thumbnail_path',
+        'branch_id',
         'reservation_enabled',
         'is_active',
         'is_deleted',
@@ -54,6 +56,11 @@ class PartnerHospital extends Model
     {
         if (!$this->thumbnail_path) return null;
         return Storage::disk('s3')->temporaryUrl($this->thumbnail_path, now()->addHours(24));
+    }
+
+    public function branch(): BelongsTo
+    {
+        return $this->belongsTo(Branch::class, 'branch_id', 'branch_id');
     }
 
     public function reservations(): HasMany

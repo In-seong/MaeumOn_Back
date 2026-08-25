@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Facades\Storage;
 use App\Models\Traits\HasScheduleConfig;
@@ -24,6 +25,7 @@ class HealthCenter extends Model
         'business_hours',
         'introduction',
         'thumbnail_path',
+        'branch_id',
         'schedule_config',
         'reservation_enabled',
         'is_active',
@@ -48,6 +50,11 @@ class HealthCenter extends Model
         }
 
         return Storage::disk('s3')->temporaryUrl($this->thumbnail_path, now()->addHours(24));
+    }
+
+    public function branch(): BelongsTo
+    {
+        return $this->belongsTo(Branch::class, 'branch_id', 'branch_id');
     }
 
     public function reservations(): HasMany

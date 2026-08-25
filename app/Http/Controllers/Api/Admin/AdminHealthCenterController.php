@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Http\Traits\BranchFilterable;
 use App\Models\HealthCenter;
 use App\Models\HospitalAccount;
 use App\Models\Traits\HasScheduleConfig;
@@ -13,10 +14,17 @@ use Illuminate\Support\Facades\Storage;
 
 class AdminHealthCenterController extends Controller
 {
+    use BranchFilterable;
+
     public function index(Request $request): JsonResponse
     {
-        $query = HealthCenter::with(['accounts', 'images'])
+        $query = HealthCenter::with(['accounts', 'images', 'branch:branch_id,branch_name'])
             ->where('is_deleted', true);
+
+        $branchId = $this->resolveBranchId($request);
+        if ($branchId !== null) {
+            $query->where('branch_id', $branchId);
+        }
 
         if ($search = $request->input('search')) {
             $query->where(function ($q) use ($search) {
@@ -52,6 +60,7 @@ class AdminHealthCenterController extends Controller
             'longitude' => 'nullable|numeric',
             'business_hours' => 'nullable|string',
             'introduction' => 'nullable|string',
+            'branch_id' => 'nullable|integer|exists:branch,branch_id',
             ...HealthCenter::scheduleConfigValidationRules(),
             'portal_username' => 'nullable|string|max:50|unique:hospital_account,username',
             'portal_password' => 'nullable|string|min:4',
@@ -77,7 +86,7 @@ class AdminHealthCenterController extends Controller
 
     public function show(int $id): JsonResponse
     {
-        $center = HealthCenter::with(['accounts', 'images'])->findOrFail($id);
+        $center = HealthCenter::with(['accounts', 'images', 'branch:branch_id,branch_name'])->findOrFail($id);
 
         return response()->json([
             'success' => true,
@@ -98,6 +107,7 @@ class AdminHealthCenterController extends Controller
             'longitude' => 'nullable|numeric',
             'business_hours' => 'nullable|string',
             'introduction' => 'nullable|string',
+            'branch_id' => 'nullable|integer|exists:branch,branch_id',
             ...HealthCenter::scheduleConfigValidationRules(),
             'reservation_enabled' => 'sometimes|boolean',
             'is_active' => 'sometimes|boolean',

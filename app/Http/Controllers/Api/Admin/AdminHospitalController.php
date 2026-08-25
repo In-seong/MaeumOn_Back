@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Http\Traits\BranchFilterable;
 use App\Models\PartnerHospital;
 use App\Models\HospitalAccount;
 use App\Models\Traits\HasScheduleConfig;
@@ -13,10 +14,17 @@ use Illuminate\Support\Facades\Storage;
 
 class AdminHospitalController extends Controller
 {
+    use BranchFilterable;
+
     public function index(Request $request): JsonResponse
     {
-        $query = PartnerHospital::with(['accounts', 'images'])
+        $query = PartnerHospital::with(['accounts', 'images', 'branch:branch_id,branch_name'])
             ->where('is_deleted', true);
+
+        $branchId = $this->resolveBranchId($request);
+        if ($branchId !== null) {
+            $query->where('branch_id', $branchId);
+        }
 
         if ($search = $request->input('search')) {
             $query->where(function ($q) use ($search) {
@@ -53,6 +61,7 @@ class AdminHospitalController extends Controller
             'business_hours' => 'nullable|string',
             'introduction' => 'nullable|string',
             'specialties' => 'nullable|string',
+            'branch_id' => 'nullable|integer|exists:branch,branch_id',
             ...PartnerHospital::scheduleConfigValidationRules(),
             'portal_username' => 'nullable|string|max:50|unique:hospital_account,username',
             'portal_password' => 'nullable|string|min:4',
@@ -79,7 +88,7 @@ class AdminHospitalController extends Controller
 
     public function show(int $id): JsonResponse
     {
-        $hospital = PartnerHospital::with(['accounts', 'images'])->findOrFail($id);
+        $hospital = PartnerHospital::with(['accounts', 'images', 'branch:branch_id,branch_name'])->findOrFail($id);
 
         return response()->json([
             'success' => true,
@@ -133,6 +142,7 @@ class AdminHospitalController extends Controller
             'business_hours' => 'nullable|string',
             'introduction' => 'nullable|string',
             'specialties' => 'nullable|string',
+            'branch_id' => 'nullable|integer|exists:branch,branch_id',
             ...PartnerHospital::scheduleConfigValidationRules(),
             'reservation_enabled' => 'sometimes|boolean',
             'is_active' => 'sometimes|boolean',

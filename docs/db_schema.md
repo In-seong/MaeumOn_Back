@@ -811,6 +811,7 @@ DB 배분 (고객 배정).
 | business_hours | text | YES | | | 영업시간 |
 | introduction | text | YES | | | 소개 |
 | specialties | text | YES | | | 진료 과목 |
+| branch_id | int(11) | YES | MUL | NULL | → branch FK (관할 지사) |
 | schedule_config | json | YES | | NULL | 예약 스케줄 설정 (요일별/차단일/특별일정) |
 | thumbnail_path | varchar(255) | YES | | NULL | 목록 썸네일 이미지 S3 경로 (정방형 1:1) |
 | reservation_enabled | tinyint(1) | NO | | 1 | 예약 기능 활성 여부 (0=비활성, 1=활성) |
@@ -1184,6 +1185,7 @@ FaxClientNC 연동용 테이블. **테이블명 반드시 대문자 유지**.
 | contact_phone | varchar(20) | YES | | | |
 | business_hours | text | YES | | | 영업시간 |
 | introduction | text | YES | | | 소개 |
+| branch_id | int(11) | YES | MUL | NULL | → branch FK (관할 지사) |
 | thumbnail_path | varchar(255) | YES | | NULL | S3 썸네일 이미지 경로 (정방형 1:1) |
 | schedule_config | json | YES | | NULL | 예약 스케줄 설정 (요일별/차단일/특별일정) |
 | reservation_enabled | tinyint(1) | NO | | 1 | 예약 기능 활성 여부 (0=비활성, 1=활성) |
@@ -1284,6 +1286,7 @@ FaxClientNC 연동용 테이블. **테이블명 반드시 대문자 유지**.
 | 2026-06-25 | partner_hospital, health_center에 reservation_enabled TINYINT(1) NOT NULL DEFAULT 1 컬럼 추가. 예약 기능 on/off 토글 (비활성 시 사용자 앱에서 예약 섹션 숨김) |
 | 2026-07-04 | codef_api_logs 테이블 신규 생성 — 설계사별 CODEF API 사용 로그 (월별 정산용). Model: CodefApiLog. 관리자 정산 API 3개 추가 (summary/logs/mark-billed) |
 | 2026-08-19 | 지사(Branch) 분리 아키텍처 Phase 1: branch 테이블 신규 (Model: Branch), agent_branch 중간 테이블 신규 (설계사-지사 N:N). admin에 branch_id/admin_role 컬럼 추가. notice에 branch_id 추가. performance에 branch_id 추가. Admin/Agent/Notice/Performance 모델 업데이트. AdminBranchController, AdminAccountController 추가 |
+| 2026-08-25 | partner_hospital, health_center에 branch_id INT(11) NULL 컬럼 추가 (관할 지사 지정, FK → branch). PartnerHospital/HealthCenter 모델에 branch() belongsTo 관계 추가. AdminHospitalController/AdminHealthCenterController에 BranchFilterable 적용 + branch_id 저장/필터링. AdminReservationController에 병원/센터 branch_id 기반 필터링 추가 |
 
 ---
 

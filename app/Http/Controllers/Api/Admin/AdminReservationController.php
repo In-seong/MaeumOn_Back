@@ -3,15 +3,26 @@
 namespace App\Http\Controllers\Api\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Http\Traits\BranchFilterable;
 use App\Models\HospitalReservation;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
 class AdminReservationController extends Controller
 {
+    use BranchFilterable;
+
     public function index(Request $request): JsonResponse
     {
         $query = HospitalReservation::with(['hospital', 'healthCenter']);
+
+        $branchId = $this->resolveBranchId($request);
+        if ($branchId !== null) {
+            $query->where(function ($q) use ($branchId) {
+                $q->whereHas('hospital', fn ($hq) => $hq->where('branch_id', $branchId))
+                  ->orWhereHas('healthCenter', fn ($cq) => $cq->where('branch_id', $branchId));
+            });
+        }
 
         // 정렬
         $sortField = $request->get('sort_by', 'created_at');
