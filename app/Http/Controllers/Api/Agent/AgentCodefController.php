@@ -764,6 +764,76 @@ class AgentCodefController extends Controller
             ];
         }
 
+        // === 고지의무 분류 ===
+        $fiveYearsAgo = $now->copy()->subYears(5);
+        $records5y = $records->filter(fn($r) => $r->treatment_date && $r->treatment_date->gte($fiveYearsAgo));
+
+        $records3m = $records->filter(fn($r) => $r->treatment_date && $r->treatment_date->gte($threeMonthsAgo));
+
+        $hosp5y = $records5y->filter(fn($r) => $r->treatment_type === '입원');
+
+        $surg5y = $records5y->filter(function ($r) {
+            foreach ($r->detail_treat_list as $d) {
+                if (isset($d['resTreatType']) && str_contains($d['resTreatType'], '수술')) return true;
+            }
+            return false;
+        });
+
+        $visitByCode = [];
+        foreach ($records5y as $rec) {
+            if (!$rec->diagnosis_code || $rec->treatment_type === '입원') continue;
+            if (str_contains($rec->hospital_name ?? '', '약국') || $rec->treatment_type === '약국') continue;
+            $code = $rec->diagnosis_code;
+            if (!isset($visitByCode[$code])) {
+                $visitByCode[$code] = ['diagnosis_name' => $rec->diagnosis_name, 'count' => 0, 'records' => []];
+            }
+            $visitByCode[$code]['count']++;
+            $visitByCode[$code]['records'][] = $this->briefRecord($rec);
+        }
+        $freqVisits = [];
+        foreach ($visitByCode as $code => $g) {
+            if ($g['count'] >= 7) {
+                $freqVisits[] = array_merge(['diagnosis_code' => $code], $g);
+            }
+        }
+
+        $daysByCode = [];
+        foreach ($records5y as $rec) {
+            if (!$rec->diagnosis_code) continue;
+            $code = $rec->diagnosis_code;
+            if (!isset($daysByCode[$code])) {
+                $daysByCode[$code] = ['diagnosis_name' => $rec->diagnosis_name, 'total_days' => 0, 'records' => []];
+            }
+            $daysByCode[$code]['total_days'] += ($rec->visit_days ?? 0);
+            $daysByCode[$code]['records'][] = $this->briefRecord($rec);
+        }
+        $longPresc = [];
+        foreach ($daysByCode as $code => $g) {
+            if ($g['total_days'] >= 30) {
+                $longPresc[] = array_merge(['diagnosis_code' => $code], $g);
+            }
+        }
+
+        $critRecords = [];
+        foreach ($criticalDiseases as $key => $keywords) {
+            $found5y = $records5y->contains(function ($r) use ($keywords) {
+                $name = $r->diagnosis_name ?? '';
+                foreach ($keywords as $kw) {
+                    if (mb_stripos($name, $kw) !== false) return true;
+                }
+                return false;
+            });
+            if (!$found5y) continue;
+            $matched = $records->filter(function ($r) use ($keywords) {
+                $name = $r->diagnosis_name ?? '';
+                foreach ($keywords as $kw) {
+                    if (mb_stripos($name, $kw) !== false) return true;
+                }
+                return false;
+            });
+            $critRecords[$key] = $matched->map(fn($r) => $this->briefRecord($r))->values()->all();
+        }
+
         return response()->json([
             'success' => true,
             'data' => [
@@ -771,8 +841,50 @@ class AgentCodefController extends Controller
                 'hospitalization_surgery' => $hospitalizationSurgery,
                 'critical_diseases' => $criticalResults,
                 'total_records' => $records->count(),
+                'disclosure_classification' => [
+                    'treatment_3months' => [
+                        'found' => $records3m->isNotEmpty(),
+                        'count' => $records3m->count(),
+                        'records' => $records3m->map(fn($r) => $this->briefRecord($r))->values()->all(),
+                    ],
+                    'hospitalization_5years' => [
+                        'found' => $hosp5y->isNotEmpty(),
+                        'count' => $hosp5y->count(),
+                        'records' => $hosp5y->map(fn($r) => $this->briefRecord($r))->values()->all(),
+                    ],
+                    'surgery_5years' => [
+                        'found' => $surg5y->isNotEmpty(),
+                        'count' => $surg5y->count(),
+                        'records' => $surg5y->map(fn($r) => $this->briefRecord($r))->values()->all(),
+                    ],
+                    'frequent_visits' => [
+                        'found' => !empty($freqVisits),
+                        'groups' => $freqVisits,
+                    ],
+                    'long_prescriptions' => [
+                        'found' => !empty($longPresc),
+                        'groups' => $longPresc,
+                    ],
+                    'critical_disease_5years' => [
+                        'found' => !empty($critRecords),
+                        'diseases' => $critRecords,
+                    ],
+                ],
             ],
         ]);
+    }
+
+    private function briefRecord($rec): array
+    {
+        return [
+            'record_id' => $rec->record_id,
+            'treatment_date' => $rec->treatment_date?->format('Y-m-d'),
+            'hospital_name' => $rec->hospital_name,
+            'diagnosis_code' => $rec->diagnosis_code,
+            'diagnosis_name' => $rec->diagnosis_name,
+            'treatment_type' => $rec->treatment_type,
+            'visit_days' => $rec->visit_days,
+        ];
     }
 
     /**
