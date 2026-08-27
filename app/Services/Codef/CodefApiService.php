@@ -379,10 +379,16 @@ class CodefApiService
             'raw_data' => is_array($responseData) ? $responseData : $responseData,
         ]);
 
+        $message = $this->getErrorMessage($resultCode, $resultMessage, $apiType);
+        if ($resultCode === 'CF-12100' && !empty($extraMessage)) {
+            $cleaned = preg_replace('/\{userError:\d+\}/', '', $extraMessage);
+            $message = trim($cleaned);
+        }
+
         return [
             'success' => false,
             'code' => $resultCode,
-            'message' => $this->getErrorMessage($resultCode, $resultMessage, $apiType),
+            'message' => $message,
             'data' => $responseData,
         ];
     }
@@ -528,12 +534,7 @@ class CodefApiService
      */
     private function getErrorMessage(string $code, string $defaultMessage, ?string $apiType = null): string
     {
-        if ($code === 'CF-00025' && $apiType !== null && str_starts_with($apiType, 'nhis-')) {
-            return '건강iN 미가입 회원입니다. 국민건강보험공단 건강iN에 가입 후 이용해주세요.';
-        }
-
         $errorMessages = [
-            'CF-00025' => '내보험다보여 미가입 회원입니다. 회원가입을 진행해주세요.',
             'CF-13300' => '아이디를 확인해주세요.',
             'CF-13301' => '비밀번호를 확인해주세요.',
             'CF-13302' => '로그인 5회 실패로 비밀번호 변경이 필요합니다.',
