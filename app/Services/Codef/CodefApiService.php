@@ -382,7 +382,7 @@ class CodefApiService
         return [
             'success' => false,
             'code' => $resultCode,
-            'message' => $this->getErrorMessage($resultCode, $resultMessage),
+            'message' => $this->getErrorMessage($resultCode, $resultMessage, $apiType),
             'data' => $responseData,
         ];
     }
@@ -526,8 +526,12 @@ class CodefApiService
     /**
      * CODEF 에러 코드별 사용자 메시지
      */
-    private function getErrorMessage(string $code, string $defaultMessage): string
+    private function getErrorMessage(string $code, string $defaultMessage, ?string $apiType = null): string
     {
+        if ($code === 'CF-00025' && $apiType !== null && str_starts_with($apiType, 'nhis-')) {
+            return '건강iN 미가입 회원입니다. 국민건강보험공단 건강iN에 가입 후 이용해주세요.';
+        }
+
         $errorMessages = [
             'CF-00025' => '내보험다보여 미가입 회원입니다. 회원가입을 진행해주세요.',
             'CF-13300' => '아이디를 확인해주세요.',
