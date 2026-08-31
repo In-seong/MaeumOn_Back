@@ -40,7 +40,7 @@ class ClaimRequestController extends Controller
             'phone' => $validated['phone'],
             'hospital_id' => $validated['hospital_id'] ?? null,
             'memo' => $validated['memo'] ?? null,
-            'status' => $agentId ? 'assigned' : 'pending',
+            'status' => 'pending',
             'source_type' => 'distribution',
             'assigned_agent_id' => $agentId,
             'agent_name' => $agentName,
@@ -74,9 +74,17 @@ class ClaimRequestController extends Controller
     public function agents(): JsonResponse
     {
         $agents = Agent::where('is_active', true)
-            ->select('agent_id', 'name')
+            ->select('agent_id', 'name', 'phone')
             ->orderBy('name')
-            ->get();
+            ->get()
+            ->map(function ($agent) {
+                $phone = preg_replace('/\D/', '', $agent->phone ?? '');
+                return [
+                    'agent_id' => $agent->agent_id,
+                    'name' => $agent->name,
+                    'phone_last4' => strlen($phone) >= 4 ? substr($phone, -4) : null,
+                ];
+            });
 
         return response()->json(['data' => $agents]);
     }
