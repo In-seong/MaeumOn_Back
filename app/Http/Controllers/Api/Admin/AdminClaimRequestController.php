@@ -6,8 +6,11 @@ use App\Http\Controllers\Controller;
 use App\Http\Traits\BranchFilterable;
 use App\Models\Agent;
 use App\Models\ClaimRequest;
+use App\Models\PartnerHospital;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 
 class AdminClaimRequestController extends Controller
@@ -182,6 +185,90 @@ class AdminClaimRequestController extends Controller
             'success' => true,
             'data' => ['assigned_count' => $assignedCount],
             'message' => "{$assignedCount}건의 청구신청이 배정되었습니다.",
+        ]);
+    }
+
+    /**
+     * 상주/배분 DB 배정 통계
+     */
+    public function statistics(Request $request): JsonResponse
+    {
+        $period = $request->input('period', 'month');
+        $hospitalId = $request->input('hospital_id');
+
+        $now = Carbon::now();
+        $startDate = match ($period) {
+            'day' => $now->copy()->startOfDay(),
+            'week' => $now->copy()->startOfWeek(),
+            default => $now->copy()->startOfMonth(),
+        };
+
+        $query = ClaimRequest::query()
+            ->select(
+                'assigned_agent_id',
+                'source_type',
+                DB::raw('COUNT(*) as count')
+            )
+            ->whereNotNull('assigned_agent_id')
+            ->where('created_at', '>=', $startDate);
+
+        $branchId = $this->resolveBranchId($request);
+        $this->applyAgentBranchFilter($query, $branchId, 'assignedAgent.branches');
+
+        if ($hospitalId) {
+            $query->where('hospital_id', $hospitalId);
+        }
+
+        $stats = $query
+            ->groupBy('assigned_agent_id', 'source_type')
+            ->get();
+
+        $agentIds = $stats->pluck('assigned_agent_id')->unique();
+        $agents = Agent::whereIn('agent_id', $agentIds)
+            ->select('agent_id', 'name')
+            ->get()
+            ->keyBy('agent_id');
+
+        $grouped = [];
+        foreach ($stats as $row) {
+            $agentId = $row->assigned_agent_id;
+            if (!isset($grouped[$agentId])) {
+                $agent = $agents->get($agentId);
+                $grouped[$agentId] = [
+                    'agent_id' => $agentId,
+                    'agent_name' => $agent?->name ?? '(알 수 없음)',
+                    'resident' => 0,
+                    'distribution' => 0,
+                    'total' => 0,
+                ];
+            }
+            $grouped[$agentId][$row->source_type] = $row->count;
+            $grouped[$agentId]['total'] += $row->count;
+        }
+
+        $result = collect($grouped)->sortByDesc('total')->values();
+
+        $totalResident = $result->sum('resident');
+        $totalDistribution = $result->sum('distribution');
+
+        $hospitals = PartnerHospital::where('is_active', true)
+            ->select('hospital_id', 'hospital_name')
+            ->orderBy('hospital_name')
+            ->get();
+
+        return response()->json([
+            'success' => true,
+            'data' => [
+                'agents' => $result,
+                'summary' => [
+                    'total_resident' => $totalResident,
+                    'total_distribution' => $totalDistribution,
+                    'total' => $totalResident + $totalDistribution,
+                ],
+                'hospitals' => $hospitals,
+                'period' => $period,
+                'start_date' => $startDate->toDateString(),
+            ],
         ]);
     }
 

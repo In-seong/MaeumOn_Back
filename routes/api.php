@@ -281,6 +281,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::delete('/banners/{id}', [AdminBannerController::class, 'destroy']);
 
         // 청구 신청 관리
+        Route::get('/claim-requests/statistics', [AdminClaimRequestController::class, 'statistics']);
         Route::get('/claim-requests', [AdminClaimRequestController::class, 'index']);
         Route::post('/claim-requests', [AdminClaimRequestController::class, 'store']);
         Route::get('/claim-requests/{id}', [AdminClaimRequestController::class, 'show']);
