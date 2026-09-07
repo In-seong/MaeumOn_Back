@@ -106,6 +106,68 @@ class AdminPerformanceController extends Controller
         ]);
     }
 
+    public function detailList(Request $request): JsonResponse
+    {
+        $type = $request->get('type', 'assignments');
+        $period = $request->get('period', 'month');
+        $branchId = $this->resolveBranchId($request);
+        $perPage = min(max((int) $request->get('per_page', 20), 1), 100);
+
+        $startDate = match ($period) {
+            'day' => Carbon::today(),
+            'week' => Carbon::now()->startOfWeek(),
+            default => Carbon::now()->startOfMonth(),
+        };
+
+        if ($type === 'contracts') {
+            $query = Contract::with(['agent:agent_id,name', 'customer:customer_id,name,phone', 'insuranceCompany:company_id,company_name'])
+                ->where('contract_date', '>=', $startDate)
+                ->orderByDesc('contract_date');
+
+            if ($branchId !== null) {
+                $query->whereHas('agent.branches', fn($q) => $q->where('branch.branch_id', $branchId));
+            }
+
+            $data = $query->paginate($perPage);
+            $data->getCollection()->transform(fn($c) => [
+                'id' => $c->contract_id,
+                'agent_name' => $c->agent?->name ?? '-',
+                'customer_name' => $c->customer?->name ?? $c->customer_name ?? '-',
+                'customer_phone' => $c->customer?->phone ?? $c->customer_phone ?? '-',
+                'company_name' => $c->insuranceCompany?->company_name ?? '-',
+                'insurance_product' => $c->insurance_product ?? '-',
+                'contract_amount' => (float) $c->contract_amount,
+                'contract_date' => $c->contract_date?->format('Y-m-d'),
+                'contract_status' => $c->contract_status,
+            ]);
+        } else {
+            $query = CustomerAssignment::with(['agent:agent_id,name', 'customer:customer_id,name,phone'])
+                ->where('created_at', '>=', $startDate)
+                ->orderByDesc('created_at');
+
+            if ($branchId !== null) {
+                $query->whereHas('agent.branches', fn($q) => $q->where('branch.branch_id', $branchId));
+            }
+
+            $data = $query->paginate($perPage);
+            $data->getCollection()->transform(fn($a) => [
+                'id' => $a->assignment_id,
+                'agent_name' => $a->agent?->name ?? '-',
+                'customer_name' => $a->customer?->name ?? '-',
+                'customer_phone' => $a->customer?->phone ?? '-',
+                'assignment_type' => $a->assignment_type,
+                'assignment_date' => $a->assignment_date?->format('Y-m-d'),
+                'notes' => $a->notes,
+                'created_at' => $a->created_at?->format('Y-m-d H:i'),
+            ]);
+        }
+
+        return response()->json([
+            'success' => true,
+            'data' => $data,
+        ]);
+    }
+
     /**
      * 설계사 월별 실적 추이 (최근 12개월)
      *

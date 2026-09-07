@@ -232,6 +232,7 @@ Route::middleware('auth:sanctum')->group(function () {
 
         // 실적 현황 (SFR-043)
         Route::get('/performance/summary', [AdminPerformanceController::class, 'summary']);
+        Route::get('/performance/details', [AdminPerformanceController::class, 'detailList']);
         Route::get('/performance/agents', [AdminPerformanceController::class, 'agents']);
         Route::get('/performance/agents/{id}', [AdminPerformanceController::class, 'agentDetail']);
 
