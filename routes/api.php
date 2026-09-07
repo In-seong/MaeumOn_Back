@@ -29,6 +29,7 @@ use App\Http\Controllers\Api\Admin\AdminAssignmentController;
 use App\Http\Controllers\Api\Admin\AdminAdditionalContractController;
 use App\Http\Controllers\Api\Admin\AdminCodefBillingController;
 use App\Http\Controllers\Api\Admin\AdminPerformanceController;
+use App\Http\Controllers\Api\Admin\AdminDistributionStatisticsController;
 use App\Http\Controllers\Api\Admin\AdminDashboardController;
 use App\Http\Controllers\Api\Agent\AgentBatchClaimController;
 use App\Http\Controllers\Api\Agent\AgentScheduleController;
@@ -225,6 +226,9 @@ Route::middleware('auth:sanctum')->group(function () {
 
         // 추가계약 발굴 (SFR-040, 041)
         Route::get('/additional-contracts', [AdminAdditionalContractController::class, 'index']);
+
+        // 배분 통계
+        Route::get('/distribution-statistics', [AdminDistributionStatisticsController::class, 'index']);
 
         // 실적 현황 (SFR-043)
         Route::get('/performance/summary', [AdminPerformanceController::class, 'summary']);
