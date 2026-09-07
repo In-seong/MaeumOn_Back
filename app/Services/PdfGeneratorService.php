@@ -5,6 +5,8 @@ namespace App\Services;
 use App\Models\InsuranceClaim;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Process;
 use Intervention\Image\Laravel\Facades\Image;
 
 class PdfGeneratorService
@@ -120,7 +122,18 @@ class PdfGeneratorService
                     $base64 = 'data:image/jpeg;base64,' . base64_encode($optimized);
                     $imagesHtml .= "<div style=\"page-break-before: always;\"><img src=\"{$base64}\" class=\"claim-image\"></div>";
                 } catch (\Exception $e) {
-                    // 첨부파일 로드 실패 시 건너뜀
+                    Log::warning('첨부 이미지 로드 실패', ['doc_id' => $doc->document_id, 'error' => $e->getMessage()]);
+                }
+            } elseif ($mimeType === 'application/pdf') {
+                try {
+                    $pageImages = $this->convertPdfToImages($doc->document_file_url);
+                    foreach ($pageImages as $pageJpeg) {
+                        $optimized = $this->optimizeAttachmentForFax($pageJpeg);
+                        $base64 = 'data:image/jpeg;base64,' . base64_encode($optimized);
+                        $imagesHtml .= "<div style=\"page-break-before: always;\"><img src=\"{$base64}\" class=\"claim-image\"></div>";
+                    }
+                } catch (\Exception $e) {
+                    Log::warning('PDF 변환 실패', ['doc_id' => $doc->document_id, 'error' => $e->getMessage()]);
                 }
             }
         }
@@ -153,6 +166,50 @@ class PdfGeneratorService
         }
 
         return $image->toJpeg(quality: 60)->toString();
+    }
+
+    /**
+     * Ghostscript로 PDF 각 페이지를 JPEG 이미지로 변환
+     *
+     * @return array<string> JPEG 바이너리 배열
+     */
+    private function convertPdfToImages(string $s3Key): array
+    {
+        $tmpDir = sys_get_temp_dir() . '/pdf_convert_' . uniqid();
+        mkdir($tmpDir, 0755, true);
+
+        $pdfPath = $tmpDir . '/input.pdf';
+        $outputPattern = $tmpDir . '/page_%d.jpg';
+
+        try {
+            $pdfContent = Storage::disk('s3')->get($s3Key);
+            file_put_contents($pdfPath, $pdfContent);
+
+            $result = Process::run([
+                'gs', '-dNOPAUSE', '-dBATCH', '-dSAFER',
+                '-sDEVICE=jpeg', '-r200', '-dJPEGQ=85',
+                '-sOutputFile=' . $outputPattern,
+                $pdfPath,
+            ]);
+
+            if (!$result->successful()) {
+                throw new \RuntimeException('Ghostscript 실행 실패: ' . $result->errorOutput());
+            }
+
+            $images = [];
+            $page = 1;
+            while (file_exists($tmpDir . '/page_' . $page . '.jpg')) {
+                $images[] = file_get_contents($tmpDir . '/page_' . $page . '.jpg');
+                $page++;
+            }
+
+            return $images;
+        } finally {
+            array_map('unlink', glob($tmpDir . '/*') ?: []);
+            if (is_dir($tmpDir)) {
+                rmdir($tmpDir);
+            }
+        }
     }
 
     /**
