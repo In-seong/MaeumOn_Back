@@ -5,12 +5,17 @@ namespace App\Http\Controllers\Api\Admin;
 use App\Http\Controllers\Controller;
 use App\Http\Traits\BranchFilterable;
 use App\Models\HospitalReservation;
+use App\Services\ReservationNotifier;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
 class AdminReservationController extends Controller
 {
     use BranchFilterable;
+
+    public function __construct(private ReservationNotifier $notifier)
+    {
+    }
 
     public function index(Request $request): JsonResponse
     {
@@ -69,9 +74,11 @@ class AdminReservationController extends Controller
         $reservation = HospitalReservation::findOrFail($id);
         $reservation->update(['status' => $validated['status']]);
 
+        $this->notifier->onStatusChanged($reservation->load(['hospital', 'healthCenter']), $validated['status']);
+
         return response()->json([
             'success' => true,
-            'data' => $reservation->load(['hospital', 'healthCenter']),
+            'data' => $reservation,
         ]);
     }
 }

@@ -118,4 +118,65 @@ class AdminNotificationController extends Controller
             'message' => "{$count}명의 설계사에게 알림을 발송했습니다.",
         ], 201);
     }
+
+    public function received(Request $request): JsonResponse
+    {
+        $adminId = $request->user()->admin->admin_id;
+
+        $query = Notification::where('receiver_id', $adminId)
+            ->where('receiver_type', 'ADMIN');
+
+        if ($request->has('is_read')) {
+            $query->where('is_read', filter_var($request->get('is_read'), FILTER_VALIDATE_BOOLEAN));
+        }
+
+        $notifications = $query->orderBy('created_at', 'desc')
+            ->paginate(min(max((int) $request->get('per_page', 15), 1), 100));
+
+        $unreadCount = Notification::where('receiver_id', $adminId)
+            ->where('receiver_type', 'ADMIN')
+            ->where('is_read', false)
+            ->count();
+
+        return response()->json([
+            'success' => true,
+            'data' => [
+                'notifications' => $notifications,
+                'unread_count' => $unreadCount,
+            ],
+        ]);
+    }
+
+    public function markAsRead(Request $request, $id): JsonResponse
+    {
+        $adminId = $request->user()->admin->admin_id;
+
+        $notification = Notification::where('notification_id', $id)
+            ->where('receiver_id', $adminId)
+            ->where('receiver_type', 'ADMIN')
+            ->first();
+
+        if (!$notification) {
+            return response()->json(['success' => false, 'message' => '알림을 찾을 수 없습니다.'], 404);
+        }
+
+        $notification->update(['is_read' => true, 'read_at' => now()]);
+
+        return response()->json(['success' => true, 'data' => $notification->fresh()]);
+    }
+
+    public function markAllAsRead(Request $request): JsonResponse
+    {
+        $adminId = $request->user()->admin->admin_id;
+
+        $updatedCount = Notification::where('receiver_id', $adminId)
+            ->where('receiver_type', 'ADMIN')
+            ->where('is_read', false)
+            ->update(['is_read' => true, 'read_at' => now()]);
+
+        return response()->json([
+            'success' => true,
+            'data' => ['updated_count' => $updatedCount],
+        ]);
+    }
 }

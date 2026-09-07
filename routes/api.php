@@ -234,6 +234,10 @@ Route::middleware('auth:sanctum')->group(function () {
         // 알림 발송 (관리자 → 설계사)
         Route::get('/notifications', [AdminNotificationController::class, 'index']);
         Route::post('/notifications', [AdminNotificationController::class, 'store']);
+        // 관리자 수신 알림
+        Route::get('/notifications/received', [AdminNotificationController::class, 'received']);
+        Route::put('/notifications/read-all', [AdminNotificationController::class, 'markAllAsRead']);
+        Route::put('/notifications/{id}/read', [AdminNotificationController::class, 'markAsRead']);
 
         // 동의서 관리
         Route::get('/consent-templates', [AdminConsentTemplateController::class, 'index']);

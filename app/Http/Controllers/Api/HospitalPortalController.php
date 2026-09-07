@@ -7,6 +7,7 @@ use App\Models\HospitalAccount;
 use App\Models\HospitalReservation;
 use App\Models\PartnerHospital;
 use App\Models\HealthCenter;
+use App\Services\ReservationNotifier;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
@@ -117,6 +118,11 @@ class HospitalPortalController extends Controller
 
         $reservation = $query->firstOrFail();
         $reservation->update(['status' => $validated['status']]);
+
+        app(ReservationNotifier::class)->onStatusChanged(
+            $reservation->load(['hospital', 'healthCenter']),
+            $validated['status']
+        );
 
         return response()->json([
             'success' => true,

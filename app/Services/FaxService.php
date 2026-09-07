@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\InsuranceClaim;
+use App\Models\Notification as AppNotification;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
@@ -286,11 +287,13 @@ class FaxService
                 'fax_result_code' => $resultCode,
                 'claim_status' => 'processing',
             ]);
+            $this->sendFaxNotification($claim, true);
         } else {
             $claim->update([
                 'fax_status' => 'failed',
                 'fax_result_code' => $resultCode,
             ]);
+            $this->sendFaxNotification($claim, false, $this->getResultMessage($resultCode));
         }
 
         Log::info('BizMoaShot callback: 팩스 전송 결과 수신', [
@@ -325,6 +328,8 @@ class FaxService
                 'fax_status' => 'failed',
                 'fax_result_code' => 'RECEIPT_FAIL',
             ]);
+
+            $this->sendFaxNotification($claim, false, $errMsg);
 
             Log::error('BizMoaShot callback: 접수 실패', [
                 'claim_id' => $claim->claim_id,
@@ -373,6 +378,37 @@ class FaxService
         }
 
         return $number;
+    }
+
+    private function sendFaxNotification(InsuranceClaim $claim, bool $success, ?string $errorMessage = null): void
+    {
+        if (!$claim->agent_id) {
+            return;
+        }
+
+        $customerName = $claim->customer?->name ?? '고객';
+        $title = $success ? '팩스 발송 완료' : '팩스 발송 실패';
+        $content = $success
+            ? "'{$customerName}'님 청구서 팩스가 정상 발송되었습니다."
+            : "'{$customerName}'님 청구서 팩스 발송이 실패했습니다." . ($errorMessage ? " ({$errorMessage})" : '');
+
+        AppNotification::create([
+            'receiver_id' => $claim->agent_id,
+            'receiver_type' => 'AGENT',
+            'sender_type' => 'SYSTEM',
+            'notification_type' => 'FAX_RESULT',
+            'title' => $title,
+            'content' => $content,
+            'is_read' => false,
+            'sent_at' => now(),
+            'created_at' => now(),
+        ]);
+
+        try {
+            app(FcmService::class)->sendToUsers('AGENT', [$claim->agent_id], $title, $content);
+        } catch (\Exception $e) {
+            Log::error('FCM 팩스 결과 알림 실패', ['error' => $e->getMessage()]);
+        }
     }
 
     private function makeClaimFilesPrivate(InsuranceClaim $claim): void

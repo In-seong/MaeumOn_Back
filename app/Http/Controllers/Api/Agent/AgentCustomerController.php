@@ -3,10 +3,13 @@
 namespace App\Http\Controllers\Api\Agent;
 
 use App\Http\Controllers\Controller;
+use App\Models\Admin;
 use App\Models\CodefApiLog;
 use App\Models\Contract;
 use App\Models\Customer;
+use App\Models\Notification;
 use App\Models\PiiLog;
+use App\Services\FcmService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
@@ -126,6 +129,9 @@ class AgentCustomerController extends Controller
             'agent_id' => $agentId,
             'is_active' => true,
         ]));
+
+        $agent = $request->user()->agent;
+        $this->notifyAdminsCustomerRegistered($agent->name ?? $agentId, $customer->name);
 
         return response()->json([
             'success' => true,
@@ -409,5 +415,36 @@ class AgentCustomerController extends Controller
             'success' => true,
             'message' => '계약이 해지 처리되었습니다.',
         ]);
+    }
+
+    private function notifyAdminsCustomerRegistered(string $agentName, string $customerName): void
+    {
+        $adminIds = Admin::where('is_active', 1)->pluck('admin_id')->all();
+        if (empty($adminIds)) {
+            return;
+        }
+
+        $title = '신규 고객 등록';
+        $body = "설계사 {$agentName}님이 신규 고객 '{$customerName}'을 등록했습니다.";
+        $now = now();
+
+        $rows = array_map(fn($id) => [
+            'receiver_id' => $id,
+            'receiver_type' => 'ADMIN',
+            'sender_type' => 'SYSTEM',
+            'notification_type' => 'customer_registered',
+            'title' => $title,
+            'content' => $body,
+            'is_read' => false,
+            'sent_at' => $now,
+            'created_at' => $now,
+        ], $adminIds);
+        Notification::insert($rows);
+
+        try {
+            app(FcmService::class)->sendToUsers('ADMIN', $adminIds, $title, $body);
+        } catch (\Exception $e) {
+            \Illuminate\Support\Facades\Log::error('고객 등록 알림 FCM 발송 실패', ['error' => $e->getMessage()]);
+        }
     }
 }

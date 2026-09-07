@@ -20,6 +20,9 @@ Schedule::command('calendar:generate-reminders')->dailyAt('08:00');
 // 건강 위험지표 알림 (매일 09:00)
 Schedule::command('health:notify-risks')->dailyAt('09:00');
 
+// 고객 생일 알림 (매일 08:30)
+Schedule::command('notification:birthday')->dailyAt('08:30');
+
 // 자동배분 대기열 처리 (매분 실행)
 Schedule::command('distribution:process')->everyMinute()->withoutOverlapping();
 

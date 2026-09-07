@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Models\Admin;
 use App\Models\Agent;
 use App\Models\Customer;
 use App\Models\CustomerAssignment;
@@ -40,12 +41,16 @@ class DistributionService
             return null;
         }
 
-        return DistributionQueue::create([
+        $queue = DistributionQueue::create([
             'customer_id' => $customerId,
             'branch_id' => $branchId,
             'status' => 'pending',
             'scheduled_at' => now()->addMinutes($config->delay_minutes),
         ]);
+
+        $this->notifyAdminsDbInflow($customerId);
+
+        return $queue;
     }
 
     /**
@@ -236,5 +241,39 @@ class DistributionService
             ]);
 
         return $affected > 0;
+    }
+
+    private function notifyAdminsDbInflow(string $customerId): void
+    {
+        $adminIds = Admin::where('is_active', 1)->pluck('admin_id')->all();
+        if (empty($adminIds)) {
+            return;
+        }
+
+        $customer = Customer::find($customerId);
+        $customerName = $customer?->name ?? '신규 고객';
+
+        $title = '신규 DB 유입';
+        $body = "새로운 고객 '{$customerName}'이(가) 자동배분 대기열에 등록되었습니다.";
+        $now = now();
+
+        $rows = array_map(fn($id) => [
+            'receiver_id' => $id,
+            'receiver_type' => 'ADMIN',
+            'sender_type' => 'SYSTEM',
+            'notification_type' => 'db_inflow',
+            'title' => $title,
+            'content' => $body,
+            'is_read' => false,
+            'sent_at' => $now,
+            'created_at' => $now,
+        ], $adminIds);
+        Notification::insert($rows);
+
+        try {
+            $this->fcmService->sendToUsers('ADMIN', $adminIds, $title, $body);
+        } catch (\Exception $e) {
+            Log::error('DB 유입 알림 FCM 발송 실패', ['error' => $e->getMessage()]);
+        }
     }
 }
