@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api\Agent;
 
 use App\Http\Controllers\Controller;
+use App\Models\CodefApiLog;
 use App\Models\Contract;
 use App\Models\Customer;
 use App\Models\PiiLog;
@@ -97,6 +98,27 @@ class AgentCustomerController extends Controller
         // 전화번호 하이픈 제거 (DB: varchar(20)이지만 일관성)
         if (!empty($validated['phone'])) {
             $validated['phone'] = preg_replace('/\D/', '', $validated['phone']);
+        }
+
+        // 중복 고객 체크: 이름+전화번호 or 이름+주민등록번호
+        $duplicate = Customer::where('agent_id', $agentId)
+            ->where('is_active', true)
+            ->where('name', $validated['name'])
+            ->where(function ($q) use ($validated) {
+                $q->where('phone', $validated['phone']);
+                if (!empty($validated['resident_number'])) {
+                    $q->orWhere('resident_number', $validated['resident_number']);
+                }
+            })
+            ->first();
+
+        if ($duplicate) {
+            $matchType = $duplicate->phone === $validated['phone']
+                ? '전화번호' : '주민등록번호';
+            return response()->json([
+                'success' => false,
+                'message' => "동일한 이름과 {$matchType}를 가진 고객이 이미 등록되어 있습니다.",
+            ], 422);
         }
 
         $customer = Customer::create(array_merge($validated, [
@@ -342,6 +364,27 @@ class AgentCustomerController extends Controller
             'success' => true,
             'data' => $contract,
             'message' => '계약이 수정되었습니다.',
+        ]);
+    }
+
+    /**
+     * 고객의 CODEF 조회 이력
+     */
+    public function codefLogs(Request $request, string $id): JsonResponse
+    {
+        $agentId = $request->user()->agent->agent_id;
+
+        Customer::where('agent_id', $agentId)
+            ->where('customer_id', $id)
+            ->firstOrFail();
+
+        $logs = CodefApiLog::where('customer_id', $id)
+            ->orderBy('created_at', 'desc')
+            ->get(['log_id', 'api_type', 'api_action', 'status', 'result_count', 'created_at']);
+
+        return response()->json([
+            'success' => true,
+            'data' => $logs,
         ]);
     }
 

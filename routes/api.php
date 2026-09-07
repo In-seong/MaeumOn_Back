@@ -342,6 +342,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('/customers/{id}/contracts', [AgentCustomerController::class, 'storeContract']);
         Route::put('/customers/{id}/contracts/{contractId}', [AgentCustomerController::class, 'updateContract']);
         Route::delete('/customers/{id}/contracts/{contractId}', [AgentCustomerController::class, 'destroyContract']);
+        Route::get('/customers/{id}/codef-logs', [AgentCustomerController::class, 'codefLogs']);
 
         // 메모 (SFR-025)
         Route::get('/customers/{customerId}/memos', [AgentMemoController::class, 'index']);

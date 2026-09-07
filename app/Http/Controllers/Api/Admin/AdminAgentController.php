@@ -32,7 +32,7 @@ class AdminAgentController extends Controller
     public function index(Request $request): JsonResponse
     {
         $query = Agent::query()
-            ->with('account:account_id,username')
+            ->with(['account:account_id,username', 'branches:branch_id,branch_name'])
             ->withCount(['customers', 'contracts']);
 
         $branchId = $this->resolveBranchId($request);
