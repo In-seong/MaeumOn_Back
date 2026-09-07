@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Http\Traits\BranchFilterable;
 use App\Models\CodefApiLog;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -10,6 +11,7 @@ use Illuminate\Support\Facades\DB;
 
 class AdminCodefBillingController extends Controller
 {
+    use BranchFilterable;
     /**
      * 월별 설계사별 API 사용량 요약
      * GET /api/admin/codef-billing/summary
@@ -18,6 +20,7 @@ class AdminCodefBillingController extends Controller
     public function monthlySummary(Request $request): JsonResponse
     {
         $month = $request->input('month', now()->format('Y-m'));
+        $branchId = $this->resolveBranchId($request);
 
         $query = CodefApiLog::join('agent', 'codef_api_logs.agent_id', '=', 'agent.agent_id')
             ->select(
@@ -36,6 +39,15 @@ class AdminCodefBillingController extends Controller
 
         if ($month) {
             $query->where('billing_month', $month);
+        }
+
+        if ($branchId !== null) {
+            $query->whereExists(function ($sub) use ($branchId) {
+                $sub->select(DB::raw(1))
+                    ->from('agent_branch')
+                    ->whereColumn('agent_branch.agent_id', 'codef_api_logs.agent_id')
+                    ->where('agent_branch.branch_id', $branchId);
+            });
         }
 
         $summary = $query->get();
@@ -59,9 +71,20 @@ class AdminCodefBillingController extends Controller
      */
     public function logs(Request $request): JsonResponse
     {
+        $branchId = $this->resolveBranchId($request);
+
         $query = CodefApiLog::with(['customer:customer_id,name,phone'])
             ->join('agent', 'codef_api_logs.agent_id', '=', 'agent.agent_id')
             ->select('codef_api_logs.*', 'agent.name as agent_name');
+
+        if ($branchId !== null) {
+            $query->whereExists(function ($sub) use ($branchId) {
+                $sub->select(DB::raw(1))
+                    ->from('agent_branch')
+                    ->whereColumn('agent_branch.agent_id', 'codef_api_logs.agent_id')
+                    ->where('agent_branch.branch_id', $branchId);
+            });
+        }
 
         if ($request->has('month')) {
             $query->where('billing_month', $request->month);
