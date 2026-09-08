@@ -785,15 +785,37 @@ class AgentCodefController extends Controller
             if (str_contains($rec->hospital_name ?? '', '약국') || $rec->treatment_type === '약국') continue;
             $code = $rec->diagnosis_code;
             if (!isset($visitByCode[$code])) {
-                $visitByCode[$code] = ['diagnosis_name' => $rec->diagnosis_name, 'count' => 0, 'records' => []];
+                $visitByCode[$code] = ['diagnosis_name' => $rec->diagnosis_name, 'visits' => []];
             }
-            $visitByCode[$code]['count']++;
-            $visitByCode[$code]['records'][] = $this->briefRecord($rec);
+            $visitByCode[$code]['visits'][] = [
+                'date' => $rec->treatment_date,
+                'record' => $this->briefRecord($rec),
+            ];
         }
         $freqVisits = [];
         foreach ($visitByCode as $code => $g) {
-            if ($g['count'] >= 7) {
-                $freqVisits[] = array_merge(['diagnosis_code' => $code], $g);
+            $visits = $g['visits'];
+            usort($visits, fn($a, $b) => $a['date'] <=> $b['date']);
+            $episodes = [[$visits[0]]];
+            for ($i = 1; $i < count($visits); $i++) {
+                $prev = end($episodes[count($episodes) - 1])['date'];
+                $curr = $visits[$i]['date'];
+                $gap = $prev && $curr ? $prev->diffInDays($curr) : 999;
+                if ($gap <= 90) {
+                    $episodes[count($episodes) - 1][] = $visits[$i];
+                } else {
+                    $episodes[] = [$visits[$i]];
+                }
+            }
+            foreach ($episodes as $ep) {
+                if (count($ep) >= 7) {
+                    $freqVisits[] = [
+                        'diagnosis_code' => $code,
+                        'diagnosis_name' => $g['diagnosis_name'],
+                        'count' => count($ep),
+                        'records' => array_map(fn($v) => $v['record'], $ep),
+                    ];
+                }
             }
         }
 
