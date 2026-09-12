@@ -27,7 +27,7 @@ class AdminClaimRequestController extends Controller
             'hospital_id' => 'nullable|integer|exists:partner_hospital,hospital_id',
             'memo' => 'nullable|string|max:2000',
             'files' => 'nullable|array|max:10',
-            'files.*' => 'file|max:10240',
+            'files.*' => 'file|max:51200',
             'agent_id' => 'nullable|string|exists:agent,agent_id',
             'source_type' => 'nullable|in:resident,distribution',
         ]);

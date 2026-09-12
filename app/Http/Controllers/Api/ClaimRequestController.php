@@ -22,7 +22,7 @@ class ClaimRequestController extends Controller
             'hospital_id' => 'nullable|integer|exists:partner_hospital,hospital_id',
             'memo' => 'nullable|string|max:2000',
             'files' => 'nullable|array|max:10',
-            'files.*' => 'file|max:10240', // 10MB
+            'files.*' => 'file|max:51200',
             'agent_name' => 'nullable|string|max:50',
         ]);
 

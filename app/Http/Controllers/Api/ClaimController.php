@@ -399,7 +399,7 @@ class ClaimController extends Controller
         }
 
         $request->validate([
-            'document' => 'required|file|mimes:jpeg,jpg,png,gif,heic,heif,webp,pdf|max:20480',
+            'document' => 'required|file|mimes:jpeg,jpg,png,gif,heic,heif,webp,pdf|max:51200',
             'supporting_document_id' => 'nullable|integer',
         ]);
 
