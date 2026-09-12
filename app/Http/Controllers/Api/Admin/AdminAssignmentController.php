@@ -9,9 +9,11 @@ use App\Models\Customer;
 use App\Models\Agent;
 use App\Models\CustomerAssignment;
 use App\Models\Notification;
+use App\Services\FcmService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 
 class AdminAssignmentController extends Controller
 {
@@ -101,6 +103,12 @@ class AdminAssignmentController extends Controller
                 'sent_at' => now(),
             ]);
 
+            try {
+                app(FcmService::class)->sendToUsers('AGENT', [$agent->agent_id], 'DB 배분 알림', "새로운 고객 '{$customer->name}'님이 배분되었습니다.");
+            } catch (\Exception $e) {
+                Log::error('배분 알림 FCM 발송 실패', ['agent_id' => $agent->agent_id, 'error' => $e->getMessage()]);
+            }
+
             return $assignment;
         });
 
@@ -170,6 +178,12 @@ class AdminAssignmentController extends Controller
                     'is_read' => false,
                     'sent_at' => now(),
                 ]);
+
+                try {
+                    app(FcmService::class)->sendToUsers('AGENT', [$agent->agent_id], 'DB 배분 알림', "새로운 고객 '{$customer->name}'님이 배분되었습니다.");
+                } catch (\Exception $e) {
+                    Log::error('배분 알림 FCM 발송 실패', ['agent_id' => $agent->agent_id, 'error' => $e->getMessage()]);
+                }
 
                 $count++;
             }
