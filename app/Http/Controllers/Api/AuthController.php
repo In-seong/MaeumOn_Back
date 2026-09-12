@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Account;
 use App\Models\Agent;
 use App\Models\Customer;
+use App\Services\DistributionService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -246,6 +247,8 @@ class AuthController extends Controller
             'email' => $request->email,
             'is_active' => true,
         ]);
+
+        app(DistributionService::class)->enqueueCustomerAuto($customerId);
 
         $token = $account->createToken('auth-token')->plainTextToken;
 

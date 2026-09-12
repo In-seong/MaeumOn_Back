@@ -326,6 +326,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::delete('/distribution/{branchId}/lists/{listId}', [AdminDistributionController::class, 'deleteList']);
         Route::post('/distribution/{branchId}/lists/{listId}/activate', [AdminDistributionController::class, 'activateList']);
         Route::get('/distribution/queue', [AdminDistributionController::class, 'getQueue']);
+        Route::post('/distribution/{branchId}/enqueue', [AdminDistributionController::class, 'enqueueCustomer']);
 
         // 지사 관리 (슈퍼 관리자)
         Route::get('/branches/dropdown', [AdminBranchController::class, 'dropdown']);

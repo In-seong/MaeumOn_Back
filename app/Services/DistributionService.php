@@ -54,6 +54,20 @@ class DistributionService
     }
 
     /**
+     * 지사 미지정 고객을 활성화된 모든 자동배분 대기열에 등록
+     */
+    public function enqueueCustomerAuto(string $customerId): void
+    {
+        $configs = DistributionConfig::where('is_active', true)
+            ->whereNotNull('current_list_id')
+            ->get();
+
+        foreach ($configs as $config) {
+            $this->enqueueCustomer($customerId, $config->branch_id);
+        }
+    }
+
+    /**
      * 대기열에서 예정 시각이 지난 pending 건을 배분
      */
     public function processPendingQueue(): int

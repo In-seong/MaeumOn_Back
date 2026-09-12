@@ -4,10 +4,12 @@ namespace App\Http\Controllers\Api\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Http\Traits\BranchFilterable;
+use App\Models\Customer;
 use App\Models\DistributionConfig;
 use App\Models\DistributionList;
 use App\Models\DistributionListItem;
 use App\Models\DistributionQueue;
+use App\Services\DistributionService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -284,6 +286,31 @@ class AdminDistributionController extends Controller
         return response()->json([
             'success' => true,
             'message' => "'{$list->name}' 리스트가 배분용으로 설정되었습니다.",
+        ]);
+    }
+
+    /**
+     * 고객을 수동으로 대기열에 등록
+     */
+    public function enqueueCustomer(Request $request, int $branchId, DistributionService $service): JsonResponse
+    {
+        $validated = $request->validate([
+            'customer_ids' => 'required|array|min:1',
+            'customer_ids.*' => 'string|exists:customer,customer_id',
+        ]);
+
+        $enqueued = 0;
+        foreach ($validated['customer_ids'] as $customerId) {
+            $result = $service->enqueueCustomer($customerId, $branchId);
+            if ($result) {
+                $enqueued++;
+            }
+        }
+
+        return response()->json([
+            'success' => true,
+            'data' => ['enqueued' => $enqueued, 'total' => count($validated['customer_ids'])],
+            'message' => "{$enqueued}건이 대기열에 등록되었습니다.",
         ]);
     }
 

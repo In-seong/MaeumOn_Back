@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Account;
 use App\Models\Customer;
 use App\Models\DeviceToken;
+use App\Services\DistributionService;
 use App\Services\OtpService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -181,6 +182,8 @@ class CustomerAuthController extends Controller
                 'address' => $request->address,
                 'is_active' => true,
             ]);
+
+            app(DistributionService::class)->enqueueCustomerAuto($customerId);
         }
 
         $this->otpService->consumeVerification($request->phone);
