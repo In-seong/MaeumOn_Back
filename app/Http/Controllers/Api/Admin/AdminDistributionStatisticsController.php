@@ -16,14 +16,22 @@ class AdminDistributionStatisticsController extends Controller
 
     public function index(Request $request): JsonResponse
     {
-        $period = $request->get('period', 'month');
         $branchId = $this->resolveBranchId($request);
 
-        $startDate = match ($period) {
-            'day' => Carbon::today(),
-            'week' => Carbon::now()->startOfWeek(),
-            default => Carbon::now()->startOfMonth(),
-        };
+        $dateFrom = $request->get('date_from');
+        $dateTo = $request->get('date_to');
+        if ($dateFrom && $dateTo) {
+            $startDate = Carbon::parse($dateFrom)->startOfDay();
+            $endDate = Carbon::parse($dateTo)->endOfDay();
+        } else {
+            $period = $request->get('period', 'month');
+            $startDate = match ($period) {
+                'day' => Carbon::today(),
+                'week' => Carbon::now()->startOfWeek(),
+                default => Carbon::now()->startOfMonth(),
+            };
+            $endDate = Carbon::now()->endOfDay();
+        }
 
         $query = CustomerAssignment::select(
                 'customer_assignment.agent_id',
@@ -32,7 +40,7 @@ class AdminDistributionStatisticsController extends Controller
                 DB::raw('COUNT(*) as total_count')
             )
             ->join('agent', 'customer_assignment.agent_id', '=', 'agent.agent_id')
-            ->where('customer_assignment.created_at', '>=', $startDate)
+            ->whereBetween('customer_assignment.created_at', [$startDate, $endDate])
             ->groupBy('customer_assignment.agent_id');
 
         if ($branchId !== null) {

@@ -24,18 +24,26 @@ class AdminPerformanceController extends Controller
      */
     public function summary(Request $request): JsonResponse
     {
-        $period = $request->get('period', 'month');
         $branchId = $this->resolveBranchId($request);
 
-        $startDate = match ($period) {
-            'day' => Carbon::today(),
-            'week' => Carbon::now()->startOfWeek(),
-            default => Carbon::now()->startOfMonth(),
-        };
+        $dateFrom = $request->get('date_from');
+        $dateTo = $request->get('date_to');
+        if ($dateFrom && $dateTo) {
+            $startDate = Carbon::parse($dateFrom)->startOfDay();
+            $endDate = Carbon::parse($dateTo)->endOfDay();
+        } else {
+            $period = $request->get('period', 'month');
+            $startDate = match ($period) {
+                'day' => Carbon::today(),
+                'week' => Carbon::now()->startOfWeek(),
+                default => Carbon::now()->startOfMonth(),
+            };
+            $endDate = Carbon::now()->endOfDay();
+        }
 
-        $assignmentQuery = CustomerAssignment::where('created_at', '>=', $startDate);
-        $contractQuery = Contract::where('contract_date', '>=', $startDate);
-        $contractAmountQuery = Contract::where('contract_date', '>=', $startDate);
+        $assignmentQuery = CustomerAssignment::whereBetween('created_at', [$startDate, $endDate]);
+        $contractQuery = Contract::whereBetween('contract_date', [$startDate, $endDate]);
+        $contractAmountQuery = Contract::whereBetween('contract_date', [$startDate, $endDate]);
 
         if ($branchId !== null) {
             $assignmentQuery->whereHas('agent.branches', fn($q) => $q->where('branch.branch_id', $branchId));
@@ -109,19 +117,27 @@ class AdminPerformanceController extends Controller
     public function detailList(Request $request): JsonResponse
     {
         $type = $request->get('type', 'assignments');
-        $period = $request->get('period', 'month');
         $branchId = $this->resolveBranchId($request);
         $perPage = min(max((int) $request->get('per_page', 20), 1), 100);
 
-        $startDate = match ($period) {
-            'day' => Carbon::today(),
-            'week' => Carbon::now()->startOfWeek(),
-            default => Carbon::now()->startOfMonth(),
-        };
+        $dateFrom = $request->get('date_from');
+        $dateTo = $request->get('date_to');
+        if ($dateFrom && $dateTo) {
+            $startDate = Carbon::parse($dateFrom)->startOfDay();
+            $endDate = Carbon::parse($dateTo)->endOfDay();
+        } else {
+            $period = $request->get('period', 'month');
+            $startDate = match ($period) {
+                'day' => Carbon::today(),
+                'week' => Carbon::now()->startOfWeek(),
+                default => Carbon::now()->startOfMonth(),
+            };
+            $endDate = Carbon::now()->endOfDay();
+        }
 
         if ($type === 'contracts') {
             $query = Contract::with(['agent:agent_id,name', 'customer:customer_id,name,phone', 'insuranceCompany:company_id,company_name'])
-                ->where('contract_date', '>=', $startDate)
+                ->whereBetween('contract_date', [$startDate, $endDate])
                 ->orderByDesc('contract_date');
 
             if ($branchId !== null) {
@@ -142,7 +158,7 @@ class AdminPerformanceController extends Controller
             ]);
         } else {
             $query = CustomerAssignment::with(['agent:agent_id,name', 'customer:customer_id,name,phone'])
-                ->where('created_at', '>=', $startDate)
+                ->whereBetween('created_at', [$startDate, $endDate])
                 ->orderByDesc('created_at');
 
             if ($branchId !== null) {

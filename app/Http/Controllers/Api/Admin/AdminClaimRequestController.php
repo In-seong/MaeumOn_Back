@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Traits\BranchFilterable;
 use App\Models\Agent;
 use App\Models\ClaimRequest;
+use App\Models\CorporateInquiry;
 use App\Models\PartnerHospital;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -193,15 +194,23 @@ class AdminClaimRequestController extends Controller
      */
     public function statistics(Request $request): JsonResponse
     {
-        $period = $request->input('period', 'month');
         $hospitalId = $request->input('hospital_id');
 
-        $now = Carbon::now();
-        $startDate = match ($period) {
-            'day' => $now->copy()->startOfDay(),
-            'week' => $now->copy()->startOfWeek(),
-            default => $now->copy()->startOfMonth(),
-        };
+        $dateFrom = $request->input('date_from');
+        $dateTo = $request->input('date_to');
+        if ($dateFrom && $dateTo) {
+            $startDate = Carbon::parse($dateFrom)->startOfDay();
+            $endDate = Carbon::parse($dateTo)->endOfDay();
+        } else {
+            $period = $request->input('period', 'month');
+            $now = Carbon::now();
+            $startDate = match ($period) {
+                'day' => $now->copy()->startOfDay(),
+                'week' => $now->copy()->startOfWeek(),
+                default => $now->copy()->startOfMonth(),
+            };
+            $endDate = Carbon::now()->endOfDay();
+        }
 
         $query = ClaimRequest::query()
             ->select(
@@ -210,7 +219,7 @@ class AdminClaimRequestController extends Controller
                 DB::raw('COUNT(*) as count')
             )
             ->whereNotNull('assigned_agent_id')
-            ->where('created_at', '>=', $startDate);
+            ->whereBetween('created_at', [$startDate, $endDate]);
 
         $branchId = $this->resolveBranchId($request);
         $this->applyAgentBranchFilter($query, $branchId, 'assignedAgent.branches');
@@ -239,6 +248,7 @@ class AdminClaimRequestController extends Controller
                     'agent_name' => $agent?->name ?? '(알 수 없음)',
                     'resident' => 0,
                     'distribution' => 0,
+                    'corporate' => 0,
                     'total' => 0,
                 ];
             }
@@ -246,10 +256,40 @@ class AdminClaimRequestController extends Controller
             $grouped[$agentId]['total'] += $row->count;
         }
 
+        $corporateQuery = CorporateInquiry::select('agent_id', DB::raw('COUNT(*) as count'))
+            ->whereNotNull('agent_id')
+            ->whereBetween('assigned_at', [$startDate, $endDate]);
+
+        if ($branchId !== null) {
+            $corporateQuery->whereHas('agent.branches', function ($q) use ($branchId) {
+                $q->where('branch.branch_id', $branchId);
+            });
+        }
+
+        $corporateStats = $corporateQuery->groupBy('agent_id')->get();
+
+        foreach ($corporateStats as $row) {
+            $agentId = $row->agent_id;
+            if (!isset($grouped[$agentId])) {
+                $agent = Agent::where('agent_id', $agentId)->select('agent_id', 'name')->first();
+                $grouped[$agentId] = [
+                    'agent_id' => $agentId,
+                    'agent_name' => $agent?->name ?? '(알 수 없음)',
+                    'resident' => 0,
+                    'distribution' => 0,
+                    'corporate' => 0,
+                    'total' => 0,
+                ];
+            }
+            $grouped[$agentId]['corporate'] = $row->count;
+            $grouped[$agentId]['total'] += $row->count;
+        }
+
         $result = collect($grouped)->sortByDesc('total')->values();
 
         $totalResident = $result->sum('resident');
         $totalDistribution = $result->sum('distribution');
+        $totalCorporate = $result->sum('corporate');
 
         $hospitals = PartnerHospital::where('is_active', true)
             ->select('hospital_id', 'hospital_name')
@@ -263,11 +303,12 @@ class AdminClaimRequestController extends Controller
                 'summary' => [
                     'total_resident' => $totalResident,
                     'total_distribution' => $totalDistribution,
-                    'total' => $totalResident + $totalDistribution,
+                    'total_corporate' => $totalCorporate,
+                    'total' => $totalResident + $totalDistribution + $totalCorporate,
                 ],
                 'hospitals' => $hospitals,
-                'period' => $period,
                 'start_date' => $startDate->toDateString(),
+                'end_date' => $endDate->toDateString(),
             ],
         ]);
     }

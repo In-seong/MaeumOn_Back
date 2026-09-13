@@ -5,8 +5,12 @@ namespace App\Http\Controllers\Api\Admin;
 use App\Http\Controllers\Controller;
 use App\Http\Traits\BranchFilterable;
 use App\Models\CorporateInquiry;
+use App\Models\Notification;
+use App\Services\FcmService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
+use Carbon\Carbon;
 
 class AdminCorporateInquiryController extends Controller
 {
@@ -31,6 +35,13 @@ class AdminCorporateInquiryController extends Controller
                   ->orWhere('ceo_name', 'like', "%{$search}%")
                   ->orWhere('phone', 'like', "%{$search}%");
             });
+        }
+
+        if ($request->filled('date_from') && $request->filled('date_to')) {
+            $query->whereBetween('created_at', [
+                Carbon::parse($request->input('date_from'))->startOfDay(),
+                Carbon::parse($request->input('date_to'))->endOfDay(),
+            ]);
         }
 
         $sortBy = $request->input('sort_by', 'created_at');
@@ -87,12 +98,15 @@ class AdminCorporateInquiryController extends Controller
             'notes' => 'nullable|string|max:500',
         ]);
 
+        $adminId = $request->user()?->admin_id ?? ($request->user()?->id ?? null);
+        $agentId = $validated['agent_id'];
+
         $count = 0;
         foreach ($validated['inquiry_ids'] as $inquiryId) {
             $inquiry = CorporateInquiry::find($inquiryId);
             if ($inquiry) {
                 $updateData = [
-                    'agent_id' => $validated['agent_id'],
+                    'agent_id' => $agentId,
                     'assigned_at' => now(),
                     'status' => 'IN_PROGRESS',
                 ];
@@ -101,6 +115,27 @@ class AdminCorporateInquiryController extends Controller
                 }
                 $inquiry->update($updateData);
                 $count++;
+
+                Notification::create([
+                    'receiver_id' => $agentId,
+                    'receiver_type' => 'AGENT',
+                    'sender_id' => $adminId,
+                    'sender_type' => 'ADMIN',
+                    'notification_type' => 'ASSIGNMENT',
+                    'title' => '기업 DB 배분 알림',
+                    'content' => "새로운 기업 문의 '{$inquiry->company_name}'이(가) 배분되었습니다.",
+                    'is_read' => false,
+                    'sent_at' => now(),
+                ]);
+            }
+        }
+
+        if ($count > 0) {
+            try {
+                $companyNames = CorporateInquiry::whereIn('id', $validated['inquiry_ids'])->pluck('company_name')->implode(', ');
+                app(FcmService::class)->sendToUsers('AGENT', [$agentId], '기업 DB 배분 알림', "새로운 기업 문의 {$count}건이 배분되었습니다. ({$companyNames})");
+            } catch (\Exception $e) {
+                Log::error('기업 배분 알림 FCM 발송 실패', ['agent_id' => $agentId, 'error' => $e->getMessage()]);
             }
         }
 
@@ -138,6 +173,28 @@ class AdminCorporateInquiryController extends Controller
         }
 
         $inquiry = CorporateInquiry::create($data);
+
+        if (!empty($validated['agent_id'])) {
+            $adminId = $request->user()?->admin_id ?? ($request->user()?->id ?? null);
+
+            Notification::create([
+                'receiver_id' => $validated['agent_id'],
+                'receiver_type' => 'AGENT',
+                'sender_id' => $adminId,
+                'sender_type' => 'ADMIN',
+                'notification_type' => 'ASSIGNMENT',
+                'title' => '기업 DB 배분 알림',
+                'content' => "새로운 기업 문의 '{$inquiry->company_name}'이(가) 배분되었습니다.",
+                'is_read' => false,
+                'sent_at' => now(),
+            ]);
+
+            try {
+                app(FcmService::class)->sendToUsers('AGENT', [$validated['agent_id']], '기업 DB 배분 알림', "새로운 기업 문의 '{$inquiry->company_name}'이(가) 배분되었습니다.");
+            } catch (\Exception $e) {
+                Log::error('기업 배분 알림 FCM 발송 실패', ['agent_id' => $validated['agent_id'], 'error' => $e->getMessage()]);
+            }
+        }
 
         return response()->json([
             'success' => true,
