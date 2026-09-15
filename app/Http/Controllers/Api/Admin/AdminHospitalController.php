@@ -23,7 +23,10 @@ class AdminHospitalController extends Controller
 
         $branchId = $this->resolveBranchId($request);
         if ($branchId !== null) {
-            $query->where('branch_id', $branchId);
+            $query->where(function ($q) use ($branchId) {
+                $q->where('branch_id', $branchId)
+                  ->orWhereNull('branch_id');
+            });
         }
 
         if ($search = $request->input('search')) {
