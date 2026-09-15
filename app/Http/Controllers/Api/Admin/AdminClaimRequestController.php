@@ -315,10 +315,6 @@ class AdminClaimRequestController extends Controller
 
     public function statisticsDetails(Request $request): JsonResponse
     {
-        $request->validate([
-            'agent_id' => 'required|string',
-        ]);
-
         $agentId = $request->input('agent_id');
         $hospitalId = $request->input('hospital_id');
 
@@ -332,48 +328,95 @@ class AdminClaimRequestController extends Controller
             $endDate = Carbon::now()->endOfDay();
         }
 
-        $agent = Agent::where('agent_id', $agentId)->select('agent_id', 'name')->first();
+        if ($agentId) {
+            $agent = Agent::where('agent_id', $agentId)->select('agent_id', 'name')->first();
 
-        $claimQuery = ClaimRequest::with('hospital:hospital_id,hospital_name')
-            ->where('assigned_agent_id', $agentId)
-            ->whereBetween('created_at', [$startDate, $endDate]);
+            $claimQuery = ClaimRequest::with('hospital:hospital_id,hospital_name')
+                ->where('assigned_agent_id', $agentId)
+                ->whereBetween('created_at', [$startDate, $endDate]);
 
-        if ($hospitalId) {
-            $claimQuery->where('hospital_id', $hospitalId);
+            if ($hospitalId) {
+                $claimQuery->where('hospital_id', $hospitalId);
+            }
+
+            $claimRows = $claimQuery->orderByDesc('created_at')->get();
+
+            $details = $claimRows->map(fn ($row) => [
+                'customer_name' => $row->name,
+                'db_type' => $row->source_type,
+                'hospital_name' => $row->hospital?->hospital_name,
+                'assigned_at' => $row->created_at?->format('Y-m-d H:i'),
+                'memo' => $row->memo,
+            ]);
+
+            $corporateQuery = CorporateInquiry::where('agent_id', $agentId)
+                ->whereBetween('assigned_at', [$startDate, $endDate]);
+
+            $corporateRows = $corporateQuery->orderByDesc('assigned_at')->get();
+
+            $corporateDetails = $corporateRows->map(fn ($row) => [
+                'customer_name' => $row->company_name,
+                'db_type' => 'corporate',
+                'hospital_name' => null,
+                'assigned_at' => $row->assigned_at ? Carbon::parse($row->assigned_at)->format('Y-m-d H:i') : null,
+                'memo' => $row->notes,
+            ]);
+
+            $allDetails = $details->concat($corporateDetails)
+                ->sortByDesc('assigned_at')
+                ->values();
+
+            return response()->json([
+                'success' => true,
+                'data' => [
+                    'agent_name' => $agent?->name ?? '(알 수 없음)',
+                    'details' => $allDetails,
+                ],
+            ]);
         }
 
-        $claimRows = $claimQuery->orderByDesc('created_at')->get();
+        $agents = Agent::where('is_active', true)->select('agent_id', 'name')->get();
+        $allRows = collect();
 
-        $details = $claimRows->map(fn ($row) => [
-            'customer_name' => $row->name,
-            'db_type' => $row->source_type,
-            'hospital_name' => $row->hospital?->hospital_name,
-            'assigned_at' => $row->created_at?->format('Y-m-d H:i'),
-            'memo' => $row->memo,
-        ]);
+        foreach ($agents as $agent) {
+            $claimQuery = ClaimRequest::with('hospital:hospital_id,hospital_name')
+                ->where('assigned_agent_id', $agent->agent_id)
+                ->whereBetween('created_at', [$startDate, $endDate]);
 
-        $corporateQuery = CorporateInquiry::where('agent_id', $agentId)
-            ->whereBetween('assigned_at', [$startDate, $endDate]);
+            if ($hospitalId) {
+                $claimQuery->where('hospital_id', $hospitalId);
+            }
 
-        $corporateRows = $corporateQuery->orderByDesc('assigned_at')->get();
+            $claimRows = $claimQuery->get()->map(fn ($row) => [
+                'agent_name' => $agent->name,
+                'customer_name' => $row->name,
+                'db_type' => $row->source_type,
+                'hospital_name' => $row->hospital?->hospital_name,
+                'assigned_at' => $row->created_at?->format('Y-m-d H:i'),
+                'memo' => $row->memo,
+            ]);
 
-        $corporateDetails = $corporateRows->map(fn ($row) => [
-            'customer_name' => $row->company_name,
-            'db_type' => 'corporate',
-            'hospital_name' => null,
-            'assigned_at' => $row->assigned_at ? Carbon::parse($row->assigned_at)->format('Y-m-d H:i') : null,
-            'memo' => $row->notes,
-        ]);
+            $corporateRows = CorporateInquiry::where('agent_id', $agent->agent_id)
+                ->whereBetween('assigned_at', [$startDate, $endDate])
+                ->get()->map(fn ($row) => [
+                    'agent_name' => $agent->name,
+                    'customer_name' => $row->company_name,
+                    'db_type' => 'corporate',
+                    'hospital_name' => null,
+                    'assigned_at' => $row->assigned_at ? Carbon::parse($row->assigned_at)->format('Y-m-d H:i') : null,
+                    'memo' => $row->notes,
+                ]);
 
-        $allDetails = $details->concat($corporateDetails)
-            ->sortByDesc('assigned_at')
-            ->values();
+            $allRows = $allRows->concat($claimRows)->concat($corporateRows);
+        }
+
+        $allRows = $allRows->sortByDesc('assigned_at')->values();
 
         return response()->json([
             'success' => true,
             'data' => [
-                'agent_name' => $agent?->name ?? '(알 수 없음)',
-                'details' => $allDetails,
+                'agent_name' => '전체',
+                'details' => $allRows,
             ],
         ]);
     }
