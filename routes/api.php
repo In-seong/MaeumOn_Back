@@ -34,6 +34,7 @@ use App\Http\Controllers\Api\Admin\AdminDashboardController;
 use App\Http\Controllers\Api\Agent\AgentBatchClaimController;
 use App\Http\Controllers\Api\Agent\AgentScheduleController;
 use App\Http\Controllers\Api\Agent\AgentFcmTokenController;
+use App\Http\Controllers\Api\Agent\AgentCorporateInquiryController;
 use App\Http\Controllers\Api\Admin\AdminNotificationController;
 use App\Http\Controllers\Api\StandardFieldController;
 use App\Http\Controllers\Api\Admin\AdminConsentTemplateController;
@@ -438,6 +439,11 @@ Route::middleware('auth:sanctum')->group(function () {
         // 청구 배정 조회
         Route::get('/claim-assignments', [AgentDbDistributionController::class, 'claimAssignments']);
         Route::get('/claim-request-files/{id}/download', [AgentDbDistributionController::class, 'downloadClaimFile']);
+
+        // 기업 배분 조회
+        Route::get('/corporate-inquiries', [AgentCorporateInquiryController::class, 'index']);
+        Route::get('/corporate-inquiries/{id}', [AgentCorporateInquiryController::class, 'show']);
+        Route::put('/corporate-inquiries/{id}/notes', [AgentCorporateInquiryController::class, 'updateNotes']);
 
         // 설계사 - CODEF 보험/건강 조회
         Route::prefix('codef')->group(function () {
