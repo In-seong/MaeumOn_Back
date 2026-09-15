@@ -80,6 +80,7 @@ class AgentCustomerController extends Controller
             'detailed_address' => 'nullable|string|max:200',
             'job' => 'nullable|string|max:50',
             'telecom' => 'nullable|string|max:20',
+            'hospital' => 'nullable|string|max:100',
             'acquisition_channel' => 'nullable|string|max:50',
             'acquisition_note' => 'nullable|string|max:500',
         ]);
@@ -228,6 +229,7 @@ class AgentCustomerController extends Controller
             'detailed_address' => 'nullable|string|max:200',
             'job' => 'nullable|string|max:50',
             'telecom' => 'nullable|string|max:20',
+            'hospital' => 'nullable|string|max:100',
             'acquisition_channel' => 'nullable|string|max:50',
             'acquisition_note' => 'nullable|string|max:500',
         ]);

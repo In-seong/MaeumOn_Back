@@ -117,6 +117,7 @@
 | detailed_address | varchar(255) | YES | | | 상세 주소 |
 | job | varchar(100) | YES | | | 직업 |
 | telecom | varchar(20) | YES | | | 통신사 |
+| hospital | varchar(100) | YES | | | 병원 |
 | acquisition_channel | varchar(50) | YES | | | 고객정보취득경로(병원 등) |
 | acquisition_note | varchar(500) | YES | | | 가입경로 기타 메모 |
 | last_contact_date | date | YES | | | 최근 연락일 |

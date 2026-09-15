@@ -27,6 +27,7 @@ class Customer extends Model
         'detailed_address',
         'job',
         'telecom',
+        'hospital',
         'acquisition_channel',
         'acquisition_note',
         'last_contact_date',
