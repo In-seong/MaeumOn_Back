@@ -117,6 +117,10 @@ class DistributionService
                         'timeout_count' => $newTimeoutCount,
                     ]);
 
+                Customer::where('customer_id', $item->customer_id)
+                    ->where('agent_id', $item->assigned_agent_id)
+                    ->update(['agent_id' => null]);
+
                 Log::warning('자동배분 최대 재배분 초과로 실패 처리', [
                     'queue_id' => $item->queue_id,
                     'customer_id' => $item->customer_id,

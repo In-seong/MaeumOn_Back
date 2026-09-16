@@ -8,6 +8,7 @@ use App\Models\ClaimRequest;
 use App\Models\Customer;
 use App\Models\Agent;
 use App\Models\CustomerAssignment;
+use App\Models\DistributionQueue;
 use App\Models\Notification;
 use App\Services\FcmService;
 use Illuminate\Http\JsonResponse;
@@ -91,6 +92,10 @@ class AdminAssignmentController extends Controller
 
             $customer->update(['agent_id' => $agent->agent_id]);
 
+            DistributionQueue::where('customer_id', $customer->customer_id)
+                ->whereIn('status', ['pending', 'assigned'])
+                ->update(['status' => 'completed', 'viewed_at' => now()]);
+
             Notification::create([
                 'receiver_id' => $agent->agent_id,
                 'receiver_type' => 'AGENT',
@@ -166,6 +171,10 @@ class AdminAssignmentController extends Controller
                 ]);
 
                 $customer->update(['agent_id' => $agent->agent_id]);
+
+                DistributionQueue::where('customer_id', $customer->customer_id)
+                    ->whereIn('status', ['pending', 'assigned'])
+                    ->update(['status' => 'completed', 'viewed_at' => now()]);
 
                 Notification::create([
                     'receiver_id' => $agent->agent_id,
