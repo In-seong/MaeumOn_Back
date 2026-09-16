@@ -224,4 +224,15 @@ class AdminCorporateInquiryController extends Controller
             'data' => $inquiries,
         ]);
     }
+
+    public function destroy(int $id): JsonResponse
+    {
+        $inquiry = CorporateInquiry::findOrFail($id);
+        $inquiry->delete();
+
+        return response()->json([
+            'success' => true,
+            'message' => '기업 문의가 삭제되었습니다.',
+        ]);
+    }
 }

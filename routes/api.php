@@ -299,6 +299,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::put('/claim-requests/{id}/assign', [AdminClaimRequestController::class, 'assign']);
         Route::post('/claim-requests/bulk-assign', [AdminClaimRequestController::class, 'bulkAssign']);
         Route::put('/claim-requests/{id}/status', [AdminClaimRequestController::class, 'updateStatus']);
+        Route::delete('/claim-requests/{id}', [AdminClaimRequestController::class, 'destroy']);
 
         // CODEF API 사용량/정산
         Route::get('/codef-billing/summary', [AdminCodefBillingController::class, 'monthlySummary']);
@@ -312,6 +313,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::put('/corporate-inquiries/{id}', [AdminCorporateInquiryController::class, 'update']);
         Route::post('/corporate-inquiries/assign', [AdminCorporateInquiryController::class, 'assign']);
         Route::post('/corporate-inquiries', [AdminCorporateInquiryController::class, 'store']);
+        Route::delete('/corporate-inquiries/{id}', [AdminCorporateInquiryController::class, 'destroy']);
 
         // 사이트 설정
         Route::get('/settings', [AdminSettingController::class, 'index']);

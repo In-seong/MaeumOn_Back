@@ -440,4 +440,23 @@ class AdminClaimRequestController extends Controller
             'message' => '상태가 변경되었습니다.',
         ]);
     }
+
+    public function destroy(int $id): JsonResponse
+    {
+        $claimRequest = ClaimRequest::findOrFail($id);
+
+        foreach ($claimRequest->files as $file) {
+            if ($file->file_path) {
+                \Storage::disk('s3')->delete($file->file_path);
+            }
+            $file->delete();
+        }
+
+        $claimRequest->delete();
+
+        return response()->json([
+            'success' => true,
+            'message' => '청구 신청이 삭제되었습니다.',
+        ]);
+    }
 }
