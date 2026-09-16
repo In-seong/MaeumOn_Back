@@ -7,11 +7,14 @@ use App\Http\Traits\BranchFilterable;
 use App\Models\Agent;
 use App\Models\ClaimRequest;
 use App\Models\CorporateInquiry;
+use App\Models\Notification;
 use App\Models\PartnerHospital;
+use App\Services\FcmService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 
 class AdminClaimRequestController extends Controller
@@ -61,6 +64,10 @@ class AdminClaimRequestController extends Controller
         }
 
         $claimRequest->load('files', 'assignedAgent', 'hospital');
+
+        if ($agentId) {
+            $this->notifyAgentClaimAssigned($agentId, $validated['name']);
+        }
 
         return response()->json([
             'success' => true,
@@ -147,6 +154,8 @@ class AdminClaimRequestController extends Controller
 
         $claimRequest->load('assignedAgent');
 
+        $this->notifyAgentClaimAssigned($validated['agent_id'], $claimRequest->name);
+
         return response()->json([
             'success' => true,
             'data' => $claimRequest,
@@ -180,6 +189,10 @@ class AdminClaimRequestController extends Controller
                 ]);
                 $assignedCount++;
             }
+        }
+
+        if ($assignedCount > 0) {
+            $this->notifyAgentClaimAssigned($agentId, null, $assignedCount);
         }
 
         return response()->json([
@@ -439,6 +452,30 @@ class AdminClaimRequestController extends Controller
             'data' => $claimRequest,
             'message' => '상태가 변경되었습니다.',
         ]);
+    }
+
+    private function notifyAgentClaimAssigned(string $agentId, ?string $customerName, int $count = 1): void
+    {
+        $content = $count > 1
+            ? "새로운 청구신청 {$count}건이 배정되었습니다."
+            : "새로운 청구신청이 배정되었습니다: " . ($customerName ?? '고객');
+
+        Notification::create([
+            'receiver_id' => $agentId,
+            'receiver_type' => 'AGENT',
+            'sender_type' => 'ADMIN',
+            'notification_type' => 'ASSIGNMENT',
+            'title' => '청구 배정 알림',
+            'content' => $content,
+            'is_read' => false,
+            'sent_at' => now(),
+        ]);
+
+        try {
+            app(FcmService::class)->sendToUsers('AGENT', [$agentId], '청구 배정 알림', $content);
+        } catch (\Exception $e) {
+            Log::error('청구배정 알림 FCM 발송 실패', ['agent_id' => $agentId, 'error' => $e->getMessage()]);
+        }
     }
 
     public function destroy(int $id): JsonResponse
