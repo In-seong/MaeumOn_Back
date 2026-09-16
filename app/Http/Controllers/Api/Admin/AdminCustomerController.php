@@ -127,6 +127,8 @@ class AdminCustomerController extends Controller
             $branchId = $this->resolveBranchId($request);
             if ($branchId) {
                 app(DistributionService::class)->enqueueCustomer($customerId, $branchId);
+            } else {
+                app(DistributionService::class)->enqueueCustomerAuto($customerId);
             }
         }
 

@@ -102,10 +102,30 @@ class DistributionService
                 return now()->gte($timeoutAt);
             });
 
+        $maxTimeoutCount = 3;
         $processed = 0;
 
         foreach ($timeoutItems as $item) {
             $oldAgentId = $item->assigned_agent_id;
+            $newTimeoutCount = $item->timeout_count + 1;
+
+            if ($newTimeoutCount > $maxTimeoutCount) {
+                DistributionQueue::where('queue_id', $item->queue_id)
+                    ->where('status', 'assigned')
+                    ->update([
+                        'status' => 'failed',
+                        'timeout_count' => $newTimeoutCount,
+                    ]);
+
+                Log::warning('자동배분 최대 재배분 초과로 실패 처리', [
+                    'queue_id' => $item->queue_id,
+                    'customer_id' => $item->customer_id,
+                    'timeout_count' => $newTimeoutCount,
+                ]);
+
+                $this->notifyAdminsDistributionFailed($item->customer_id, $newTimeoutCount);
+                continue;
+            }
 
             $affected = DistributionQueue::where('queue_id', $item->queue_id)
                 ->where('status', 'assigned')
@@ -114,7 +134,7 @@ class DistributionService
                     'status' => 'pending',
                     'assigned_agent_id' => null,
                     'assigned_at' => null,
-                    'timeout_count' => $item->timeout_count + 1,
+                    'timeout_count' => $newTimeoutCount,
                     'scheduled_at' => now(),
                 ]);
 
@@ -288,6 +308,40 @@ class DistributionService
             $this->fcmService->sendToUsers('ADMIN', $adminIds, $title, $body);
         } catch (\Exception $e) {
             Log::error('DB 유입 알림 FCM 발송 실패', ['error' => $e->getMessage()]);
+        }
+    }
+
+    private function notifyAdminsDistributionFailed(string $customerId, int $timeoutCount): void
+    {
+        $adminIds = Admin::where('is_active', 1)->pluck('admin_id')->all();
+        if (empty($adminIds)) {
+            return;
+        }
+
+        $customer = Customer::find($customerId);
+        $customerName = $customer?->name ?? '고객';
+
+        $title = '자동배분 실패';
+        $body = "고객 '{$customerName}'의 자동배분이 {$timeoutCount}회 미확인으로 실패 처리되었습니다. 수동 배분이 필요합니다.";
+        $now = now();
+
+        $rows = array_map(fn($id) => [
+            'receiver_id' => $id,
+            'receiver_type' => 'ADMIN',
+            'sender_type' => 'SYSTEM',
+            'notification_type' => 'distribution_failed',
+            'title' => $title,
+            'content' => $body,
+            'is_read' => false,
+            'sent_at' => $now,
+            'created_at' => $now,
+        ], $adminIds);
+        Notification::insert($rows);
+
+        try {
+            $this->fcmService->sendToUsers('ADMIN', $adminIds, $title, $body);
+        } catch (\Exception $e) {
+            Log::error('배분 실패 알림 FCM 발송 실패', ['error' => $e->getMessage()]);
         }
     }
 }
