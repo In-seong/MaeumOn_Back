@@ -182,20 +182,13 @@ class AgentClaimController extends Controller
             }
         }
 
-        // 고객 처리: 기존 고객 선택 또는 폼 필드에서 자동 생성
-        $customer = null;
+        // 고객 처리: 기존 고객 선택 (바로 청구는 고객 등록 안 함)
+        $customerId = null;
         if (!empty($validated['customer_id'])) {
-            // 기존 고객 선택
             $customer = Customer::where('agent_id', $agentId)
                 ->where('customer_id', $validated['customer_id'])
                 ->firstOrFail();
-        } else {
-            // 바로 청구: 폼 필드에서 고객 정보 추출 → 자동 생성
-            $customer = $this->createCustomerFromFields(
-                $agentId,
-                $claimForm->formFields,
-                collect($validated['fields'])
-            );
+            $customerId = $customer->customer_id;
         }
 
         DB::beginTransaction();
@@ -205,7 +198,7 @@ class AgentClaimController extends Controller
 
             // 청구 레코드 생성 (agent_id 포함, claim_type '대리청구')
             $claim = InsuranceClaim::create([
-                'customer_id' => $customer->customer_id,
+                'customer_id' => $customerId,
                 'company_id' => $claimForm->company_id,
                 'agent_id' => $agentId,
                 'claim_form_id' => $claimForm->claim_form_id,
@@ -825,28 +818,18 @@ class AgentClaimController extends Controller
             }
         }
 
-        // 고객 처리
-        $customerId = $request->input('customer_id') ?? $claim->customer_id;
-        $customer = null;
-        if (!empty($customerId)) {
-            $customer = Customer::where('agent_id', $agentId)
-                ->where('customer_id', $customerId)
+        // 고객 처리 (바로 청구는 고객 등록 안 함)
+        $resolvedCustomerId = $request->input('customer_id') ?? $claim->customer_id;
+        if (!empty($resolvedCustomerId)) {
+            Customer::where('agent_id', $agentId)
+                ->where('customer_id', $resolvedCustomerId)
                 ->firstOrFail();
-        } else {
-            $customer = $this->createCustomerFromFields(
-                $agentId,
-                $claimForm->formFields,
-                $fieldValues->map(fn($fv) => [
-                    'form_field_id' => $fv->form_field_id,
-                    'field_value' => $fv->field_value,
-                ])
-            );
         }
 
         DB::beginTransaction();
         try {
             $claim->update([
-                'customer_id' => $customer->customer_id,
+                'customer_id' => $resolvedCustomerId ?: null,
                 'claim_status' => InsuranceClaim::STATUS_PENDING,
                 'claim_date' => now()->toDateString(),
                 'updated_by_id' => $agentId,
@@ -945,12 +928,8 @@ class AgentClaimController extends Controller
     }
 
     /**
-     * 바로 청구: 폼 필드에서 고객 정보를 추출하여 기존 고객 매칭 또는 자동 생성
-     *
-     * Step 3(계약자) 필드에서 이름, 전화번호, 주민번호 등을 추출하고
-     * 이름+전화번호로 기존 고객 매칭을 시도합니다.
-     * 매칭되면 담당 설계사를 현재 설계사로 변경하고 기존 고객을 반환,
-     * 매칭되지 않으면 새 고객을 등록한 뒤 반환합니다.
+     * @deprecated 바로 청구 시 더 이상 고객을 자동 생성하지 않음
+     * @codeCoverageIgnore
      */
     private function createCustomerFromFields(string $agentId, $formFields, $inputFields): Customer
     {
