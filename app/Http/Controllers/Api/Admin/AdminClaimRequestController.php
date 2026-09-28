@@ -269,33 +269,35 @@ class AdminClaimRequestController extends Controller
             $grouped[$agentId]['total'] += $row->count;
         }
 
-        $corporateQuery = CorporateInquiry::select('agent_id', DB::raw('COUNT(*) as count'))
-            ->whereNotNull('agent_id')
-            ->whereBetween('assigned_at', [$startDate, $endDate]);
+        if (!$hospitalId) {
+            $corporateQuery = CorporateInquiry::select('agent_id', DB::raw('COUNT(*) as count'))
+                ->whereNotNull('agent_id')
+                ->whereBetween('assigned_at', [$startDate, $endDate]);
 
-        if ($branchId !== null) {
-            $corporateQuery->whereHas('agent.branches', function ($q) use ($branchId) {
-                $q->where('branch.branch_id', $branchId);
-            });
-        }
-
-        $corporateStats = $corporateQuery->groupBy('agent_id')->get();
-
-        foreach ($corporateStats as $row) {
-            $agentId = $row->agent_id;
-            if (!isset($grouped[$agentId])) {
-                $agent = Agent::where('agent_id', $agentId)->select('agent_id', 'name')->first();
-                $grouped[$agentId] = [
-                    'agent_id' => $agentId,
-                    'agent_name' => $agent?->name ?? '(알 수 없음)',
-                    'resident' => 0,
-                    'distribution' => 0,
-                    'corporate' => 0,
-                    'total' => 0,
-                ];
+            if ($branchId !== null) {
+                $corporateQuery->whereHas('agent.branches', function ($q) use ($branchId) {
+                    $q->where('branch.branch_id', $branchId);
+                });
             }
-            $grouped[$agentId]['corporate'] = $row->count;
-            $grouped[$agentId]['total'] += $row->count;
+
+            $corporateStats = $corporateQuery->groupBy('agent_id')->get();
+
+            foreach ($corporateStats as $row) {
+                $agentId = $row->agent_id;
+                if (!isset($grouped[$agentId])) {
+                    $agent = Agent::where('agent_id', $agentId)->select('agent_id', 'name')->first();
+                    $grouped[$agentId] = [
+                        'agent_id' => $agentId,
+                        'agent_name' => $agent?->name ?? '(알 수 없음)',
+                        'resident' => 0,
+                        'distribution' => 0,
+                        'corporate' => 0,
+                        'total' => 0,
+                    ];
+                }
+                $grouped[$agentId]['corporate'] = $row->count;
+                $grouped[$agentId]['total'] += $row->count;
+            }
         }
 
         $result = collect($grouped)->sortByDesc('total')->values();
@@ -362,22 +364,26 @@ class AdminClaimRequestController extends Controller
                 'memo' => $row->memo,
             ]);
 
-            $corporateQuery = CorporateInquiry::where('agent_id', $agentId)
-                ->whereBetween('assigned_at', [$startDate, $endDate]);
+            $allDetails = $details;
 
-            $corporateRows = $corporateQuery->orderByDesc('assigned_at')->get();
+            if (!$hospitalId) {
+                $corporateQuery = CorporateInquiry::where('agent_id', $agentId)
+                    ->whereBetween('assigned_at', [$startDate, $endDate]);
 
-            $corporateDetails = $corporateRows->map(fn ($row) => [
-                'customer_name' => $row->company_name,
-                'db_type' => 'corporate',
-                'hospital_name' => null,
-                'assigned_at' => $row->assigned_at ? Carbon::parse($row->assigned_at)->format('Y-m-d H:i') : null,
-                'memo' => $row->notes,
-            ]);
+                $corporateRows = $corporateQuery->orderByDesc('assigned_at')->get();
 
-            $allDetails = $details->concat($corporateDetails)
-                ->sortByDesc('assigned_at')
-                ->values();
+                $corporateDetails = $corporateRows->map(fn ($row) => [
+                    'customer_name' => $row->company_name,
+                    'db_type' => 'corporate',
+                    'hospital_name' => null,
+                    'assigned_at' => $row->assigned_at ? Carbon::parse($row->assigned_at)->format('Y-m-d H:i') : null,
+                    'memo' => $row->notes,
+                ]);
+
+                $allDetails = $details->concat($corporateDetails);
+            }
+
+            $allDetails = $allDetails->sortByDesc('assigned_at')->values();
 
             return response()->json([
                 'success' => true,
@@ -409,18 +415,22 @@ class AdminClaimRequestController extends Controller
                 'memo' => $row->memo,
             ]);
 
-            $corporateRows = CorporateInquiry::where('agent_id', $agent->agent_id)
-                ->whereBetween('assigned_at', [$startDate, $endDate])
-                ->get()->map(fn ($row) => [
-                    'agent_name' => $agent->name,
-                    'customer_name' => $row->company_name,
-                    'db_type' => 'corporate',
-                    'hospital_name' => null,
-                    'assigned_at' => $row->assigned_at ? Carbon::parse($row->assigned_at)->format('Y-m-d H:i') : null,
-                    'memo' => $row->notes,
-                ]);
+            $allRows = $allRows->concat($claimRows);
 
-            $allRows = $allRows->concat($claimRows)->concat($corporateRows);
+            if (!$hospitalId) {
+                $corporateRows = CorporateInquiry::where('agent_id', $agent->agent_id)
+                    ->whereBetween('assigned_at', [$startDate, $endDate])
+                    ->get()->map(fn ($row) => [
+                        'agent_name' => $agent->name,
+                        'customer_name' => $row->company_name,
+                        'db_type' => 'corporate',
+                        'hospital_name' => null,
+                        'assigned_at' => $row->assigned_at ? Carbon::parse($row->assigned_at)->format('Y-m-d H:i') : null,
+                        'memo' => $row->notes,
+                    ]);
+
+                $allRows = $allRows->concat($corporateRows);
+            }
         }
 
         $allRows = $allRows->sortByDesc('assigned_at')->values();
