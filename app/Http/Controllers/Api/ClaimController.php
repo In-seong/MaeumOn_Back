@@ -575,6 +575,15 @@ class ClaimController extends Controller
             $data['fax_result_message'] = $faxService->getResultMessage($claim->fax_result_code);
         }
 
+        if (!$claim->customer_id) {
+            $formName = ClaimFieldValue::select('claim_field_value.field_value')
+                ->join('form_field', 'claim_field_value.form_field_id', '=', 'form_field.form_field_id')
+                ->where('claim_field_value.claim_id', $claim->claim_id)
+                ->where('form_field.field_name', 'insured_name')
+                ->value('field_value');
+            $data['form_customer_name'] = $formName;
+        }
+
         return response()->json([
             'success' => true,
             'data' => $data,
