@@ -357,6 +357,16 @@ class FaxService
             return '결과 대기중';
         }
 
+        $internalCodes = [
+            'SEND_FAIL' => '팩스 발송 시도 실패 (팩스번호 오류 또는 파일 문제)',
+            'RECEIPT_FAIL' => '팩스 접수 실패',
+            'TIMEOUT' => '팩스 결과 수신 시간 초과',
+        ];
+
+        if (isset($internalCodes[$code])) {
+            return $internalCodes[$code];
+        }
+
         $resultCodes = config('bizmoa.fax_result_codes', []);
 
         return $resultCodes[$code] ?? "알 수 없는 결과 (코드: {$code})";

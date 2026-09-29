@@ -373,6 +373,7 @@ class ClaimController extends Controller
 
         $claim->update([
             'fax_status' => 'failed',
+            'fax_result_code' => 'SEND_FAIL',
         ]);
 
         return response()->json([
@@ -582,6 +583,14 @@ class ClaimController extends Controller
                 ->where('form_field.field_name', 'insured_name')
                 ->value('field_value');
             $data['form_customer_name'] = $formName;
+        }
+
+        $company = $claim->claimForm?->insuranceCompany;
+        if ($company) {
+            $rawFax = $company->fax_number;
+            $numericFax = $rawFax ? preg_replace('/[^0-9]/', '', $rawFax) : '';
+            $data['company_fax_number'] = $rawFax;
+            $data['company_fax_valid'] = strlen($numericFax) >= 8;
         }
 
         return response()->json([

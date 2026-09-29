@@ -405,6 +405,7 @@ class AgentClaimController extends Controller
 
         $claim->update([
             'fax_status' => 'failed',
+            'fax_result_code' => 'SEND_FAIL',
         ]);
 
         return response()->json([
