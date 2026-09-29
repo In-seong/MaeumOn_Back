@@ -480,25 +480,46 @@ class ClaimController extends Controller
             'claimForm:claim_form_id,form_name,company_id',
             'claimForm.insuranceCompany:company_id,company_name,company_code',
             'batchClaim:batch_claim_id,total_count',
+            'agent:agent_id,name',
         ]);
+
+        $formNameSub = ClaimFieldValue::select('claim_field_value.field_value')
+            ->join('form_field', 'claim_field_value.form_field_id', '=', 'form_field.form_field_id')
+            ->whereColumn('claim_field_value.claim_id', 'insurance_claim.claim_id')
+            ->where('form_field.field_name', 'insured_name')
+            ->limit(1);
+
+        $query->addSelect(['insurance_claim.*', 'form_customer_name' => $formNameSub]);
 
         $branchId = $this->resolveBranchId($request);
         if ($branchId !== null) {
-            $query->whereHas('customer.agent.branches', fn($q) => $q->where('branch.branch_id', $branchId));
+            $query->where(function ($q) use ($branchId) {
+                $q->whereHas('customer.agent.branches', fn($sub) => $sub->where('branch.branch_id', $branchId))
+                  ->orWhereHas('agent.branches', fn($sub) => $sub->where('branch.branch_id', $branchId));
+            });
         }
 
-        // 검색
+        // 검색 (customer.name 또는 폼 필드의 insured_name)
         if ($request->has('search')) {
             $search = $request->search;
-            $query->whereHas('customer', function ($q) use ($search) {
-                $q->where('name', 'like', "%{$search}%")
-                  ->orWhere('email', 'like', "%{$search}%");
+            $query->where(function ($q) use ($search) {
+                $q->whereHas('customer', function ($sub) use ($search) {
+                    $sub->where('name', 'like', "%{$search}%")
+                        ->orWhere('email', 'like', "%{$search}%");
+                })->orWhereExists(function ($sub) use ($search) {
+                    $sub->select(DB::raw(1))
+                        ->from('claim_field_value')
+                        ->join('form_field', 'claim_field_value.form_field_id', '=', 'form_field.form_field_id')
+                        ->whereColumn('claim_field_value.claim_id', 'insurance_claim.claim_id')
+                        ->where('form_field.field_name', 'insured_name')
+                        ->where('claim_field_value.field_value', 'like', "%{$search}%");
+                });
             });
         }
 
         // 상태 필터
-        if ($request->has('status')) {
-            $query->where('claim_status', $request->status);
+        if ($request->has('claim_status')) {
+            $query->where('claim_status', $request->claim_status);
         }
 
         // 보험사 필터
