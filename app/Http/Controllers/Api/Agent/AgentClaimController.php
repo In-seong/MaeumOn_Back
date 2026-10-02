@@ -722,9 +722,23 @@ class AgentClaimController extends Controller
     {
         $agentId = $request->user()->agent->agent_id;
 
-        $claim = InsuranceClaim::where('agent_id', $agentId)
-            ->where('claim_status', InsuranceClaim::STATUS_DRAFT)
-            ->findOrFail($id);
+        $claim = InsuranceClaim::where('agent_id', $agentId)->find($id);
+
+        if (!$claim) {
+            return response()->json([
+                'success' => false,
+                'message' => '임시저장된 청구서를 찾을 수 없습니다. 새로 작성해주세요.',
+                'error_code' => 'DRAFT_NOT_FOUND',
+            ], 404);
+        }
+
+        if ($claim->claim_status !== InsuranceClaim::STATUS_DRAFT) {
+            return response()->json([
+                'success' => false,
+                'message' => '이미 제출된 청구서입니다.',
+                'error_code' => 'DRAFT_ALREADY_SUBMITTED',
+            ], 409);
+        }
 
         $validated = $request->validate([
             'fields' => 'required|array',
@@ -780,9 +794,23 @@ class AgentClaimController extends Controller
     {
         $agentId = $request->user()->agent->agent_id;
 
-        $claim = InsuranceClaim::where('agent_id', $agentId)
-            ->where('claim_status', InsuranceClaim::STATUS_DRAFT)
-            ->findOrFail($id);
+        $claim = InsuranceClaim::where('agent_id', $agentId)->find($id);
+
+        if (!$claim) {
+            return response()->json([
+                'success' => false,
+                'message' => '임시저장된 청구서를 찾을 수 없습니다. 새로 작성해주세요.',
+                'error_code' => 'DRAFT_NOT_FOUND',
+            ], 404);
+        }
+
+        if ($claim->claim_status !== InsuranceClaim::STATUS_DRAFT) {
+            return response()->json([
+                'success' => false,
+                'message' => '이미 제출된 청구서입니다.',
+                'error_code' => 'DRAFT_ALREADY_SUBMITTED',
+            ], 409);
+        }
 
         $request->validate([
             'customer_id' => 'nullable|string',
