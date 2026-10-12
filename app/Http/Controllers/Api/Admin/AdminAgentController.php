@@ -121,44 +121,49 @@ class AdminAgentController extends Controller
 
         $branchId = $this->resolveBranchIdForAgent($request, $validated);
 
-        $agent = DB::transaction(function () use ($validated, $branchId) {
-            // Account 생성
-            $account = Account::create([
-                'username' => $validated['username'],
-                'password_hash' => Hash::make($validated['password']),
-                'role' => Account::ROLE_AGENT,
-                'is_active' => true,
-            ]);
+        try {
+            $agent = DB::transaction(function () use ($validated, $branchId) {
+                // Account 생성
+                $account = Account::create([
+                    'username' => $validated['username'],
+                    'password_hash' => Hash::make($validated['password']),
+                    'role' => Account::ROLE_AGENT,
+                    'is_active' => true,
+                ]);
 
-            // Agent ID 생성 (A + 7자리 순번)
-            $lastAgent = Agent::where('agent_id', 'like', 'A%')
-                ->orderByRaw('CAST(SUBSTRING(agent_id, 2) AS UNSIGNED) DESC')
-                ->first();
-            $nextNum = $lastAgent
-                ? (int) substr($lastAgent->agent_id, 1) + 1
-                : 1;
-            $agentId = 'A' . str_pad((string) $nextNum, 7, '0', STR_PAD_LEFT);
+                // Agent ID 생성 (A + 7자리 순번, lockForUpdate로 동시성 보호)
+                $maxNum = (int) Agent::where('agent_id', 'like', 'A%')
+                    ->lockForUpdate()
+                    ->selectRaw('MAX(CAST(SUBSTRING(agent_id, 2) AS UNSIGNED)) as max_num')
+                    ->value('max_num');
+                $agentId = 'A' . str_pad((string) ($maxNum + 1), 7, '0', STR_PAD_LEFT);
 
-            // Agent 생성
-            $agent = Agent::create([
-                'agent_id' => $agentId,
-                'account_id' => $account->account_id,
-                'name' => $validated['name'],
-                'employee_number' => $validated['employee_number'] ?? null,
-                'phone' => $validated['phone'] ?? null,
-                'email' => $validated['email'] ?? null,
-                'office_location' => $validated['office_location'] ?? null,
-                'specialization' => $validated['specialization'] ?? null,
-                'hire_date' => $validated['hire_date'] ?? null,
-                'is_active' => true,
-            ]);
+                // Agent 생성
+                $agent = Agent::create([
+                    'agent_id' => $agentId,
+                    'account_id' => $account->account_id,
+                    'name' => $validated['name'],
+                    'employee_number' => $validated['employee_number'] ?? null,
+                    'phone' => $validated['phone'] ?? null,
+                    'email' => $validated['email'] ?? null,
+                    'office_location' => $validated['office_location'] ?? null,
+                    'specialization' => $validated['specialization'] ?? null,
+                    'hire_date' => $validated['hire_date'] ?? null,
+                    'is_active' => true,
+                ]);
 
-            if ($branchId) {
-                $agent->branches()->sync([$branchId]);
-            }
+                if ($branchId) {
+                    $agent->branches()->sync([$branchId]);
+                }
 
-            return $agent->load(['account:account_id,username,role,is_active', 'branches:branch_id,branch_name']);
-        });
+                return $agent->load(['account:account_id,username,role,is_active', 'branches:branch_id,branch_name']);
+            });
+        } catch (\Illuminate\Database\QueryException $e) {
+            return response()->json([
+                'success' => false,
+                'message' => '설계사 등록 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요.',
+            ], 500);
+        }
 
         return response()->json([
             'success' => true,

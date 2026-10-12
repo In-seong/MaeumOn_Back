@@ -179,30 +179,35 @@ class AuthController extends Controller
 
         $phone = $request->phone ? preg_replace('/\D/', '', $request->phone) : null;
 
-        $agent = DB::transaction(function () use ($request, $phone) {
-            $account = Account::create([
-                'username' => $request->username,
-                'password_hash' => Hash::make($request->password),
-                'role' => Account::ROLE_AGENT,
-                'is_active' => false,
-            ]);
+        try {
+            $agent = DB::transaction(function () use ($request, $phone) {
+                $account = Account::create([
+                    'username' => $request->username,
+                    'password_hash' => Hash::make($request->password),
+                    'role' => Account::ROLE_AGENT,
+                    'is_active' => false,
+                ]);
 
-            $lastAgent = Agent::where('agent_id', 'like', 'A%')
-                ->orderByRaw('CAST(SUBSTRING(agent_id, 2) AS UNSIGNED) DESC')
-                ->first();
-            $nextNum = $lastAgent
-                ? (int) substr($lastAgent->agent_id, 1) + 1
-                : 1;
-            $agentId = 'A' . str_pad((string) $nextNum, 7, '0', STR_PAD_LEFT);
+                $maxNum = (int) Agent::where('agent_id', 'like', 'A%')
+                    ->lockForUpdate()
+                    ->selectRaw('MAX(CAST(SUBSTRING(agent_id, 2) AS UNSIGNED)) as max_num')
+                    ->value('max_num');
+                $agentId = 'A' . str_pad((string) ($maxNum + 1), 7, '0', STR_PAD_LEFT);
 
-            return Agent::create([
-                'agent_id' => $agentId,
-                'account_id' => $account->account_id,
-                'name' => $request->name,
-                'phone' => $phone,
-                'is_active' => false,
-            ]);
-        });
+                return Agent::create([
+                    'agent_id' => $agentId,
+                    'account_id' => $account->account_id,
+                    'name' => $request->name,
+                    'phone' => $phone,
+                    'is_active' => false,
+                ]);
+            });
+        } catch (\Illuminate\Database\QueryException $e) {
+            return response()->json([
+                'success' => false,
+                'message' => '회원가입 처리 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요.',
+            ], 500);
+        }
 
         return response()->json([
             'success' => true,
