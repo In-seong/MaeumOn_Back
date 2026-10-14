@@ -188,7 +188,8 @@ class AuthController extends Controller
                     'is_active' => false,
                 ]);
 
-                $maxNum = (int) Agent::where('agent_id', 'like', 'A%')
+                $maxNum = (int) DB::table('agent')
+                    ->where('agent_id', 'like', 'A%')
                     ->lockForUpdate()
                     ->selectRaw('MAX(CAST(SUBSTRING(agent_id, 2) AS UNSIGNED)) as max_num')
                     ->value('max_num');

@@ -131,8 +131,9 @@ class AdminAgentController extends Controller
                     'is_active' => true,
                 ]);
 
-                // Agent ID 생성 (A + 7자리 순번, lockForUpdate로 동시성 보호)
-                $maxNum = (int) Agent::where('agent_id', 'like', 'A%')
+                // Agent ID 생성 (soft-deleted 포함 전체 MAX, lockForUpdate로 동시성 보호)
+                $maxNum = (int) DB::table('agent')
+                    ->where('agent_id', 'like', 'A%')
                     ->lockForUpdate()
                     ->selectRaw('MAX(CAST(SUBSTRING(agent_id, 2) AS UNSIGNED)) as max_num')
                     ->value('max_num');
