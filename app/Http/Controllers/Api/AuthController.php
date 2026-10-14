@@ -203,6 +203,10 @@ class AuthController extends Controller
                 ]);
             });
         } catch (\Illuminate\Database\QueryException $e) {
+            \Log::error('설계사 회원가입 실패', [
+                'error' => $e->getMessage(),
+                'code' => $e->getCode(),
+            ]);
             return response()->json([
                 'success' => false,
                 'message' => '회원가입 처리 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요.',

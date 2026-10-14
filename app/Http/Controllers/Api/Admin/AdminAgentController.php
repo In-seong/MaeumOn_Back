@@ -159,6 +159,11 @@ class AdminAgentController extends Controller
                 return $agent->load(['account:account_id,username,role,is_active', 'branches:branch_id,branch_name']);
             });
         } catch (\Illuminate\Database\QueryException $e) {
+            \Log::error('설계사 등록 실패', [
+                'error' => $e->getMessage(),
+                'code' => $e->getCode(),
+                'username' => $validated['username'] ?? null,
+            ]);
             return response()->json([
                 'success' => false,
                 'message' => '설계사 등록 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요.',
