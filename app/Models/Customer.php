@@ -123,6 +123,13 @@ class Customer extends Model
         return $this->hasMany(Memo::class, 'customer_id', 'customer_id');
     }
 
+    public function latestMemo()
+    {
+        return $this->hasOne(Memo::class, 'customer_id', 'customer_id')
+            ->orderByDesc('memo_date')
+            ->orderByDesc('memo_id');
+    }
+
     public function consultations()
     {
         return $this->hasMany(Consultation::class, 'customer_id', 'customer_id');

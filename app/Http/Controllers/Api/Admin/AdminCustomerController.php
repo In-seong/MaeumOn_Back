@@ -21,7 +21,11 @@ class AdminCustomerController extends Controller
      */
     public function index(Request $request): JsonResponse
     {
-        $query = Customer::with('agent:agent_id,name');
+        $eager = ['agent:agent_id,name'];
+        if ($request->boolean('export')) {
+            $eager[] = 'latestMemo';
+        }
+        $query = Customer::with($eager);
 
         $branchId = $this->resolveBranchId($request);
         $this->applyAgentBranchFilter($query, $branchId, 'agent.branches');
@@ -63,7 +67,8 @@ class AdminCustomerController extends Controller
             $query->orderBy($sortField, $sortDirection === 'asc' ? 'asc' : 'desc');
         }
 
-        $perPage = min(max((int) $request->get('per_page', 15), 1), 100);
+        $maxPerPage = $request->boolean('export') ? 10000 : 100;
+        $perPage = min(max((int) $request->get('per_page', 15), 1), $maxPerPage);
         $customers = $query->paginate($perPage);
 
         $customers->getCollection()->transform(function ($customer) {
