@@ -1,0 +1,1 @@
+import{K as o,c as r,o as s,a9 as t}from"./agent-Cndoh93z.js";const c={},n={class:"bg-white rounded-[16px] shadow-[0_0_10px_rgba(0,0,0,0.1)] p-5 overflow-hidden"};function a(e,d){return s(),r("div",n,[t(e.$slots,"default")])}const i=o(c,[["render",a]]);export{i as C};
