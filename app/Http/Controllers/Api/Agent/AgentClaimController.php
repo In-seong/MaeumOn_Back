@@ -325,6 +325,11 @@ class AgentClaimController extends Controller
             $claim->update([
                 'generated_pdf_path' => $pdfPath,
                 'updated_by_id' => $agentId,
+                'fax_status' => null,
+                'fax_sent_at' => null,
+                'fax_batch_id' => null,
+                'fax_number_sent' => null,
+                'fax_result_code' => null,
             ]);
 
             // 페이지별 이미지도 S3에 저장 (WebView PDF 미지원 대응)
@@ -340,7 +345,7 @@ class AgentClaimController extends Controller
                     'claimForm.insuranceCompany:company_id,company_name,company_code',
                     'fieldValues.formField:form_field_id,field_label,field_type',
                 ]),
-                'message' => '대리 청구서가 수정되었습니다.',
+                'message' => '대리 청구서가 수정되었습니다. 팩스를 다시 발송해주세요.',
             ]);
 
         } catch (\Exception $e) {
