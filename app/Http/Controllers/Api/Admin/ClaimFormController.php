@@ -19,7 +19,7 @@ class ClaimFormController extends Controller
     public function publicIndex(Request $request): JsonResponse
     {
         $query = ClaimForm::active()
-            ->with(['insuranceCompany:company_id,company_name,company_code', 'formPages'])
+            ->with(['insuranceCompany:company_id,company_name,category,company_code', 'formPages'])
             ->select('claim_form_id', 'company_id', 'form_name', 'form_description');
 
         // 보험사 필터
@@ -47,7 +47,7 @@ class ClaimFormController extends Controller
     {
         $template = ClaimForm::active()
             ->with([
-                'insuranceCompany:company_id,company_name,company_code,fax_number,contact_phone',
+                'insuranceCompany:company_id,company_name,category,company_code,fax_number,contact_phone',
                 'formPages.formFields',
                 'formFields',
             ])
@@ -66,7 +66,7 @@ class ClaimFormController extends Controller
      */
     public function index(Request $request): JsonResponse
     {
-        $query = ClaimForm::with('insuranceCompany:company_id,company_name,company_code,fax_number,contact_phone');
+        $query = ClaimForm::with('insuranceCompany:company_id,company_name,category,company_code,fax_number,contact_phone');
 
         // 보험사 필터
         if ($request->has('company_id')) {
@@ -109,6 +109,7 @@ class ClaimFormController extends Controller
     {
         $validated = $request->validate([
             'company_name' => 'required|string|max:100',
+            'category' => 'required|string|in:life,non-life,cooperative',
             'fax_number' => 'required|string|max:20',
             'contact_phone' => 'nullable|string|max:20',
             'form_name' => 'required|string|max:100',
@@ -120,6 +121,7 @@ class ClaimFormController extends Controller
 
         $company = InsuranceCompany::create([
             'company_name' => $validated['company_name'],
+            'category' => $validated['category'],
             'fax_number' => $validated['fax_number'],
             'contact_phone' => $validated['contact_phone'] ?? null,
         ]);
@@ -191,7 +193,7 @@ class ClaimFormController extends Controller
 
         return response()->json([
             'success' => true,
-            'data' => $template->load(['insuranceCompany:company_id,company_name,company_code', 'formPages']),
+            'data' => $template->load(['insuranceCompany:company_id,company_name,category,company_code', 'formPages']),
             'message' => '양식이 등록되었습니다.',
         ], 201);
     }
@@ -202,7 +204,7 @@ class ClaimFormController extends Controller
     public function show(int $id): JsonResponse
     {
         $template = ClaimForm::with([
-            'insuranceCompany:company_id,company_name,company_code,fax_number,contact_phone',
+            'insuranceCompany:company_id,company_name,category,company_code,fax_number,contact_phone',
             'formPages.formFields',
             'formFields',
         ])->findOrFail($id);
@@ -224,6 +226,7 @@ class ClaimFormController extends Controller
 
         $validated = $request->validate([
             'company_name' => 'sometimes|required|string|max:100',
+            'category' => 'nullable|string|in:life,non-life,cooperative',
             'fax_number' => 'sometimes|required|string|max:20',
             'contact_phone' => 'nullable|string|max:20',
             'form_name' => 'sometimes|required|string|max:100',
@@ -231,11 +234,12 @@ class ClaimFormController extends Controller
             'is_active' => 'boolean',
         ]);
 
-        if (isset($validated['company_name']) || isset($validated['fax_number']) || array_key_exists('contact_phone', $validated)) {
+        if (isset($validated['company_name']) || isset($validated['category']) || isset($validated['fax_number']) || array_key_exists('contact_phone', $validated)) {
             $company = InsuranceCompany::find($template->company_id);
             if ($company) {
                 $companyData = [];
                 if (isset($validated['company_name'])) $companyData['company_name'] = $validated['company_name'];
+                if (isset($validated['category'])) $companyData['category'] = $validated['category'];
                 if (isset($validated['fax_number'])) $companyData['fax_number'] = $validated['fax_number'];
                 if (array_key_exists('contact_phone', $validated)) $companyData['contact_phone'] = $validated['contact_phone'];
                 $company->update($companyData);
@@ -249,7 +253,7 @@ class ClaimFormController extends Controller
 
         return response()->json([
             'success' => true,
-            'data' => $template->load('insuranceCompany:company_id,company_name,company_code,fax_number,contact_phone'),
+            'data' => $template->load('insuranceCompany:company_id,company_name,category,company_code,fax_number,contact_phone'),
             'message' => '양식이 수정되었습니다.',
         ]);
     }
