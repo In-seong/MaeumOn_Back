@@ -2,7 +2,7 @@
 
 > **최종 업데이트**: 2026-08-20
 > **DB**: MySQL (MariaDB)
-> **총 테이블**: 69개 (비즈니스 61개 + Laravel 시스템 8개)
+> **총 테이블**: 70개 (비즈니스 62개 + Laravel 시스템 8개)
 
 ---
 
@@ -27,6 +27,7 @@
 13. [Laravel 시스템](#13-laravel-시스템-테이블) — sessions, cache, jobs 등
 19. [지사 관리](#19-지사-관리) — branch, agent_branch
 20. [자동배분](#20-자동배분) — distribution_config, distribution_list, distribution_list_item, distribution_queue
+22. [양식 다운로드](#22-양식-다운로드) — form_downloads
 
 ---
 
@@ -1485,3 +1486,26 @@ FaxClientNC 연동용 테이블. **테이블명 반드시 대문자 유지**.
 **변경 이력**: 2026-08-20 customer_assignment.admin_id: NOT NULL → NULL 허용 (자동배분 시 배정자 없음)
 **변경 이력**: 2026-08-21 customer 테이블에 acquisition_note VARCHAR(500) NULL 컬럼 추가 (가입경로 기타 메모)
 **변경 이력**: 2026-08-21 account, agent, customer 테이블에 deleted_at TIMESTAMP NULL 컬럼 추가 (3단계 상태관리: 활성화/비활성화/완전삭제)
+
+---
+
+## 22. 양식 다운로드
+
+### form_downloads
+설계사 PC 양식 다운로드 기능용 독립 테이블. 기존 insurance_company와 무관.
+
+| 컬럼 | 타입 | NULL | Key | Default | 설명 |
+|------|------|------|-----|---------|------|
+| id | bigint unsigned | NO | PK | auto | |
+| company_name | varchar(100) | NO | | | 보험사명 |
+| category | enum('non-life','life','cooperative') | NO | IDX | | 손해보험/생명보험/공제조합 |
+| claim_form_path | varchar(500) | YES | | NULL | 청구서 파일 S3 경로 |
+| claim_form_name | varchar(255) | YES | | NULL | 청구서 원본 파일명 |
+| dental_confirm_path | varchar(500) | YES | | NULL | 치과확인서 파일 S3 경로 |
+| dental_confirm_name | varchar(255) | YES | | NULL | 치과확인서 원본 파일명 |
+| sort_order | int | NO | | 0 | 정렬 순서 |
+| created_at | timestamp | YES | | NULL | |
+| updated_at | timestamp | YES | | NULL | |
+
+**Model**: `App\Models\FormDownload` ✅
+**변경 이력**: 2026-10-16 양식 다운로드 기능 신규 추가

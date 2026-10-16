@@ -40,6 +40,7 @@ use App\Http\Controllers\Api\StandardFieldController;
 use App\Http\Controllers\Api\Admin\AdminConsentTemplateController;
 use App\Http\Controllers\Api\Admin\AdminConsultationController;
 use App\Http\Controllers\Api\Admin\AdminBatchClaimController;
+use App\Http\Controllers\Api\Admin\AdminFormDownloadController;
 use App\Http\Controllers\Api\Credit4uController;
 use App\Http\Controllers\Api\CustomerConsultationController;
 use App\Http\Controllers\Api\FcmTokenController;
@@ -315,6 +316,14 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('/corporate-inquiries', [AdminCorporateInquiryController::class, 'store']);
         Route::delete('/corporate-inquiries/{id}', [AdminCorporateInquiryController::class, 'destroy']);
 
+        // 양식 다운로드 관리
+        Route::get('/form-downloads', [AdminFormDownloadController::class, 'index']);
+        Route::post('/form-downloads', [AdminFormDownloadController::class, 'store']);
+        Route::post('/form-downloads/{id}', [AdminFormDownloadController::class, 'update']);
+        Route::delete('/form-downloads/{id}', [AdminFormDownloadController::class, 'destroy']);
+        Route::get('/form-downloads/{id}/download/{type}', [AdminFormDownloadController::class, 'download'])
+            ->where('type', 'claim|dental');
+
         // 사이트 설정
         Route::get('/settings', [AdminSettingController::class, 'index']);
         Route::put('/settings', [AdminSettingController::class, 'update']);
@@ -437,6 +446,11 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/assignments', [AgentDbDistributionController::class, 'index']);
         Route::get('/assignments/{id}', [AgentDbDistributionController::class, 'show']);
         Route::put('/assignments/{id}/process', [AgentDbDistributionController::class, 'process']);
+
+        // 양식 다운로드 (설계사용 조회 전용)
+        Route::get('/form-downloads', [AdminFormDownloadController::class, 'index']);
+        Route::get('/form-downloads/{id}/download/{type}', [AdminFormDownloadController::class, 'download'])
+            ->where('type', 'claim|dental');
 
         // 청구 배정 조회
         Route::get('/claim-assignments', [AgentDbDistributionController::class, 'claimAssignments']);
