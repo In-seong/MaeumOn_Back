@@ -390,15 +390,6 @@ class ClaimController extends Controller
         $customerId = $request->user()->customer->customer_id;
         $claim = InsuranceClaim::where('customer_id', $customerId)->findOrFail($id);
 
-        // 청구건당 최대 첨부파일 수 제한
-        $currentCount = ClaimDocument::where('claim_id', $claim->claim_id)->count();
-        if ($currentCount >= 20) {
-            return response()->json([
-                'success' => false,
-                'message' => '첨부파일은 최대 20장까지 가능합니다.',
-            ], 422);
-        }
-
         $request->validate([
             'document' => 'required|file|mimes:jpeg,jpg,png,gif,heic,heif,webp,pdf|max:51200',
             'supporting_document_id' => 'nullable|integer',
