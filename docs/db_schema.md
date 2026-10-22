@@ -2,7 +2,7 @@
 
 > **최종 업데이트**: 2026-08-20
 > **DB**: MySQL (MariaDB)
-> **총 테이블**: 70개 (비즈니스 62개 + Laravel 시스템 8개)
+> **총 테이블**: 71개 (비즈니스 63개 + Laravel 시스템 8개)
 
 ---
 
@@ -28,6 +28,7 @@
 19. [지사 관리](#19-지사-관리) — branch, agent_branch
 20. [자동배분](#20-자동배분) — distribution_config, distribution_list, distribution_list_item, distribution_queue
 22. [양식 다운로드](#22-양식-다운로드) — form_downloads
+23. [시상안](#23-시상안) — award_plans
 
 ---
 
@@ -1509,3 +1510,27 @@ FaxClientNC 연동용 테이블. **테이블명 반드시 대문자 유지**.
 
 **Model**: `App\Models\FormDownload` ✅
 **변경 이력**: 2026-10-16 양식 다운로드 기능 신규 추가
+
+---
+
+## 23. 시상안
+
+### award_plans
+설계사 시상안(인센티브) 이미지/PDF 관리. 월별 조회 지원.
+
+| 컬럼 | 타입 | NULL | Key | Default | 설명 |
+|------|------|------|-----|---------|------|
+| id | bigint unsigned | NO | PK | auto | |
+| title | varchar(200) | NO | | | 시상안 제목 |
+| file_path | varchar(500) | NO | | | 원본 파일 S3 경로 |
+| file_name | varchar(255) | NO | | | 원본 파일명 |
+| thumbnail_path | varchar(500) | YES | | NULL | 썸네일 S3 경로 |
+| target_year | int | NO | IDX | | 대상 연도 |
+| target_month | int | NO | IDX | | 대상 월 (1-12) |
+| sort_order | int | NO | | 0 | 정렬 순서 |
+| created_at | timestamp | YES | | NULL | |
+| updated_at | timestamp | YES | | NULL | |
+
+**인덱스**: `idx_award_plans_target` (target_year, target_month)
+**Model**: `App\Models\AwardPlan` ✅
+**변경 이력**: 2026-10-22 시상안 기능 신규 추가

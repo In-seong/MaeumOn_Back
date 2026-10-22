@@ -41,6 +41,7 @@ use App\Http\Controllers\Api\Admin\AdminConsentTemplateController;
 use App\Http\Controllers\Api\Admin\AdminConsultationController;
 use App\Http\Controllers\Api\Admin\AdminBatchClaimController;
 use App\Http\Controllers\Api\Admin\AdminFormDownloadController;
+use App\Http\Controllers\Api\Admin\AdminAwardPlanController;
 use App\Http\Controllers\Api\Credit4uController;
 use App\Http\Controllers\Api\CustomerConsultationController;
 use App\Http\Controllers\Api\FcmTokenController;
@@ -324,6 +325,13 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/form-downloads/{id}/download/{type}', [AdminFormDownloadController::class, 'download'])
             ->where('type', 'claim|dental');
 
+        // 시상안 관리
+        Route::get('/award-plans', [AdminAwardPlanController::class, 'index']);
+        Route::get('/award-plans/months', [AdminAwardPlanController::class, 'months']);
+        Route::post('/award-plans', [AdminAwardPlanController::class, 'store']);
+        Route::post('/award-plans/{id}', [AdminAwardPlanController::class, 'update']);
+        Route::delete('/award-plans/{id}', [AdminAwardPlanController::class, 'destroy']);
+
         // 사이트 설정
         Route::get('/settings', [AdminSettingController::class, 'index']);
         Route::put('/settings', [AdminSettingController::class, 'update']);
@@ -451,6 +459,10 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/form-downloads', [AdminFormDownloadController::class, 'index']);
         Route::get('/form-downloads/{id}/download/{type}', [AdminFormDownloadController::class, 'download'])
             ->where('type', 'claim|dental');
+
+        // 시상안 (설계사용 조회 전용)
+        Route::get('/award-plans', [AdminAwardPlanController::class, 'index']);
+        Route::get('/award-plans/months', [AdminAwardPlanController::class, 'months']);
 
         // 청구 배정 조회
         Route::get('/claim-assignments', [AgentDbDistributionController::class, 'claimAssignments']);
