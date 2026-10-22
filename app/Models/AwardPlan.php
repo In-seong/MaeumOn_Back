@@ -8,6 +8,7 @@ use Illuminate\Support\Facades\Storage;
 class AwardPlan extends Model
 {
     protected $fillable = [
+        'form_download_id',
         'title',
         'file_path',
         'file_name',
@@ -18,12 +19,18 @@ class AwardPlan extends Model
     ];
 
     protected $casts = [
+        'form_download_id' => 'integer',
         'target_year' => 'integer',
         'target_month' => 'integer',
         'sort_order' => 'integer',
     ];
 
     protected $appends = ['thumbnail_url', 'file_url'];
+
+    public function formDownload(): \Illuminate\Database\Eloquent\Relations\BelongsTo
+    {
+        return $this->belongsTo(\App\Models\FormDownload::class);
+    }
 
     public function getThumbnailUrlAttribute(): ?string
     {

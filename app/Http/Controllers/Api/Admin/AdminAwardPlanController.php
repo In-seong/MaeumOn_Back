@@ -14,7 +14,11 @@ class AdminAwardPlanController extends Controller
 {
     public function index(Request $request): JsonResponse
     {
-        $query = AwardPlan::query();
+        $query = AwardPlan::with('formDownload:id,company_name,category');
+
+        if ($request->has('form_download_id')) {
+            $query->where('form_download_id', $request->form_download_id);
+        }
 
         if ($request->has('year') && $request->has('month')) {
             $query->where('target_year', $request->year)
@@ -25,7 +29,12 @@ class AdminAwardPlanController extends Controller
             ->orderBy('target_month', 'desc')
             ->orderBy('sort_order')
             ->orderBy('created_at', 'desc')
-            ->get();
+            ->get()
+            ->map(function ($item) {
+                $arr = $item->toArray();
+                $arr['company_name'] = $item->formDownload?->company_name;
+                return $arr;
+            });
 
         return response()->json([
             'success' => true,
@@ -33,10 +42,15 @@ class AdminAwardPlanController extends Controller
         ]);
     }
 
-    public function months(): JsonResponse
+    public function months(Request $request): JsonResponse
     {
-        $months = AwardPlan::selectRaw('target_year, target_month, COUNT(*) as count')
-            ->groupBy('target_year', 'target_month')
+        $query = AwardPlan::selectRaw('target_year, target_month, COUNT(*) as count');
+
+        if ($request->has('form_download_id')) {
+            $query->where('form_download_id', $request->form_download_id);
+        }
+
+        $months = $query->groupBy('target_year', 'target_month')
             ->orderBy('target_year', 'desc')
             ->orderBy('target_month', 'desc')
             ->get();
@@ -50,6 +64,7 @@ class AdminAwardPlanController extends Controller
     public function store(Request $request): JsonResponse
     {
         $request->validate([
+            'form_download_id' => 'required|integer|exists:form_downloads,id',
             'title' => 'required|string|max:200',
             'target_year' => 'required|integer|min:2020|max:2099',
             'target_month' => 'required|integer|min:1|max:12',
@@ -86,6 +101,7 @@ class AdminAwardPlanController extends Controller
             }
 
             $item = AwardPlan::create([
+                'form_download_id' => $request->input('form_download_id'),
                 'title' => $title,
                 'file_path' => $filePath,
                 'file_name' => $file->getClientOriginalName(),

@@ -22,4 +22,9 @@ class FormDownload extends Model
     protected $casts = [
         'sort_order' => 'integer',
     ];
+
+    public function awardPlans(): \Illuminate\Database\Eloquent\Relations\HasMany
+    {
+        return $this->hasMany(AwardPlan::class);
+    }
 }

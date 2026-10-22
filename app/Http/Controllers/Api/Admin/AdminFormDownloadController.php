@@ -22,7 +22,8 @@ class AdminFormDownloadController extends Controller
             $query->where('company_name', 'like', "%{$request->search}%");
         }
 
-        $items = $query->orderBy('category')
+        $items = $query->withCount('awardPlans')
+            ->orderBy('category')
             ->orderBy('sort_order')
             ->orderBy('company_name')
             ->get();
@@ -139,6 +140,12 @@ class AdminFormDownloadController extends Controller
         if ($item->dental_confirm_path) {
             Storage::disk('s3')->delete($item->dental_confirm_path);
         }
+
+        foreach ($item->awardPlans as $ap) {
+            if ($ap->file_path) Storage::disk('s3')->delete($ap->file_path);
+            if ($ap->thumbnail_path) Storage::disk('s3')->delete($ap->thumbnail_path);
+        }
+        $item->awardPlans()->delete();
 
         $item->delete();
 
