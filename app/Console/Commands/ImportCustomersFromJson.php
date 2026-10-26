@@ -103,8 +103,11 @@ class ImportCustomersFromJson extends Command
 
         $phone = preg_replace('/[^0-9]/', '', $row['phone']['phone'] ?? '');
 
-        // 주민번호 → 생년월일, 성별
-        $rn = $row['regist_number'] ?? '';
+        // 주민번호 → 생년월일, 성별 (decrypt_regist_number 우선, 암호화된 해시는 무시)
+        $rn = $row['decrypt_regist_number'] ?? '';
+        if ($rn === '' && isset($row['regist_number']) && !str_contains($row['regist_number'], ':')) {
+            $rn = $row['regist_number'];
+        }
         $birthDate = null;
         $gender = null;
 
@@ -114,13 +117,19 @@ class ImportCustomersFromJson extends Command
             $dd = substr($rn, 4, 2);
             $gd = substr($rn, 6, 1);
             $century = in_array($gd, ['1', '2']) ? '19' : '20';
-            $birthDate = "{$century}{$yy}-{$mm}-{$dd}";
+            $candidate = "{$century}{$yy}-{$mm}-{$dd}";
+            if (checkdate((int) $mm, (int) $dd, (int) "{$century}{$yy}")) {
+                $birthDate = $candidate;
+            }
             $gender = in_array($gd, ['1', '3']) ? 'M' : 'F';
         } elseif (strlen($rn) === 6) {
             $yy = substr($rn, 0, 2);
             $mm = substr($rn, 2, 2);
             $dd = substr($rn, 4, 2);
-            $birthDate = "19{$yy}-{$mm}-{$dd}";
+            $candidate = "19{$yy}-{$mm}-{$dd}";
+            if (checkdate((int) $mm, (int) $dd, (int) "19{$yy}")) {
+                $birthDate = $candidate;
+            }
             $this->stats['gender_unknown']++;
         }
 

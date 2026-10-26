@@ -208,6 +208,7 @@ class AdminClaimRequestController extends Controller
     public function statistics(Request $request): JsonResponse
     {
         $hospitalId = $request->input('hospital_id');
+        $dbType = $request->input('db_type');
 
         $dateFrom = $request->input('date_from');
         $dateTo = $request->input('date_to');
@@ -225,51 +226,58 @@ class AdminClaimRequestController extends Controller
             $endDate = Carbon::now()->endOfDay();
         }
 
-        $query = ClaimRequest::query()
-            ->select(
-                'assigned_agent_id',
-                'source_type',
-                DB::raw('COUNT(*) as count')
-            )
-            ->whereNotNull('assigned_agent_id')
-            ->whereBetween('created_at', [$startDate, $endDate]);
-
         $branchId = $this->resolveBranchId($request);
-        $this->applyAgentBranchFilter($query, $branchId, 'assignedAgent.branches');
-
-        if ($hospitalId) {
-            $query->where('hospital_id', $hospitalId);
-        }
-
-        $stats = $query
-            ->groupBy('assigned_agent_id', 'source_type')
-            ->get();
-
-        $agentIds = $stats->pluck('assigned_agent_id')->unique();
-        $agents = Agent::whereIn('agent_id', $agentIds)
-            ->select('agent_id', 'name')
-            ->get()
-            ->keyBy('agent_id');
-
         $grouped = [];
-        foreach ($stats as $row) {
-            $agentId = $row->assigned_agent_id;
-            if (!isset($grouped[$agentId])) {
-                $agent = $agents->get($agentId);
-                $grouped[$agentId] = [
-                    'agent_id' => $agentId,
-                    'agent_name' => $agent?->name ?? '(알 수 없음)',
-                    'resident' => 0,
-                    'distribution' => 0,
-                    'corporate' => 0,
-                    'total' => 0,
-                ];
+
+        if ($dbType !== 'corporate') {
+            $query = ClaimRequest::query()
+                ->select(
+                    'assigned_agent_id',
+                    'source_type',
+                    DB::raw('COUNT(*) as count')
+                )
+                ->whereNotNull('assigned_agent_id')
+                ->whereBetween('created_at', [$startDate, $endDate]);
+
+            $this->applyAgentBranchFilter($query, $branchId, 'assignedAgent.branches');
+
+            if ($hospitalId) {
+                $query->where('hospital_id', $hospitalId);
             }
-            $grouped[$agentId][$row->source_type] = $row->count;
-            $grouped[$agentId]['total'] += $row->count;
+
+            if ($dbType && in_array($dbType, ['resident', 'distribution'])) {
+                $query->where('source_type', $dbType);
+            }
+
+            $stats = $query
+                ->groupBy('assigned_agent_id', 'source_type')
+                ->get();
+
+            $agentIds = $stats->pluck('assigned_agent_id')->unique();
+            $agents = Agent::whereIn('agent_id', $agentIds)
+                ->select('agent_id', 'name')
+                ->get()
+                ->keyBy('agent_id');
+
+            foreach ($stats as $row) {
+                $agentId = $row->assigned_agent_id;
+                if (!isset($grouped[$agentId])) {
+                    $agent = $agents->get($agentId);
+                    $grouped[$agentId] = [
+                        'agent_id' => $agentId,
+                        'agent_name' => $agent?->name ?? '(알 수 없음)',
+                        'resident' => 0,
+                        'distribution' => 0,
+                        'corporate' => 0,
+                        'total' => 0,
+                    ];
+                }
+                $grouped[$agentId][$row->source_type] = $row->count;
+                $grouped[$agentId]['total'] += $row->count;
+            }
         }
 
-        if (!$hospitalId) {
+        if (!$hospitalId && (!$dbType || $dbType === 'corporate')) {
             $corporateQuery = CorporateInquiry::select('agent_id', DB::raw('COUNT(*) as count'))
                 ->whereNotNull('agent_id')
                 ->whereBetween('assigned_at', [$startDate, $endDate]);
@@ -332,6 +340,7 @@ class AdminClaimRequestController extends Controller
     {
         $agentId = $request->input('agent_id');
         $hospitalId = $request->input('hospital_id');
+        $dbType = $request->input('db_type');
 
         $dateFrom = $request->input('date_from');
         $dateTo = $request->input('date_to');
@@ -346,27 +355,33 @@ class AdminClaimRequestController extends Controller
         if ($agentId) {
             $agent = Agent::where('agent_id', $agentId)->select('agent_id', 'name')->first();
 
-            $claimQuery = ClaimRequest::with('hospital:hospital_id,hospital_name')
-                ->where('assigned_agent_id', $agentId)
-                ->whereBetween('created_at', [$startDate, $endDate]);
+            $allDetails = collect();
 
-            if ($hospitalId) {
-                $claimQuery->where('hospital_id', $hospitalId);
+            if ($dbType !== 'corporate') {
+                $claimQuery = ClaimRequest::with('hospital:hospital_id,hospital_name')
+                    ->where('assigned_agent_id', $agentId)
+                    ->whereBetween('created_at', [$startDate, $endDate]);
+
+                if ($hospitalId) {
+                    $claimQuery->where('hospital_id', $hospitalId);
+                }
+
+                if ($dbType && in_array($dbType, ['resident', 'distribution'])) {
+                    $claimQuery->where('source_type', $dbType);
+                }
+
+                $claimRows = $claimQuery->orderByDesc('created_at')->get();
+
+                $allDetails = $claimRows->map(fn ($row) => [
+                    'customer_name' => $row->name,
+                    'db_type' => $row->source_type,
+                    'hospital_name' => $row->hospital?->hospital_name,
+                    'assigned_at' => $row->created_at?->format('Y-m-d H:i'),
+                    'memo' => $row->memo,
+                ]);
             }
 
-            $claimRows = $claimQuery->orderByDesc('created_at')->get();
-
-            $details = $claimRows->map(fn ($row) => [
-                'customer_name' => $row->name,
-                'db_type' => $row->source_type,
-                'hospital_name' => $row->hospital?->hospital_name,
-                'assigned_at' => $row->created_at?->format('Y-m-d H:i'),
-                'memo' => $row->memo,
-            ]);
-
-            $allDetails = $details;
-
-            if (!$hospitalId) {
+            if (!$hospitalId && (!$dbType || $dbType === 'corporate')) {
                 $corporateQuery = CorporateInquiry::where('agent_id', $agentId)
                     ->whereBetween('assigned_at', [$startDate, $endDate]);
 
@@ -380,7 +395,7 @@ class AdminClaimRequestController extends Controller
                     'memo' => $row->notes,
                 ]);
 
-                $allDetails = $details->concat($corporateDetails);
+                $allDetails = $allDetails->concat($corporateDetails);
             }
 
             $allDetails = $allDetails->sortByDesc('assigned_at')->values();
@@ -398,26 +413,32 @@ class AdminClaimRequestController extends Controller
         $allRows = collect();
 
         foreach ($agents as $agent) {
-            $claimQuery = ClaimRequest::with('hospital:hospital_id,hospital_name')
-                ->where('assigned_agent_id', $agent->agent_id)
-                ->whereBetween('created_at', [$startDate, $endDate]);
+            if ($dbType !== 'corporate') {
+                $claimQuery = ClaimRequest::with('hospital:hospital_id,hospital_name')
+                    ->where('assigned_agent_id', $agent->agent_id)
+                    ->whereBetween('created_at', [$startDate, $endDate]);
 
-            if ($hospitalId) {
-                $claimQuery->where('hospital_id', $hospitalId);
+                if ($hospitalId) {
+                    $claimQuery->where('hospital_id', $hospitalId);
+                }
+
+                if ($dbType && in_array($dbType, ['resident', 'distribution'])) {
+                    $claimQuery->where('source_type', $dbType);
+                }
+
+                $claimRows = $claimQuery->get()->map(fn ($row) => [
+                    'agent_name' => $agent->name,
+                    'customer_name' => $row->name,
+                    'db_type' => $row->source_type,
+                    'hospital_name' => $row->hospital?->hospital_name,
+                    'assigned_at' => $row->created_at?->format('Y-m-d H:i'),
+                    'memo' => $row->memo,
+                ]);
+
+                $allRows = $allRows->concat($claimRows);
             }
 
-            $claimRows = $claimQuery->get()->map(fn ($row) => [
-                'agent_name' => $agent->name,
-                'customer_name' => $row->name,
-                'db_type' => $row->source_type,
-                'hospital_name' => $row->hospital?->hospital_name,
-                'assigned_at' => $row->created_at?->format('Y-m-d H:i'),
-                'memo' => $row->memo,
-            ]);
-
-            $allRows = $allRows->concat($claimRows);
-
-            if (!$hospitalId) {
+            if (!$hospitalId && (!$dbType || $dbType === 'corporate')) {
                 $corporateRows = CorporateInquiry::where('agent_id', $agent->agent_id)
                     ->whereBetween('assigned_at', [$startDate, $endDate])
                     ->get()->map(fn ($row) => [
