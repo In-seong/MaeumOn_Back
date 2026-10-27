@@ -319,6 +319,46 @@ class AdminClaimRequestController extends Controller
             ->orderBy('hospital_name')
             ->get();
 
+        $hospitalStats = [];
+        if (!$hospitalId) {
+            $hQuery = ClaimRequest::query()
+                ->select(
+                    'hospital_id',
+                    'source_type',
+                    DB::raw('COUNT(*) as count')
+                )
+                ->whereNotNull('assigned_agent_id')
+                ->whereNotNull('hospital_id')
+                ->whereBetween('created_at', [$startDate, $endDate]);
+
+            $this->applyAgentBranchFilter($hQuery, $branchId, 'assignedAgent.branches');
+
+            if ($dbType && in_array($dbType, ['resident', 'distribution'])) {
+                $hQuery->where('source_type', $dbType);
+            }
+
+            $hStats = $hQuery->groupBy('hospital_id', 'source_type')->get();
+
+            $hospitalMap = $hospitals->keyBy('hospital_id');
+            $hGrouped = [];
+            foreach ($hStats as $row) {
+                $hId = $row->hospital_id;
+                if (!isset($hGrouped[$hId])) {
+                    $h = $hospitalMap->get($hId);
+                    $hGrouped[$hId] = [
+                        'hospital_id' => $hId,
+                        'hospital_name' => $h?->hospital_name ?? '(알 수 없음)',
+                        'resident' => 0,
+                        'distribution' => 0,
+                        'total' => 0,
+                    ];
+                }
+                $hGrouped[$hId][$row->source_type] = ($hGrouped[$hId][$row->source_type] ?? 0) + $row->count;
+                $hGrouped[$hId]['total'] += $row->count;
+            }
+            $hospitalStats = collect($hGrouped)->sortByDesc('total')->values();
+        }
+
         return response()->json([
             'success' => true,
             'data' => [
@@ -330,6 +370,7 @@ class AdminClaimRequestController extends Controller
                     'total' => $totalResident + $totalDistribution + $totalCorporate,
                 ],
                 'hospitals' => $hospitals,
+                'hospital_stats' => $hospitalStats,
                 'start_date' => $startDate->toDateString(),
                 'end_date' => $endDate->toDateString(),
             ],
