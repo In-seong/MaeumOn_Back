@@ -509,6 +509,63 @@ class AdminClaimRequestController extends Controller
         }
     }
 
+    public function addFiles(Request $request, int $id): JsonResponse
+    {
+        $request->validate([
+            'files' => 'required|array|min:1|max:10',
+            'files.*' => 'file|max:51200',
+        ]);
+
+        $claimRequest = ClaimRequest::with('assignedAgent:agent_id,name')->findOrFail($id);
+        $uploadedFiles = [];
+
+        foreach ($request->file('files') as $file) {
+            $path = Storage::disk('s3')->put(
+                'claim-requests/' . $claimRequest->request_id,
+                $file
+            );
+
+            $uploadedFiles[] = $claimRequest->files()->create([
+                'file_url' => $path,
+                'file_name' => $file->getClientOriginalName(),
+                'file_size' => $file->getSize(),
+            ]);
+        }
+
+        if ($claimRequest->assigned_agent_id) {
+            $agentId = $claimRequest->assigned_agent_id;
+            $customerName = $claimRequest->name ?? '(알 수 없음)';
+            $fileCount = count($uploadedFiles);
+            $message = "고객 '{$customerName}'님의 청구신청에 추가 서류 {$fileCount}건이 전달되었습니다.";
+
+            Notification::create([
+                'receiver_id' => $agentId,
+                'receiver_type' => 'AGENT',
+                'sender_id' => $request->user()->admin->admin_id ?? null,
+                'sender_type' => 'ADMIN',
+                'notification_type' => 'CLAIM_REQUEST',
+                'title' => '추가 서류 전달',
+                'content' => $message,
+                'is_read' => false,
+                'sent_at' => now(),
+            ]);
+
+            try {
+                app(FcmService::class)->sendToUsers('AGENT', [$agentId], '추가 서류 전달', $message);
+            } catch (\Exception $e) {
+                Log::error('추가 서류 알림 FCM 발송 실패', ['agent_id' => $agentId, 'error' => $e->getMessage()]);
+            }
+        }
+
+        $claimRequest->load('files');
+
+        return response()->json([
+            'success' => true,
+            'data' => $claimRequest,
+            'message' => '추가 서류가 전달되었습니다.',
+        ]);
+    }
+
     public function destroy(int $id): JsonResponse
     {
         $claimRequest = ClaimRequest::findOrFail($id);

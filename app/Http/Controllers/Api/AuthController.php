@@ -54,8 +54,7 @@ class AuthController extends Controller
             ]);
         }
 
-        // 기존 토큰 삭제 후 새 토큰 발급
-        $account->tokens()->delete();
+        // 새 토큰 발급 (기존 토큰 유지 → 모바일/PC 동시 로그인 허용)
         $token = $account->createToken('auth-token')->plainTextToken;
 
         // last_login_at 업데이트

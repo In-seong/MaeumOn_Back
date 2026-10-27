@@ -236,19 +236,50 @@ class AdminAssignmentController extends Controller
      */
     public function destroy(Request $request, int $id): JsonResponse
     {
-        $assignment = CustomerAssignment::findOrFail($id);
+        $request->validate([
+            'recall_reason' => 'nullable|string|max:500',
+        ]);
+
+        $assignment = CustomerAssignment::with(['customer:customer_id,name', 'agent:agent_id,name'])->findOrFail($id);
+        $agentId = $assignment->agent_id;
+        $customerName = $assignment->customer?->name ?? '(알 수 없음)';
+        $recallReason = $request->input('recall_reason', '');
+        $adminId = $request->user()->admin->admin_id ?? null;
 
         $customer = Customer::where('customer_id', $assignment->customer_id)->first();
 
-        if ($customer) {
-            $customer->update(['agent_id' => null]);
-        }
+        DB::transaction(function () use ($assignment, $customer, $agentId, $customerName, $recallReason, $adminId) {
+            if ($customer) {
+                $customer->update(['agent_id' => null]);
+            }
 
-        $assignment->delete();
+            $assignment->delete();
+
+            $reasonText = $recallReason ? " (사유: {$recallReason})" : '';
+            $message = "고객 '{$customerName}'님의 DB 배분이 회수되었습니다.{$reasonText}";
+
+            Notification::create([
+                'receiver_id' => $agentId,
+                'receiver_type' => 'AGENT',
+                'sender_id' => $adminId,
+                'sender_type' => 'ADMIN',
+                'notification_type' => 'ASSIGNMENT',
+                'title' => 'DB 배분 회수 알림',
+                'content' => $message,
+                'is_read' => false,
+                'sent_at' => now(),
+            ]);
+
+            try {
+                app(FcmService::class)->sendToUsers('AGENT', [$agentId], 'DB 배분 회수', $message);
+            } catch (\Exception $e) {
+                Log::error('배분 회수 알림 FCM 발송 실패', ['agent_id' => $agentId, 'error' => $e->getMessage()]);
+            }
+        });
 
         return response()->json([
             'success' => true,
-            'message' => 'DB 배분이 삭제되었습니다.',
+            'message' => 'DB 배분이 회수되었습니다.',
         ]);
     }
 }

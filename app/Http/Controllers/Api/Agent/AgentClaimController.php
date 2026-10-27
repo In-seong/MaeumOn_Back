@@ -263,7 +263,12 @@ class AgentClaimController extends Controller
         $agentId = $request->user()->agent->agent_id;
 
         $claim = InsuranceClaim::where('agent_id', $agentId)
-            ->where('claim_status', InsuranceClaim::STATUS_PENDING)
+            ->whereIn('claim_status', [
+                InsuranceClaim::STATUS_PENDING,
+                InsuranceClaim::STATUS_PROCESSING,
+                InsuranceClaim::STATUS_REJECTED,
+                InsuranceClaim::STATUS_APPROVED,
+            ])
             ->findOrFail($id);
 
         $validated = $request->validate([
@@ -324,6 +329,7 @@ class AgentClaimController extends Controller
             $pdfPath = $this->pdfGenerator->generateClaimPdf($claim, $imageBinaries);
             $claim->update([
                 'generated_pdf_path' => $pdfPath,
+                'claim_status' => InsuranceClaim::STATUS_PENDING,
                 'updated_by_id' => $agentId,
                 'fax_status' => null,
                 'fax_sent_at' => null,
@@ -569,6 +575,8 @@ class AgentClaimController extends Controller
             ->whereIn('claim_status', [
                 InsuranceClaim::STATUS_PENDING,
                 InsuranceClaim::STATUS_PROCESSING,
+                InsuranceClaim::STATUS_REJECTED,
+                InsuranceClaim::STATUS_APPROVED,
             ])
             ->findOrFail($id);
 
@@ -619,7 +627,13 @@ class AgentClaimController extends Controller
             $pdfPath = $this->pdfGenerator->generateClaimPdf($claim, $imageBinaries);
             $claim->update([
                 'generated_pdf_path' => $pdfPath,
+                'claim_status' => InsuranceClaim::STATUS_PENDING,
                 'updated_by_id' => $agentId,
+                'fax_status' => null,
+                'fax_sent_at' => null,
+                'fax_batch_id' => null,
+                'fax_number_sent' => null,
+                'fax_result_code' => null,
             ]);
             $this->savePageImages($claim, $imageBinaries);
 
