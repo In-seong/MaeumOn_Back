@@ -63,7 +63,15 @@ class AdminAgentController extends Controller
             $query->orderBy($sortField, $sortDirection === 'asc' ? 'asc' : 'desc');
         }
 
-        $perPage = min(max((int) $request->get('per_page', 15), 1), 500);
+        if ($request->get('per_page') === 'all') {
+            $agents = $query->get();
+            return response()->json([
+                'success' => true,
+                'data' => ['data' => $agents],
+            ]);
+        }
+
+        $perPage = min(max((int) $request->get('per_page', 15), 1), 100);
         $agents = $query->paginate($perPage);
 
         return response()->json([
