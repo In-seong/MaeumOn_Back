@@ -1,0 +1,482 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>요청 관리</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Pretendard:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/icon?family=Material+Symbols+Outlined" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/vue/3.4.21/vue.global.prod.min.js"></script>
+<style>
+:root {
+  --bg: #F5F5F7;
+  --card: #FFFFFF;
+  --text: #1D1D1F;
+  --text2: #6E6E73;
+  --text3: #AEAEB2;
+  --border: #E5E5EA;
+  --orange: #FF7B22;
+  --orange-hover: #E56D1E;
+  --orange-bg: #FFF3ED;
+  --red: #FF3B30;
+  --red-bg: #FFF2F1;
+  --amber: #FF9F0A;
+  --amber-bg: #FFF8EC;
+  --blue: #007AFF;
+  --blue-bg: #EBF5FF;
+  --green: #34C759;
+  --green-bg: #EDFCF2;
+  --emerald: #30D158;
+  --emerald-bg: #EDFCF2;
+  --purple: #AF52DE;
+  --purple-bg: #F8EDFF;
+  --gray-bg: #F2F2F7;
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+  font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100vh;
+  -webkit-font-smoothing: antialiased;
+}
+
+.login-wrap {
+  display: flex; align-items: center; justify-content: center;
+  min-height: 100vh; padding: 20px;
+}
+.login-box {
+  background: var(--card); border-radius: 20px;
+  padding: 40px 32px; width: 100%; max-width: 380px;
+  box-shadow: 0 2px 20px rgba(0,0,0,0.06);
+}
+.login-box h1 { font-size: 22px; font-weight: 700; margin-bottom: 6px; }
+.login-box p { font-size: 14px; color: var(--text2); margin-bottom: 24px; }
+.login-box input {
+  width: 100%; padding: 12px 14px; border: 1px solid var(--border);
+  border-radius: 12px; font-size: 14px; outline: none;
+  font-family: inherit; background: var(--gray-bg);
+  margin-bottom: 12px;
+}
+.login-box input:focus { border-color: var(--orange); background: var(--card); }
+.login-box .btn-login {
+  width: 100%; padding: 13px; border: none; border-radius: 12px;
+  background: var(--orange); color: #fff; font-size: 15px;
+  font-weight: 600; cursor: pointer; font-family: inherit; margin-top: 4px;
+}
+.login-box .btn-login:hover { background: var(--orange-hover); }
+.login-box .btn-login:disabled { opacity: 0.5; cursor: not-allowed; }
+.login-error { color: var(--red); font-size: 13px; margin-bottom: 8px; }
+
+.container { max-width: 960px; margin: 0 auto; padding: 20px 16px; }
+.header {
+  display: flex; justify-content: space-between; align-items: center;
+  margin-bottom: 16px;
+}
+.header h1 { font-size: 20px; font-weight: 700; }
+.header .sub { font-size: 13px; color: var(--text3); margin-top: 2px; }
+.btn-add {
+  padding: 9px 16px; border: none; border-radius: 12px;
+  background: var(--orange); color: #fff; font-size: 13px;
+  font-weight: 600; cursor: pointer; font-family: inherit;
+}
+.btn-add:hover { background: var(--orange-hover); }
+.btn-logout {
+  padding: 6px 12px; border: 1px solid var(--border); border-radius: 8px;
+  background: var(--card); color: var(--text2); font-size: 12px;
+  cursor: pointer; font-family: inherit; margin-left: 8px;
+}
+
+.filters { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 16px; }
+.chip {
+  padding: 6px 14px; border-radius: 20px; font-size: 12px;
+  font-weight: 500; border: 1px solid var(--border); cursor: pointer;
+  background: var(--card); color: var(--text2); font-family: inherit;
+  transition: all 0.15s;
+}
+.chip.active { background: var(--orange); color: #fff; border-color: var(--orange); }
+.chip .cnt { margin-left: 4px; opacity: 0.7; }
+
+.card {
+  background: var(--card); border-radius: 16px;
+  box-shadow: 0 1px 8px rgba(0,0,0,0.04); overflow: hidden;
+}
+table { width: 100%; border-collapse: collapse; }
+thead { background: #FAFAFA; }
+th {
+  padding: 10px 14px; text-align: left; font-size: 11px;
+  font-weight: 600; color: var(--text3); text-transform: uppercase;
+  letter-spacing: 0.3px;
+}
+td { padding: 12px 14px; font-size: 14px; border-top: 1px solid #F0F0F0; }
+tr.row { cursor: pointer; transition: background 0.1s; }
+tr.row:hover { background: #FAFAFA; }
+
+.badge {
+  display: inline-block; padding: 2px 8px; border-radius: 6px;
+  font-size: 11px; font-weight: 600;
+}
+.badge-P0 { background: var(--red-bg); color: var(--red); }
+.badge-P1 { background: var(--amber-bg); color: var(--amber); }
+.badge-P2 { background: var(--blue-bg); color: var(--blue); }
+.badge-P3 { background: var(--gray-bg); color: var(--text3); }
+.badge-요청 { background: var(--blue-bg); color: var(--blue); }
+.badge-진행중 { background: var(--amber-bg); color: var(--amber); }
+.badge-완료 { background: var(--green-bg); color: var(--green); }
+.badge-테스트완료 { background: var(--emerald-bg); color: var(--emerald); }
+.badge-테스트실패 { background: var(--red-bg); color: var(--red); }
+.badge-보류 { background: var(--purple-bg); color: var(--purple); }
+
+.title-cell .title { font-weight: 500; }
+.title-cell .desc {
+  font-size: 12px; color: var(--text3); margin-top: 2px;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 360px;
+}
+.date { font-size: 12px; color: var(--text3); font-variant-numeric: tabular-nums; }
+.source { font-size: 12px; color: var(--text3); }
+
+.empty {
+  text-align: center; padding: 60px 20px; color: var(--text3);
+}
+.empty .material-symbols-outlined { font-size: 48px; color: var(--border); }
+.empty p { margin-top: 8px; font-size: 14px; }
+
+.loading { text-align: center; padding: 40px; }
+.spinner {
+  width: 32px; height: 32px; border: 3px solid var(--border);
+  border-top-color: var(--orange); border-radius: 50%;
+  animation: spin 0.8s linear infinite; margin: 0 auto 8px;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* Modal */
+.overlay {
+  position: fixed; inset: 0; background: rgba(0,0,0,0.4);
+  display: flex; align-items: center; justify-content: center;
+  z-index: 50; padding: 16px;
+}
+.modal {
+  background: var(--card); border-radius: 20px; width: 100%;
+  max-width: 460px; max-height: 90vh; overflow-y: auto;
+  padding: 24px; box-shadow: 0 10px 40px rgba(0,0,0,0.12);
+}
+.modal h2 { font-size: 17px; font-weight: 700; margin-bottom: 16px; }
+.form-group { margin-bottom: 14px; }
+.form-label { font-size: 12px; font-weight: 600; color: var(--text2); margin-bottom: 6px; display: block; }
+.form-input {
+  width: 100%; padding: 10px 14px; border: 1px solid var(--border);
+  border-radius: 10px; font-size: 14px; outline: none;
+  font-family: inherit; background: var(--gray-bg);
+}
+.form-input:focus { border-color: var(--orange); background: var(--card); }
+textarea.form-input { resize: vertical; min-height: 70px; }
+.radio-group { display: flex; flex-wrap: wrap; gap: 6px; }
+.radio-btn {
+  padding: 7px 14px; border-radius: 8px; font-size: 12px;
+  font-weight: 600; border: 1px solid var(--border); cursor: pointer;
+  background: var(--gray-bg); color: var(--text3); font-family: inherit;
+  transition: all 0.15s;
+}
+.radio-btn.sel { border-color: var(--orange); color: var(--orange); background: var(--orange-bg); }
+.radio-btn.sel-P0 { border-color: var(--red); color: var(--red); background: var(--red-bg); }
+.radio-btn.sel-P1 { border-color: var(--amber); color: var(--amber); background: var(--amber-bg); }
+.radio-btn.sel-P2 { border-color: var(--blue); color: var(--blue); background: var(--blue-bg); }
+.radio-btn.sel-P3 { border-color: var(--text3); color: var(--text2); background: var(--gray-bg); }
+.modal-actions { display: flex; gap: 8px; margin-top: 20px; }
+.btn-cancel {
+  flex: 1; padding: 11px; border: none; border-radius: 10px;
+  background: var(--gray-bg); color: var(--text2); font-size: 14px;
+  font-weight: 500; cursor: pointer; font-family: inherit;
+}
+.btn-delete {
+  padding: 11px 16px; border: none; border-radius: 10px;
+  background: var(--red-bg); color: var(--red); font-size: 14px;
+  font-weight: 500; cursor: pointer; font-family: inherit;
+}
+.btn-delete:hover { background: #FFE5E3; }
+.btn-save {
+  flex: 1; padding: 11px; border: none; border-radius: 10px;
+  background: var(--orange); color: #fff; font-size: 14px;
+  font-weight: 600; cursor: pointer; font-family: inherit;
+}
+.btn-save:hover { background: var(--orange-hover); }
+.btn-save:disabled, .btn-delete:disabled { opacity: 0.5; cursor: not-allowed; }
+
+@media (max-width: 640px) {
+  th:nth-child(1), td:nth-child(1) { display: none; }
+  th:nth-child(5), td:nth-child(5) { display: none; }
+  th:nth-child(6), td:nth-child(6) { display: none; }
+  .title-cell .desc { max-width: 180px; }
+}
+</style>
+</head>
+<body>
+
+<div id="app">
+  <!-- Login -->
+  <div v-if="!token" class="login-wrap">
+    <div class="login-box">
+      <h1>요청 관리</h1>
+      <p>관리자 계정으로 로그인하세요</p>
+      <div v-if="loginError" class="login-error">{{ loginError }}</div>
+      <input v-model="loginForm.username" placeholder="아이디" @keyup.enter="doLogin">
+      <input v-model="loginForm.password" type="password" placeholder="비밀번호" @keyup.enter="doLogin">
+      <button class="btn-login" :disabled="loginLoading" @click="doLogin">
+        {{ loginLoading ? '로그인 중...' : '로그인' }}
+      </button>
+    </div>
+  </div>
+
+  <!-- Main -->
+  <div v-else class="container">
+    <div class="header">
+      <div>
+        <h1>요청 관리</h1>
+        <div class="sub">진행 {{ openCount }}건 · 완료 {{ doneCount }}건 · 전체 {{ tasks.length }}건</div>
+      </div>
+      <div style="display:flex;align-items:center;">
+        <button class="btn-add" @click="openModal(null)">+ 등록</button>
+        <button class="btn-logout" @click="doLogout">로그아웃</button>
+      </div>
+    </div>
+
+    <div class="filters">
+      <button v-for="f in statusFilters" :key="f.value"
+        class="chip" :class="{active: statusFilter === f.value}"
+        @click="statusFilter = f.value">
+        {{ f.label }}<span v-if="f.count" class="cnt">{{ f.count }}</span>
+      </button>
+    </div>
+
+    <div v-if="loading && !tasks.length" class="loading">
+      <div class="spinner"></div>
+      <div class="source">로딩 중...</div>
+    </div>
+
+    <div v-else-if="filteredTasks.length" class="card">
+      <table>
+        <thead>
+          <tr>
+            <th style="width:40px">No.</th>
+            <th style="width:56px">우선순위</th>
+            <th>제목</th>
+            <th style="width:72px">상태</th>
+            <th style="width:56px">경로</th>
+            <th style="width:88px">등록일</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr v-for="(t,i) in filteredTasks" :key="t.id" class="row" @click="openModal(t)">
+            <td class="source">{{ i+1 }}</td>
+            <td><span class="badge" :class="'badge-'+t.priority">{{ t.priority }}</span></td>
+            <td class="title-cell">
+              <div class="title">{{ t.title }}</div>
+              <div v-if="t.description" class="desc">{{ t.description }}</div>
+            </td>
+            <td><span class="badge" :class="'badge-'+t.status">{{ t.status }}</span></td>
+            <td class="source">{{ t.source || '-' }}</td>
+            <td class="date">{{ fmtDate(t.created_at) }}</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div v-else class="empty">
+      <span class="material-symbols-outlined">assignment</span>
+      <p>등록된 요청이 없습니다.</p>
+    </div>
+
+    <!-- Modal -->
+    <div v-if="showModal" class="overlay" @click.self="showModal=false">
+      <div class="modal">
+        <h2>{{ editing ? '요청 수정' : '요청 등록' }}</h2>
+
+        <div class="form-group">
+          <label class="form-label">제목 *</label>
+          <input class="form-input" v-model="form.title" maxlength="200" placeholder="요청 제목">
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">설명</label>
+          <textarea class="form-input" v-model="form.description" maxlength="2000" placeholder="상세 내용 (선택)" rows="3"></textarea>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">우선순위</label>
+          <div class="radio-group">
+            <button v-for="p in priorities" :key="p"
+              class="radio-btn" :class="form.priority===p ? 'sel-'+p : ''"
+              @click="form.priority=p">{{ p }}</button>
+          </div>
+          <div style="margin-top:6px;font-size:11px;color:var(--text3)">
+            P0 긴급(수일) · P1 높음(1주) · P2 보통(2주) · P3 여유
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">상태</label>
+          <div class="radio-group">
+            <button v-for="s in statuses" :key="s"
+              class="radio-btn" :class="{sel: form.status===s}"
+              @click="form.status=s">{{ s }}</button>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">요청 경로</label>
+          <div class="radio-group">
+            <button v-for="src in sources" :key="src"
+              class="radio-btn" :class="{sel: form.source===src}"
+              @click="form.source=src">{{ src }}</button>
+          </div>
+        </div>
+
+        <div class="modal-actions">
+          <button class="btn-cancel" @click="showModal=false">취소</button>
+          <button v-if="editing" class="btn-delete" :disabled="saving" @click="doDelete">삭제</button>
+          <button class="btn-save" :disabled="saving || !form.title.trim()" @click="doSave">
+            {{ editing ? '저장' : '등록' }}
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+const { createApp, ref, computed, onMounted } = Vue
+
+const API = '/api'
+
+createApp({
+  setup() {
+    const token = ref(localStorage.getItem('_mt_token') || '')
+    const loginForm = ref({ username: '', password: '' })
+    const loginLoading = ref(false)
+    const loginError = ref('')
+
+    const tasks = ref([])
+    const loading = ref(false)
+    const statusFilter = ref('')
+    const showModal = ref(false)
+    const saving = ref(false)
+    const editing = ref(null)
+
+    const priorities = ['P0','P1','P2','P3']
+    const statuses = ['요청','진행중','완료','테스트완료','테스트실패','보류']
+    const sources = ['카톡','회의','직접입력','기타']
+
+    const form = ref({ title:'', description:'', priority:'P1', status:'요청', source:'카톡' })
+
+    const openCount = computed(() => tasks.value.filter(t => !['완료','테스트완료'].includes(t.status)).length)
+    const doneCount = computed(() => tasks.value.filter(t => ['완료','테스트완료'].includes(t.status)).length)
+
+    const statusFilters = computed(() => {
+      const c = {}
+      tasks.value.forEach(t => c[t.status] = (c[t.status]||0)+1)
+      return [
+        { value:'', label:'전체', count: tasks.value.length },
+        ...statuses.filter(s => c[s]).map(s => ({ value:s, label:s, count:c[s]||0 }))
+      ]
+    })
+
+    const filteredTasks = computed(() => {
+      let list = statusFilter.value ? tasks.value.filter(t => t.status === statusFilter.value) : tasks.value
+      return [...list].sort((a,b) => {
+        const pi = priorities.indexOf(a.priority) - priorities.indexOf(b.priority)
+        if (pi !== 0) return pi
+        return new Date(b.created_at) - new Date(a.created_at)
+      })
+    })
+
+    function headers() { return { Authorization: 'Bearer ' + token.value, Accept: 'application/json', 'Content-Type': 'application/json' } }
+
+    async function doLogin() {
+      loginLoading.value = true; loginError.value = ''
+      try {
+        const res = await fetch(API+'/auth/login', {
+          method:'POST', headers:{'Content-Type':'application/json', Accept:'application/json'},
+          body: JSON.stringify(loginForm.value)
+        })
+        const json = await res.json()
+        if (!res.ok) throw new Error(json.message || '로그인 실패')
+        if (json.data?.account?.role !== 'ADMIN') throw new Error('관리자 계정만 사용 가능합니다')
+        token.value = json.data.token
+        localStorage.setItem('_mt_token', json.data.token)
+        loadTasks()
+      } catch(e) { loginError.value = e.message }
+      finally { loginLoading.value = false }
+    }
+
+    function doLogout() {
+      token.value = ''; localStorage.removeItem('_mt_token'); tasks.value = []
+    }
+
+    async function loadTasks() {
+      loading.value = true
+      try {
+        const res = await fetch(API+'/admin/maintenance-tasks?per_page=200', { headers: headers() })
+        if (res.status === 401) { doLogout(); return }
+        const json = await res.json()
+        tasks.value = json.data?.data || []
+      } catch(e) { console.error(e) }
+      finally { loading.value = false }
+    }
+
+    function openModal(task) {
+      editing.value = task
+      if (task) {
+        form.value = { title:task.title, description:task.description||'', priority:task.priority, status:task.status, source:task.source||'카톡' }
+      } else {
+        form.value = { title:'', description:'', priority:'P1', status:'요청', source:'카톡' }
+      }
+      showModal.value = true
+    }
+
+    async function doSave() {
+      if (!form.value.title.trim()) return
+      saving.value = true
+      try {
+        const body = { ...form.value, title: form.value.title.trim(), description: form.value.description.trim() || null }
+        const url = editing.value ? API+'/admin/maintenance-tasks/'+editing.value.id : API+'/admin/maintenance-tasks'
+        const method = editing.value ? 'PUT' : 'POST'
+        const res = await fetch(url, { method, headers: headers(), body: JSON.stringify(body) })
+        if (res.status === 401) { doLogout(); return }
+        showModal.value = false
+        loadTasks()
+      } catch(e) { console.error(e) }
+      finally { saving.value = false }
+    }
+
+    async function doDelete() {
+      if (!editing.value || !confirm('삭제하시겠습니까?')) return
+      saving.value = true
+      try {
+        await fetch(API+'/admin/maintenance-tasks/'+editing.value.id, { method:'DELETE', headers: headers() })
+        showModal.value = false
+        loadTasks()
+      } catch(e) { console.error(e) }
+      finally { saving.value = false }
+    }
+
+    function fmtDate(iso) {
+      const d = new Date(iso)
+      return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')
+    }
+
+    onMounted(() => { if (token.value) loadTasks() })
+
+    return {
+      token, loginForm, loginLoading, loginError, doLogin, doLogout,
+      tasks, loading, statusFilter, showModal, saving, editing, form,
+      priorities, statuses, sources,
+      openCount, doneCount, statusFilters, filteredTasks,
+      openModal, doSave, doDelete, fmtDate
+    }
+  }
+}).mount('#app')
+</script>
+</body>
+</html>
