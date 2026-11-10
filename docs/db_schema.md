@@ -1,8 +1,8 @@
 # MaeumOn DB 스키마 (운영 기준)
 
-> **최종 업데이트**: 2026-08-20
+> **최종 업데이트**: 2026-11-10
 > **DB**: MySQL (MariaDB)
-> **총 테이블**: 71개 (비즈니스 63개 + Laravel 시스템 8개)
+> **총 테이블**: 72개 (비즈니스 64개 + Laravel 시스템 8개)
 
 ---
 
@@ -28,6 +28,7 @@
 19. [지사 관리](#19-지사-관리) — branch, agent_branch
 20. [자동배분](#20-자동배분) — distribution_config, distribution_list, distribution_list_item, distribution_queue
 22. [양식 다운로드](#22-양식-다운로드) — form_downloads
+24. [유지보수 요청](#24-유지보수-요청) — maintenance_tasks
 23. [시상안](#23-시상안) — award_plans
 
 ---
@@ -1534,3 +1535,27 @@ FaxClientNC 연동용 테이블. **테이블명 반드시 대문자 유지**.
 **인덱스**: `idx_award_plans_target` (target_year, target_month)
 **Model**: `App\Models\AwardPlan` ✅
 **변경 이력**: 2026-10-22 시상안 기능 신규 추가
+
+---
+
+## 24. 유지보수 요청
+
+### maintenance_tasks
+
+유지보수 작업 요청 관리 (관리자 패널 내부용)
+
+| 컬럼 | 타입 | NULL | Key | Default | 설명 |
+|------|------|------|-----|---------|------|
+| id | bigint unsigned | NO | PK | auto | |
+| title | varchar(200) | NO | | | 요청 제목 |
+| description | text | YES | | NULL | 상세 설명 |
+| priority | enum('P0','P1','P2','P3') | NO | | 'P1' | P0:긴급(수일내), P1:높음(1주), P2:보통(2주), P3:낮음(여유) |
+| status | enum('요청','진행중','완료','테스트완료','테스트실패','보류') | NO | | '요청' | 작업 상태 |
+| source | enum('카톡','회의','직접입력','기타') | YES | | NULL | 요청 경로 |
+| completed_at | timestamp | YES | | NULL | 완료 일시 |
+| created_at | timestamp | YES | | NULL | |
+| updated_at | timestamp | YES | | NULL | |
+
+**인덱스**: `idx_maintenance_tasks_status` (status), `idx_maintenance_tasks_priority` (priority)
+**Model**: `App\Models\MaintenanceTask` ✅
+**변경 이력**: 2026-11-10 유지보수 요청 관리 기능 신규 추가
