@@ -67,6 +67,7 @@ use App\Http\Controllers\Api\Admin\AdminReservationController;
 use App\Http\Controllers\Api\Admin\AdminBannerController;
 use App\Http\Controllers\Api\Admin\AdminBranchController;
 use App\Http\Controllers\Api\Admin\AdminAccountController;
+use App\Http\Controllers\Api\Admin\AdminMaintenanceTaskController;
 use App\Http\Controllers\Api\CorporateInquiryController;
 use App\Http\Controllers\Api\Admin\AdminCorporateInquiryController;
 use App\Http\Controllers\Api\FaxCallbackController;
@@ -357,6 +358,9 @@ Route::middleware('auth:sanctum')->group(function () {
 
         // 관리자 계정 관리 (슈퍼 관리자)
         Route::apiResource('admin-accounts', AdminAccountController::class);
+
+        // 유지보수 요청 관리
+        Route::apiResource('maintenance-tasks', AdminMaintenanceTaskController::class)->except(['show']);
     });
 
     // 설계사 API
