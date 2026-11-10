@@ -32,21 +32,13 @@
   --purple: #AF52DE;
   --purple-bg: #F8EDFF;
   --gray-bg: #F2F2F7;
-  --teal: #5AC8FA;
-  --teal-bg: #EAF7FE;
-  --indigo: #5856D6;
-  --indigo-bg: #F0F0FF;
-  --pink: #FF2D55;
-  --pink-bg: #FFF0F3;
 }
 
 * { margin: 0; padding: 0; box-sizing: border-box; }
 body {
   font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, sans-serif;
-  background: var(--bg);
-  color: var(--text);
-  min-height: 100vh;
-  -webkit-font-smoothing: antialiased;
+  background: var(--bg); color: var(--text);
+  min-height: 100vh; -webkit-font-smoothing: antialiased;
 }
 
 .login-wrap {
@@ -63,8 +55,7 @@ body {
 .login-box input {
   width: 100%; padding: 12px 14px; border: 1px solid var(--border);
   border-radius: 12px; font-size: 14px; outline: none;
-  font-family: inherit; background: var(--gray-bg);
-  margin-bottom: 12px;
+  font-family: inherit; background: var(--gray-bg); margin-bottom: 12px;
 }
 .login-box input:focus { border-color: var(--orange); background: var(--card); }
 .login-box .btn-login {
@@ -76,7 +67,7 @@ body {
 .login-box .btn-login:disabled { opacity: 0.5; cursor: not-allowed; }
 .login-error { color: var(--red); font-size: 13px; margin-bottom: 8px; }
 
-.container { max-width: 1060px; margin: 0 auto; padding: 20px 16px; }
+.container { max-width: 1120px; margin: 0 auto; padding: 20px 16px; }
 .header {
   display: flex; justify-content: space-between; align-items: center;
   margin-bottom: 16px;
@@ -96,12 +87,10 @@ body {
   cursor: pointer; font-family: inherit;
 }
 
-/* Category tabs */
 .cat-tabs {
   display: flex; gap: 4px; margin-bottom: 12px;
   background: var(--card); border-radius: 12px; padding: 4px;
-  box-shadow: 0 1px 4px rgba(0,0,0,0.04);
-  overflow-x: auto;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.04); overflow-x: auto;
 }
 .cat-tab {
   padding: 8px 16px; border-radius: 8px; font-size: 13px;
@@ -112,7 +101,6 @@ body {
 .cat-tab.active { background: var(--orange); color: #fff; font-weight: 600; }
 .cat-tab .cnt { font-size: 11px; opacity: 0.7; margin-left: 3px; }
 
-/* Filter row: month + status */
 .filter-row {
   display: flex; align-items: center; gap: 12px; margin-bottom: 14px;
   flex-wrap: wrap;
@@ -125,8 +113,7 @@ body {
 .month-btn {
   width: 30px; height: 30px; border: none; border-radius: 8px;
   background: transparent; cursor: pointer; display: flex;
-  align-items: center; justify-content: center; font-family: inherit;
-  color: var(--text2);
+  align-items: center; justify-content: center; color: var(--text2);
 }
 .month-btn:hover { background: var(--gray-bg); }
 .month-label {
@@ -147,53 +134,99 @@ body {
 
 .card {
   background: var(--card); border-radius: 16px;
-  box-shadow: 0 1px 8px rgba(0,0,0,0.04); overflow: hidden;
+  box-shadow: 0 1px 8px rgba(0,0,0,0.04); overflow-x: auto;
 }
-table { width: 100%; border-collapse: collapse; }
+table { width: 100%; border-collapse: collapse; min-width: 820px; }
 thead { background: #FAFAFA; }
 th {
-  padding: 10px 14px; text-align: left; font-size: 11px;
+  padding: 10px 10px; text-align: left; font-size: 11px;
   font-weight: 600; color: var(--text3); text-transform: uppercase;
-  letter-spacing: 0.3px;
+  letter-spacing: 0.3px; white-space: nowrap;
 }
-td { padding: 12px 14px; font-size: 14px; border-top: 1px solid #F0F0F0; }
-tr.row { cursor: pointer; transition: background 0.1s; }
+td { padding: 8px 10px; font-size: 13px; border-top: 1px solid #F0F0F0; vertical-align: middle; }
+tr.row { transition: background 0.1s; }
 tr.row:hover { background: #FAFAFA; }
 
-.badge {
-  display: inline-block; padding: 2px 8px; border-radius: 6px;
-  font-size: 11px; font-weight: 600;
+/* Inline selects */
+.inline-sel {
+  appearance: none; -webkit-appearance: none;
+  border: 1px solid transparent; border-radius: 6px;
+  padding: 3px 20px 3px 6px; font-size: 11px; font-weight: 600;
+  font-family: inherit; cursor: pointer; outline: none;
+  background-repeat: no-repeat; background-position: right 4px center;
+  background-size: 12px;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath d='M3 5l3 3 3-3' fill='none' stroke='%23999' stroke-width='1.5' stroke-linecap='round'/%3E%3C/svg%3E");
+  transition: border-color 0.15s;
 }
-.badge-P0 { background: var(--red-bg); color: var(--red); }
-.badge-P1 { background: var(--amber-bg); color: var(--amber); }
-.badge-P2 { background: var(--blue-bg); color: var(--blue); }
-.badge-P3 { background: var(--gray-bg); color: var(--text3); }
-.badge-요청 { background: var(--blue-bg); color: var(--blue); }
-.badge-진행중 { background: var(--amber-bg); color: var(--amber); }
-.badge-완료 { background: var(--green-bg); color: var(--green); }
-.badge-테스트완료 { background: var(--emerald-bg); color: var(--emerald); }
-.badge-테스트실패 { background: var(--red-bg); color: var(--red); }
-.badge-보류 { background: var(--purple-bg); color: var(--purple); }
-.badge-cat {
-  font-size: 11px; padding: 2px 7px; border-radius: 5px; font-weight: 500;
-}
-.badge-cat-설계사 { background: var(--blue-bg); color: var(--blue); }
-.badge-cat-관리자 { background: var(--purple-bg); color: var(--purple); }
-.badge-cat-사용자 { background: var(--green-bg); color: var(--green); }
-.badge-cat-복합 { background: var(--amber-bg); color: var(--amber); }
-.badge-cat-기타 { background: var(--gray-bg); color: var(--text3); }
+.inline-sel:hover { border-color: var(--border); }
+.inline-sel:focus { border-color: var(--orange); }
 
-.title-cell .title { font-weight: 500; }
+.sel-P0 { background-color: var(--red-bg); color: var(--red); }
+.sel-P1 { background-color: var(--amber-bg); color: var(--amber); }
+.sel-P2 { background-color: var(--blue-bg); color: var(--blue); }
+.sel-P3 { background-color: var(--gray-bg); color: var(--text3); }
+
+.sel-cat-설계사 { background-color: var(--blue-bg); color: var(--blue); }
+.sel-cat-관리자 { background-color: var(--purple-bg); color: var(--purple); }
+.sel-cat-사용자 { background-color: var(--green-bg); color: var(--green); }
+.sel-cat-복합 { background-color: var(--amber-bg); color: var(--amber); }
+.sel-cat-기타 { background-color: var(--gray-bg); color: var(--text3); }
+
+.sel-st-요청 { background-color: var(--blue-bg); color: var(--blue); }
+.sel-st-진행중 { background-color: var(--amber-bg); color: var(--amber); }
+.sel-st-완료 { background-color: var(--green-bg); color: var(--green); }
+.sel-st-테스트완료 { background-color: #EDFCF2; color: #30D158; }
+.sel-st-테스트실패 { background-color: var(--red-bg); color: var(--red); }
+.sel-st-보류 { background-color: var(--purple-bg); color: var(--purple); }
+
+.sel-src-카톡 { background-color: var(--amber-bg); color: var(--amber); }
+.sel-src-회의 { background-color: var(--blue-bg); color: var(--blue); }
+.sel-src-직접입력 { background-color: var(--green-bg); color: var(--green); }
+.sel-src-기타 { background-color: var(--gray-bg); color: var(--text3); }
+
+.title-cell { cursor: pointer; }
+.title-cell .title { font-weight: 500; font-size: 13px; }
 .title-cell .desc {
-  font-size: 12px; color: var(--text3); margin-top: 2px;
-  overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 380px;
+  font-size: 11px; color: var(--text3); margin-top: 2px;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 340px;
 }
-.date { font-size: 12px; color: var(--text3); font-variant-numeric: tabular-nums; }
-.source { font-size: 12px; color: var(--text3); }
+.date { font-size: 12px; color: var(--text3); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.source-text { font-size: 12px; color: var(--text3); }
+.month-text { font-size: 12px; color: var(--text3); white-space: nowrap; }
 
-.empty {
-  text-align: center; padding: 60px 20px; color: var(--text3);
+.saving-indicator {
+  position: fixed; top: 16px; right: 16px; z-index: 100;
+  background: var(--orange); color: #fff; padding: 8px 16px;
+  border-radius: 10px; font-size: 13px; font-weight: 600;
+  box-shadow: 0 4px 12px rgba(255,123,34,0.3);
+  animation: fadeIn 0.2s;
 }
+@keyframes fadeIn { from { opacity: 0; transform: translateY(-8px); } to { opacity: 1; transform: translateY(0); } }
+
+.paging {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 12px 16px; gap: 12px; flex-wrap: wrap;
+}
+.paging-info { font-size: 12px; color: var(--text3); }
+.paging-btns { display: flex; align-items: center; gap: 4px; }
+.page-btn {
+  min-width: 32px; height: 32px; border: 1px solid var(--border);
+  border-radius: 8px; background: var(--card); color: var(--text2);
+  font-size: 13px; font-family: inherit; cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  font-variant-numeric: tabular-nums;
+}
+.page-btn:hover { background: var(--gray-bg); }
+.page-btn.active { background: var(--orange); color: #fff; border-color: var(--orange); font-weight: 600; }
+.page-btn:disabled { opacity: 0.3; cursor: not-allowed; }
+.per-page-sel {
+  padding: 5px 8px; border: 1px solid var(--border); border-radius: 8px;
+  font-size: 12px; font-family: inherit; color: var(--text2);
+  background: var(--card); cursor: pointer; outline: none;
+}
+.per-page-sel:focus { border-color: var(--orange); }
+
+.empty { text-align: center; padding: 60px 20px; color: var(--text3); }
 .empty .material-symbols-outlined { font-size: 48px; color: var(--border); }
 .empty p { margin-top: 8px; font-size: 14px; }
 
@@ -226,7 +259,6 @@ tr.row:hover { background: #FAFAFA; }
 }
 .form-input:focus { border-color: var(--orange); background: var(--card); }
 textarea.form-input { resize: vertical; min-height: 70px; }
-select.form-input { appearance: auto; }
 .form-row { display: flex; gap: 10px; }
 .form-row .form-group { flex: 1; }
 .radio-group { display: flex; flex-wrap: wrap; gap: 6px; }
@@ -267,12 +299,7 @@ select.form-input { appearance: auto; }
 .btn-save:disabled, .btn-delete:disabled { opacity: 0.5; cursor: not-allowed; }
 
 @media (max-width: 640px) {
-  th.col-no, td.col-no { display: none; }
-  th.col-source, td.col-source { display: none; }
-  th.col-date, td.col-date { display: none; }
-  th.col-month, td.col-month { display: none; }
-  .title-cell .desc { max-width: 180px; }
-  .filter-row { gap: 8px; }
+  .card { overflow-x: auto; -webkit-overflow-scrolling: touch; }
   .form-row { flex-direction: column; gap: 0; }
 }
 </style>
@@ -296,6 +323,8 @@ select.form-input { appearance: auto; }
 
   <!-- Main -->
   <div v-else class="container">
+    <div v-if="inlineSaving" class="saving-indicator">저장 중...</div>
+
     <div class="header">
       <div>
         <h1>요청 관리</h1>
@@ -316,16 +345,16 @@ select.form-input { appearance: auto; }
       </button>
     </div>
 
-    <!-- Month nav + status filters -->
+    <!-- Month + status filters -->
     <div class="filter-row">
       <div class="month-nav">
-        <button class="month-btn" @click="prevMonth" title="이전 달">
+        <button class="month-btn" @click="prevMonth">
           <span class="material-symbols-outlined" style="font-size:18px">chevron_left</span>
         </button>
         <span class="month-label" :class="{all: !monthFilter}" @click="toggleMonthAll">
           {{ monthFilter || '전체 월' }}
         </span>
-        <button class="month-btn" @click="nextMonth" title="다음 달">
+        <button class="month-btn" @click="nextMonth">
           <span class="material-symbols-outlined" style="font-size:18px">chevron_right</span>
         </button>
       </div>
@@ -340,39 +369,79 @@ select.form-input { appearance: auto; }
 
     <div v-if="loading && !tasks.length" class="loading">
       <div class="spinner"></div>
-      <div class="source">로딩 중...</div>
+      <div class="source-text">로딩 중...</div>
     </div>
 
     <div v-else-if="filteredTasks.length" class="card">
       <table>
         <thead>
           <tr>
-            <th class="col-no" style="width:40px">No.</th>
-            <th style="width:54px">우선순위</th>
-            <th style="width:54px">분류</th>
+            <th style="width:36px">No.</th>
+            <th style="width:62px">우선순위</th>
+            <th style="width:62px">분류</th>
             <th>제목</th>
-            <th style="width:72px">상태</th>
-            <th class="col-month" style="width:68px">대상월</th>
-            <th class="col-source" style="width:50px">경로</th>
-            <th class="col-date" style="width:84px">등록일</th>
+            <th style="width:80px">상태</th>
+            <th style="width:66px">경로</th>
+            <th style="width:82px">대상월</th>
+            <th style="width:80px">등록일</th>
           </tr>
         </thead>
         <tbody>
-          <tr v-for="(t,i) in filteredTasks" :key="t.id" class="row" @click="openModal(t)">
-            <td class="col-no source">{{ i+1 }}</td>
-            <td><span class="badge" :class="'badge-'+t.priority">{{ t.priority }}</span></td>
-            <td><span class="badge badge-cat" :class="'badge-cat-'+t.category">{{ t.category }}</span></td>
-            <td class="title-cell">
+          <tr v-for="(t,i) in pagedTasks" :key="t.id" class="row">
+            <td class="source-text">{{ (curPage-1)*perPage + i + 1 }}</td>
+            <td>
+              <select class="inline-sel" :class="'sel-'+t.priority"
+                :value="t.priority" @change="inlineUpdate(t, 'priority', $event.target.value)">
+                <option v-for="p in priorities" :key="p" :value="p">{{ p }}</option>
+              </select>
+            </td>
+            <td>
+              <select class="inline-sel" :class="'sel-cat-'+t.category"
+                :value="t.category" @change="inlineUpdate(t, 'category', $event.target.value)">
+                <option v-for="c in categories" :key="c" :value="c">{{ c }}</option>
+              </select>
+            </td>
+            <td class="title-cell" @click="openModal(t)">
               <div class="title">{{ t.title }}</div>
               <div v-if="t.description" class="desc">{{ t.description }}</div>
             </td>
-            <td><span class="badge" :class="'badge-'+t.status">{{ t.status }}</span></td>
-            <td class="col-month source">{{ t.target_month || '-' }}</td>
-            <td class="col-source source">{{ t.source || '-' }}</td>
-            <td class="col-date date">{{ fmtDate(t.created_at) }}</td>
+            <td>
+              <select class="inline-sel" :class="'sel-st-'+t.status"
+                :value="t.status" @change="inlineUpdate(t, 'status', $event.target.value)">
+                <option v-for="s in statuses" :key="s" :value="s">{{ s }}</option>
+              </select>
+            </td>
+            <td>
+              <select class="inline-sel" :class="'sel-src-'+(t.source||'')"
+                :value="t.source||''" @change="inlineUpdate(t, 'source', $event.target.value || null)">
+                <option value="">-</option>
+                <option v-for="src in sources" :key="src" :value="src">{{ src }}</option>
+              </select>
+            </td>
+            <td class="month-text">{{ t.target_month || '-' }}</td>
+            <td class="date">{{ fmtDate(t.created_at) }}</td>
           </tr>
         </tbody>
       </table>
+      <div class="paging" v-if="totalPages > 1 || perPage < filteredTasks.length">
+        <div class="paging-info">
+          {{ filteredTasks.length }}건 중 {{ (curPage-1)*perPage+1 }}-{{ Math.min(curPage*perPage, filteredTasks.length) }}
+        </div>
+        <div class="paging-btns">
+          <select class="per-page-sel" :value="perPage" @change="perPage=+$event.target.value; curPage=1">
+            <option :value="20">20개</option>
+            <option :value="50">50개</option>
+          </select>
+          <button class="page-btn" :disabled="curPage<=1" @click="curPage--">
+            <span class="material-symbols-outlined" style="font-size:16px">chevron_left</span>
+          </button>
+          <button v-for="p in visiblePages" :key="p"
+            class="page-btn" :class="{active: curPage===p}" @click="curPage=p">{{ p }}</button>
+          <button class="page-btn" :disabled="curPage>=totalPages" @click="curPage++">
+            <span class="material-symbols-outlined" style="font-size:16px">chevron_right</span>
+          </button>
+        </div>
+      </div>
     </div>
 
     <div v-else class="empty">
@@ -380,7 +449,7 @@ select.form-input { appearance: auto; }
       <p>등록된 요청이 없습니다.</p>
     </div>
 
-    <!-- Modal -->
+    <!-- Modal (for title/description/target_month editing + new task) -->
     <div v-if="showModal" class="overlay" @click.self="showModal=false">
       <div class="modal">
         <h2>{{ editing ? '요청 수정' : '요청 등록' }}</h2>
@@ -454,7 +523,7 @@ select.form-input { appearance: auto; }
 </div>
 
 <script>
-const { createApp, ref, computed, onMounted } = Vue
+const { createApp, ref, computed, onMounted, watch } = Vue
 
 const API = '/api'
 
@@ -473,6 +542,9 @@ createApp({
     const showModal = ref(false)
     const saving = ref(false)
     const editing = ref(null)
+    const inlineSaving = ref(false)
+    const curPage = ref(1)
+    const perPage = ref(20)
 
     const categories = ['설계사','관리자','사용자','복합','기타']
     const priorities = ['P0','P1','P2','P3']
@@ -520,11 +592,28 @@ createApp({
       })
     })
 
+    const totalPages = computed(() => Math.max(1, Math.ceil(filteredTasks.value.length / perPage.value)))
+    const pagedTasks = computed(() => {
+      const start = (curPage.value - 1) * perPage.value
+      return filteredTasks.value.slice(start, start + perPage.value)
+    })
+    const visiblePages = computed(() => {
+      const tp = totalPages.value
+      const cur = curPage.value
+      const pages = []
+      let s = Math.max(1, cur - 2)
+      let e = Math.min(tp, s + 4)
+      s = Math.max(1, e - 4)
+      for (let i = s; i <= e; i++) pages.push(i)
+      return pages
+    })
+
+    watch([catFilter, statusFilter, monthFilter], () => { curPage.value = 1 })
+
     function currentMonth() {
       const d = new Date()
       return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0')
     }
-
     function prevMonth() {
       if (!monthFilter.value) { monthFilter.value = currentMonth() }
       const [y, m] = monthFilter.value.split('-').map(Number)
@@ -571,6 +660,22 @@ createApp({
         tasks.value = json.data?.data || []
       } catch(e) { console.error(e) }
       finally { loading.value = false }
+    }
+
+    async function inlineUpdate(task, field, value) {
+      const old = task[field]
+      task[field] = value
+      inlineSaving.value = true
+      try {
+        const body = {}
+        body[field] = value
+        const res = await fetch(API+'/admin/maintenance-tasks/'+task.id, {
+          method: 'PUT', headers: headers(), body: JSON.stringify(body)
+        })
+        if (res.status === 401) { doLogout(); return }
+        if (!res.ok) { task[field] = old }
+      } catch(e) { task[field] = old; console.error(e) }
+      finally { inlineSaving.value = false }
     }
 
     function openModal(task) {
@@ -638,11 +743,12 @@ createApp({
     return {
       token, loginForm, loginLoading, loginError, doLogin, doLogout,
       tasks, loading, catFilter, statusFilter, monthFilter,
-      showModal, saving, editing, form,
+      showModal, saving, editing, form, inlineSaving,
       categories, priorities, statuses, sources,
       openCount, doneCount, categoryTabs, statusFilters, filteredTasks,
       prevMonth, nextMonth, toggleMonthAll,
-      openModal, doSave, doDelete, fmtDate
+      curPage, perPage, totalPages, pagedTasks, visiblePages,
+      openModal, doSave, doDelete, fmtDate, inlineUpdate
     }
   }
 }).mount('#app')
