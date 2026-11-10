@@ -19,10 +19,16 @@ class AdminMaintenanceTaskController extends Controller
         if ($request->filled('priority')) {
             $query->where('priority', $request->input('priority'));
         }
+        if ($request->filled('category')) {
+            $query->where('category', $request->input('category'));
+        }
+        if ($request->filled('target_month')) {
+            $query->where('target_month', $request->input('target_month'));
+        }
 
         $sortBy = $request->input('sort_by', 'created_at');
         $sortDir = $request->input('sort_direction', 'desc');
-        $allowed = ['id', 'title', 'priority', 'status', 'source', 'created_at', 'updated_at'];
+        $allowed = ['id', 'title', 'priority', 'status', 'source', 'category', 'target_month', 'created_at', 'updated_at'];
         if (in_array($sortBy, $allowed, true)) {
             $query->orderBy($sortBy, $sortDir === 'asc' ? 'asc' : 'desc');
         }
@@ -40,6 +46,8 @@ class AdminMaintenanceTaskController extends Controller
             'priority' => 'required|in:P0,P1,P2,P3',
             'status' => 'required|in:요청,진행중,완료,테스트완료,테스트실패,보류',
             'source' => 'nullable|in:카톡,회의,직접입력,기타',
+            'category' => 'required|in:설계사,관리자,사용자,복합,기타',
+            'target_month' => 'nullable|string|max:7',
         ]);
 
         $task = MaintenanceTask::create($validated);
@@ -57,6 +65,8 @@ class AdminMaintenanceTaskController extends Controller
             'priority' => 'sometimes|required|in:P0,P1,P2,P3',
             'status' => 'sometimes|required|in:요청,진행중,완료,테스트완료,테스트실패,보류',
             'source' => 'nullable|in:카톡,회의,직접입력,기타',
+            'category' => 'sometimes|required|in:설계사,관리자,사용자,복합,기타',
+            'target_month' => 'nullable|string|max:7',
         ]);
 
         if (isset($validated['status']) && in_array($validated['status'], ['완료', '테스트완료'])) {

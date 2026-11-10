@@ -32,6 +32,12 @@
   --purple: #AF52DE;
   --purple-bg: #F8EDFF;
   --gray-bg: #F2F2F7;
+  --teal: #5AC8FA;
+  --teal-bg: #EAF7FE;
+  --indigo: #5856D6;
+  --indigo-bg: #F0F0FF;
+  --pink: #FF2D55;
+  --pink-bg: #FFF0F3;
 }
 
 * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -70,13 +76,14 @@ body {
 .login-box .btn-login:disabled { opacity: 0.5; cursor: not-allowed; }
 .login-error { color: var(--red); font-size: 13px; margin-bottom: 8px; }
 
-.container { max-width: 960px; margin: 0 auto; padding: 20px 16px; }
+.container { max-width: 1060px; margin: 0 auto; padding: 20px 16px; }
 .header {
   display: flex; justify-content: space-between; align-items: center;
   margin-bottom: 16px;
 }
 .header h1 { font-size: 20px; font-weight: 700; }
 .header .sub { font-size: 13px; color: var(--text3); margin-top: 2px; }
+.header-right { display: flex; align-items: center; gap: 8px; }
 .btn-add {
   padding: 9px 16px; border: none; border-radius: 12px;
   background: var(--orange); color: #fff; font-size: 13px;
@@ -86,10 +93,49 @@ body {
 .btn-logout {
   padding: 6px 12px; border: 1px solid var(--border); border-radius: 8px;
   background: var(--card); color: var(--text2); font-size: 12px;
-  cursor: pointer; font-family: inherit; margin-left: 8px;
+  cursor: pointer; font-family: inherit;
 }
 
-.filters { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 16px; }
+/* Category tabs */
+.cat-tabs {
+  display: flex; gap: 4px; margin-bottom: 12px;
+  background: var(--card); border-radius: 12px; padding: 4px;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.04);
+  overflow-x: auto;
+}
+.cat-tab {
+  padding: 8px 16px; border-radius: 8px; font-size: 13px;
+  font-weight: 500; border: none; cursor: pointer;
+  background: transparent; color: var(--text2); font-family: inherit;
+  white-space: nowrap; transition: all 0.15s;
+}
+.cat-tab.active { background: var(--orange); color: #fff; font-weight: 600; }
+.cat-tab .cnt { font-size: 11px; opacity: 0.7; margin-left: 3px; }
+
+/* Filter row: month + status */
+.filter-row {
+  display: flex; align-items: center; gap: 12px; margin-bottom: 14px;
+  flex-wrap: wrap;
+}
+.month-nav {
+  display: flex; align-items: center; gap: 4px;
+  background: var(--card); border-radius: 10px; padding: 2px;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.04);
+}
+.month-btn {
+  width: 30px; height: 30px; border: none; border-radius: 8px;
+  background: transparent; cursor: pointer; display: flex;
+  align-items: center; justify-content: center; font-family: inherit;
+  color: var(--text2);
+}
+.month-btn:hover { background: var(--gray-bg); }
+.month-label {
+  font-size: 13px; font-weight: 600; min-width: 80px;
+  text-align: center; color: var(--text); cursor: pointer;
+}
+.month-label.all { color: var(--text2); font-weight: 500; }
+
+.filters { display: flex; flex-wrap: wrap; gap: 6px; }
 .chip {
   padding: 6px 14px; border-radius: 20px; font-size: 12px;
   font-weight: 500; border: 1px solid var(--border); cursor: pointer;
@@ -128,11 +174,19 @@ tr.row:hover { background: #FAFAFA; }
 .badge-테스트완료 { background: var(--emerald-bg); color: var(--emerald); }
 .badge-테스트실패 { background: var(--red-bg); color: var(--red); }
 .badge-보류 { background: var(--purple-bg); color: var(--purple); }
+.badge-cat {
+  font-size: 11px; padding: 2px 7px; border-radius: 5px; font-weight: 500;
+}
+.badge-cat-설계사 { background: var(--blue-bg); color: var(--blue); }
+.badge-cat-관리자 { background: var(--purple-bg); color: var(--purple); }
+.badge-cat-사용자 { background: var(--green-bg); color: var(--green); }
+.badge-cat-복합 { background: var(--amber-bg); color: var(--amber); }
+.badge-cat-기타 { background: var(--gray-bg); color: var(--text3); }
 
 .title-cell .title { font-weight: 500; }
 .title-cell .desc {
   font-size: 12px; color: var(--text3); margin-top: 2px;
-  overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 360px;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 380px;
 }
 .date { font-size: 12px; color: var(--text3); font-variant-numeric: tabular-nums; }
 .source { font-size: 12px; color: var(--text3); }
@@ -159,7 +213,7 @@ tr.row:hover { background: #FAFAFA; }
 }
 .modal {
   background: var(--card); border-radius: 20px; width: 100%;
-  max-width: 460px; max-height: 90vh; overflow-y: auto;
+  max-width: 480px; max-height: 90vh; overflow-y: auto;
   padding: 24px; box-shadow: 0 10px 40px rgba(0,0,0,0.12);
 }
 .modal h2 { font-size: 17px; font-weight: 700; margin-bottom: 16px; }
@@ -172,6 +226,9 @@ tr.row:hover { background: #FAFAFA; }
 }
 .form-input:focus { border-color: var(--orange); background: var(--card); }
 textarea.form-input { resize: vertical; min-height: 70px; }
+select.form-input { appearance: auto; }
+.form-row { display: flex; gap: 10px; }
+.form-row .form-group { flex: 1; }
 .radio-group { display: flex; flex-wrap: wrap; gap: 6px; }
 .radio-btn {
   padding: 7px 14px; border-radius: 8px; font-size: 12px;
@@ -184,6 +241,11 @@ textarea.form-input { resize: vertical; min-height: 70px; }
 .radio-btn.sel-P1 { border-color: var(--amber); color: var(--amber); background: var(--amber-bg); }
 .radio-btn.sel-P2 { border-color: var(--blue); color: var(--blue); background: var(--blue-bg); }
 .radio-btn.sel-P3 { border-color: var(--text3); color: var(--text2); background: var(--gray-bg); }
+.radio-btn.sel-설계사 { border-color: var(--blue); color: var(--blue); background: var(--blue-bg); }
+.radio-btn.sel-관리자 { border-color: var(--purple); color: var(--purple); background: var(--purple-bg); }
+.radio-btn.sel-사용자 { border-color: var(--green); color: var(--green); background: var(--green-bg); }
+.radio-btn.sel-복합 { border-color: var(--amber); color: var(--amber); background: var(--amber-bg); }
+.radio-btn.sel-기타 { border-color: var(--text3); color: var(--text2); background: var(--gray-bg); }
 .modal-actions { display: flex; gap: 8px; margin-top: 20px; }
 .btn-cancel {
   flex: 1; padding: 11px; border: none; border-radius: 10px;
@@ -205,10 +267,13 @@ textarea.form-input { resize: vertical; min-height: 70px; }
 .btn-save:disabled, .btn-delete:disabled { opacity: 0.5; cursor: not-allowed; }
 
 @media (max-width: 640px) {
-  th:nth-child(1), td:nth-child(1) { display: none; }
-  th:nth-child(5), td:nth-child(5) { display: none; }
-  th:nth-child(6), td:nth-child(6) { display: none; }
+  th.col-no, td.col-no { display: none; }
+  th.col-source, td.col-source { display: none; }
+  th.col-date, td.col-date { display: none; }
+  th.col-month, td.col-month { display: none; }
   .title-cell .desc { max-width: 180px; }
+  .filter-row { gap: 8px; }
+  .form-row { flex-direction: column; gap: 0; }
 }
 </style>
 </head>
@@ -236,18 +301,41 @@ textarea.form-input { resize: vertical; min-height: 70px; }
         <h1>요청 관리</h1>
         <div class="sub">진행 {{ openCount }}건 · 완료 {{ doneCount }}건 · 전체 {{ tasks.length }}건</div>
       </div>
-      <div style="display:flex;align-items:center;">
+      <div class="header-right">
         <button class="btn-add" @click="openModal(null)">+ 등록</button>
         <button class="btn-logout" @click="doLogout">로그아웃</button>
       </div>
     </div>
 
-    <div class="filters">
-      <button v-for="f in statusFilters" :key="f.value"
-        class="chip" :class="{active: statusFilter === f.value}"
-        @click="statusFilter = f.value">
-        {{ f.label }}<span v-if="f.count" class="cnt">{{ f.count }}</span>
+    <!-- Category tabs -->
+    <div class="cat-tabs">
+      <button v-for="c in categoryTabs" :key="c.value"
+        class="cat-tab" :class="{active: catFilter === c.value}"
+        @click="catFilter = c.value">
+        {{ c.label }}<span class="cnt">{{ c.count }}</span>
       </button>
+    </div>
+
+    <!-- Month nav + status filters -->
+    <div class="filter-row">
+      <div class="month-nav">
+        <button class="month-btn" @click="prevMonth" title="이전 달">
+          <span class="material-symbols-outlined" style="font-size:18px">chevron_left</span>
+        </button>
+        <span class="month-label" :class="{all: !monthFilter}" @click="toggleMonthAll">
+          {{ monthFilter || '전체 월' }}
+        </span>
+        <button class="month-btn" @click="nextMonth" title="다음 달">
+          <span class="material-symbols-outlined" style="font-size:18px">chevron_right</span>
+        </button>
+      </div>
+      <div class="filters">
+        <button v-for="f in statusFilters" :key="f.value"
+          class="chip" :class="{active: statusFilter === f.value}"
+          @click="statusFilter = f.value">
+          {{ f.label }}<span v-if="f.count" class="cnt">{{ f.count }}</span>
+        </button>
+      </div>
     </div>
 
     <div v-if="loading && !tasks.length" class="loading">
@@ -259,25 +347,29 @@ textarea.form-input { resize: vertical; min-height: 70px; }
       <table>
         <thead>
           <tr>
-            <th style="width:40px">No.</th>
-            <th style="width:56px">우선순위</th>
+            <th class="col-no" style="width:40px">No.</th>
+            <th style="width:54px">우선순위</th>
+            <th style="width:54px">분류</th>
             <th>제목</th>
             <th style="width:72px">상태</th>
-            <th style="width:56px">경로</th>
-            <th style="width:88px">등록일</th>
+            <th class="col-month" style="width:68px">대상월</th>
+            <th class="col-source" style="width:50px">경로</th>
+            <th class="col-date" style="width:84px">등록일</th>
           </tr>
         </thead>
         <tbody>
           <tr v-for="(t,i) in filteredTasks" :key="t.id" class="row" @click="openModal(t)">
-            <td class="source">{{ i+1 }}</td>
+            <td class="col-no source">{{ i+1 }}</td>
             <td><span class="badge" :class="'badge-'+t.priority">{{ t.priority }}</span></td>
+            <td><span class="badge badge-cat" :class="'badge-cat-'+t.category">{{ t.category }}</span></td>
             <td class="title-cell">
               <div class="title">{{ t.title }}</div>
               <div v-if="t.description" class="desc">{{ t.description }}</div>
             </td>
             <td><span class="badge" :class="'badge-'+t.status">{{ t.status }}</span></td>
-            <td class="source">{{ t.source || '-' }}</td>
-            <td class="date">{{ fmtDate(t.created_at) }}</td>
+            <td class="col-month source">{{ t.target_month || '-' }}</td>
+            <td class="col-source source">{{ t.source || '-' }}</td>
+            <td class="col-date date">{{ fmtDate(t.created_at) }}</td>
           </tr>
         </tbody>
       </table>
@@ -304,14 +396,26 @@ textarea.form-input { resize: vertical; min-height: 70px; }
         </div>
 
         <div class="form-group">
-          <label class="form-label">우선순위</label>
+          <label class="form-label">분류 *</label>
           <div class="radio-group">
-            <button v-for="p in priorities" :key="p"
-              class="radio-btn" :class="form.priority===p ? 'sel-'+p : ''"
-              @click="form.priority=p">{{ p }}</button>
+            <button v-for="c in categories" :key="c"
+              class="radio-btn" :class="form.category===c ? 'sel-'+c : ''"
+              @click="form.category=c">{{ c }}</button>
           </div>
-          <div style="margin-top:6px;font-size:11px;color:var(--text3)">
-            P0 긴급(수일) · P1 높음(1주) · P2 보통(2주) · P3 여유
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">우선순위</label>
+            <div class="radio-group">
+              <button v-for="p in priorities" :key="p"
+                class="radio-btn" :class="form.priority===p ? 'sel-'+p : ''"
+                @click="form.priority=p">{{ p }}</button>
+            </div>
+          </div>
+          <div class="form-group">
+            <label class="form-label">대상월</label>
+            <input class="form-input" type="month" v-model="form.target_month">
           </div>
         </div>
 
@@ -331,6 +435,10 @@ textarea.form-input { resize: vertical; min-height: 70px; }
               class="radio-btn" :class="{sel: form.source===src}"
               @click="form.source=src">{{ src }}</button>
           </div>
+        </div>
+
+        <div style="font-size:11px;color:var(--text3);margin-top:4px">
+          P0 긴급(수일) · P1 높음(1주) · P2 보통(2주) · P3 여유
         </div>
 
         <div class="modal-actions">
@@ -359,37 +467,77 @@ createApp({
 
     const tasks = ref([])
     const loading = ref(false)
+    const catFilter = ref('')
     const statusFilter = ref('')
+    const monthFilter = ref('')
     const showModal = ref(false)
     const saving = ref(false)
     const editing = ref(null)
 
+    const categories = ['설계사','관리자','사용자','복합','기타']
     const priorities = ['P0','P1','P2','P3']
     const statuses = ['요청','진행중','완료','테스트완료','테스트실패','보류']
     const sources = ['카톡','회의','직접입력','기타']
 
-    const form = ref({ title:'', description:'', priority:'P1', status:'요청', source:'카톡' })
+    const defaultForm = { title:'', description:'', priority:'P2', status:'요청', source:'회의', category:'기타', target_month:'' }
+    const form = ref({ ...defaultForm })
 
     const openCount = computed(() => tasks.value.filter(t => !['완료','테스트완료'].includes(t.status)).length)
     const doneCount = computed(() => tasks.value.filter(t => ['완료','테스트완료'].includes(t.status)).length)
 
-    const statusFilters = computed(() => {
+    const catFilteredTasks = computed(() => {
+      if (!catFilter.value) return tasks.value
+      return tasks.value.filter(t => t.category === catFilter.value)
+    })
+
+    const categoryTabs = computed(() => {
       const c = {}
-      tasks.value.forEach(t => c[t.status] = (c[t.status]||0)+1)
+      tasks.value.forEach(t => c[t.category] = (c[t.category]||0)+1)
       return [
         { value:'', label:'전체', count: tasks.value.length },
+        ...categories.filter(cat => c[cat]).map(cat => ({ value:cat, label:cat, count:c[cat]||0 }))
+      ]
+    })
+
+    const statusFilters = computed(() => {
+      const base = catFilteredTasks.value
+      const c = {}
+      base.forEach(t => c[t.status] = (c[t.status]||0)+1)
+      return [
+        { value:'', label:'전체', count: base.length },
         ...statuses.filter(s => c[s]).map(s => ({ value:s, label:s, count:c[s]||0 }))
       ]
     })
 
     const filteredTasks = computed(() => {
-      let list = statusFilter.value ? tasks.value.filter(t => t.status === statusFilter.value) : tasks.value
+      let list = catFilteredTasks.value
+      if (statusFilter.value) list = list.filter(t => t.status === statusFilter.value)
+      if (monthFilter.value) list = list.filter(t => t.target_month === monthFilter.value)
       return [...list].sort((a,b) => {
         const pi = priorities.indexOf(a.priority) - priorities.indexOf(b.priority)
         if (pi !== 0) return pi
         return new Date(b.created_at) - new Date(a.created_at)
       })
     })
+
+    function currentMonth() {
+      const d = new Date()
+      return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0')
+    }
+
+    function prevMonth() {
+      if (!monthFilter.value) { monthFilter.value = currentMonth() }
+      const [y, m] = monthFilter.value.split('-').map(Number)
+      const d = new Date(y, m - 2, 1)
+      monthFilter.value = d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0')
+    }
+    function nextMonth() {
+      if (!monthFilter.value) { monthFilter.value = currentMonth() }
+      const [y, m] = monthFilter.value.split('-').map(Number)
+      const d = new Date(y, m, 1)
+      monthFilter.value = d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0')
+    }
+    function toggleMonthAll() { monthFilter.value = monthFilter.value ? '' : currentMonth() }
 
     function headers() { return { Authorization: 'Bearer ' + token.value, Accept: 'application/json', 'Content-Type': 'application/json' } }
 
@@ -428,9 +576,17 @@ createApp({
     function openModal(task) {
       editing.value = task
       if (task) {
-        form.value = { title:task.title, description:task.description||'', priority:task.priority, status:task.status, source:task.source||'카톡' }
+        form.value = {
+          title: task.title,
+          description: task.description || '',
+          priority: task.priority,
+          status: task.status,
+          source: task.source || '카톡',
+          category: task.category || '기타',
+          target_month: task.target_month || ''
+        }
       } else {
-        form.value = { title:'', description:'', priority:'P1', status:'요청', source:'카톡' }
+        form.value = { ...defaultForm, category: catFilter.value || '기타' }
       }
       showModal.value = true
     }
@@ -439,11 +595,21 @@ createApp({
       if (!form.value.title.trim()) return
       saving.value = true
       try {
-        const body = { ...form.value, title: form.value.title.trim(), description: form.value.description.trim() || null }
+        const body = {
+          ...form.value,
+          title: form.value.title.trim(),
+          description: form.value.description.trim() || null,
+          target_month: form.value.target_month || null
+        }
         const url = editing.value ? API+'/admin/maintenance-tasks/'+editing.value.id : API+'/admin/maintenance-tasks'
         const method = editing.value ? 'PUT' : 'POST'
         const res = await fetch(url, { method, headers: headers(), body: JSON.stringify(body) })
         if (res.status === 401) { doLogout(); return }
+        if (!res.ok) {
+          const err = await res.json()
+          alert(err.message || '저장 실패')
+          return
+        }
         showModal.value = false
         loadTasks()
       } catch(e) { console.error(e) }
@@ -462,6 +628,7 @@ createApp({
     }
 
     function fmtDate(iso) {
+      if (!iso) return '-'
       const d = new Date(iso)
       return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')
     }
@@ -470,9 +637,11 @@ createApp({
 
     return {
       token, loginForm, loginLoading, loginError, doLogin, doLogout,
-      tasks, loading, statusFilter, showModal, saving, editing, form,
-      priorities, statuses, sources,
-      openCount, doneCount, statusFilters, filteredTasks,
+      tasks, loading, catFilter, statusFilter, monthFilter,
+      showModal, saving, editing, form,
+      categories, priorities, statuses, sources,
+      openCount, doneCount, categoryTabs, statusFilters, filteredTasks,
+      prevMonth, nextMonth, toggleMonthAll,
       openModal, doSave, doDelete, fmtDate
     }
   }

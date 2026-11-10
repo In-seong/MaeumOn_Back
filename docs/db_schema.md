@@ -1552,10 +1552,12 @@ FaxClientNC 연동용 테이블. **테이블명 반드시 대문자 유지**.
 | priority | enum('P0','P1','P2','P3') | NO | | 'P1' | P0:긴급(수일내), P1:높음(1주), P2:보통(2주), P3:낮음(여유) |
 | status | enum('요청','진행중','완료','테스트완료','테스트실패','보류') | NO | | '요청' | 작업 상태 |
 | source | enum('카톡','회의','직접입력','기타') | YES | | NULL | 요청 경로 |
+| category | enum('설계사','관리자','사용자','복합','기타') | NO | | '기타' | 분류 |
+| target_month | varchar(7) | YES | | NULL | 대상월 (YYYY-MM) |
 | completed_at | timestamp | YES | | NULL | 완료 일시 |
 | created_at | timestamp | YES | | NULL | |
 | updated_at | timestamp | YES | | NULL | |
 
-**인덱스**: `idx_maintenance_tasks_status` (status), `idx_maintenance_tasks_priority` (priority)
+**인덱스**: `idx_maintenance_tasks_status` (status), `idx_maintenance_tasks_priority` (priority), `idx_maintenance_tasks_category` (category), `idx_maintenance_tasks_target_month` (target_month)
 **Model**: `App\Models\MaintenanceTask` ✅
-**변경 이력**: 2026-11-10 유지보수 요청 관리 기능 신규 추가
+**변경 이력**: 2026-11-10 유지보수 요청 관리 기능 신규 추가, category/target_month 컬럼 추가
