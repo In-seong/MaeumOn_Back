@@ -408,6 +408,8 @@ class CodefApiService
             'extraInfo_keys' => is_array($extraInfo) ? array_keys($extraInfo) : 'not_array',
             'commSimpleAuth' => $extraInfo['commSimpleAuth'] ?? 'N/A',
             'method' => $responseData['method'] ?? 'N/A',
+            'secureNoImage_in_data' => isset($responseData['secureNoImage']) ? 'yes(len=' . strlen($responseData['secureNoImage']) . ')' : 'no',
+            'secureNoImage_in_extra' => isset($extraInfo['secureNoImage']) ? 'yes(len=' . strlen($extraInfo['secureNoImage']) . ')' : 'no',
         ]);
 
         if (!$continue2Way) {
