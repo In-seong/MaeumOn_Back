@@ -275,6 +275,7 @@ class InsuranceContractService
 
     /**
      * 보험사명으로 company_id 찾기 (없으면 자동 생성)
+     * CODEF 정식명("한화생명보험")과 DB 약칭("한화생명") 유사 매칭 지원
      */
     private function resolveCompanyId(string $companyName): ?int
     {
@@ -282,18 +283,50 @@ class InsuranceContractService
             return null;
         }
 
+        // 1) 정확히 일치
         $company = InsuranceCompany::where('company_name', $companyName)->first();
-
         if ($company) {
             return $company->company_id;
         }
 
-        // 자동 생성
-        Log::info('CODEF: 신규 보험사 자동 생성', ['company_name' => $companyName]);
+        // 2) 유사 매칭: CODEF 정식명에서 약칭 보험사를 포함하는지 확인
+        //    예: "한화생명보험" LIKE "%한화생명%" → ID 2
+        $fuzzy = InsuranceCompany::whereRaw('? LIKE CONCAT("%", company_name, "%")', [$companyName])
+            ->where('is_active', 1)
+            ->orderByRaw('CHAR_LENGTH(company_name) DESC')
+            ->first();
+
+        if ($fuzzy) {
+            Log::info('CODEF: 보험사 유사 매칭', [
+                'codef_name' => $companyName,
+                'matched' => $fuzzy->company_name,
+                'company_id' => $fuzzy->company_id,
+            ]);
+            return $fuzzy->company_id;
+        }
+
+        // 3) 역방향: DB 보험사명이 CODEF명에 포함되는지
+        //    예: "우정사업본부" vs "우체국보험" — 이 경우는 매칭 안 됨, 매핑 테이블 필요시 추가
+        $reverse = InsuranceCompany::whereRaw('company_name LIKE CONCAT("%", ?, "%")', [$companyName])
+            ->where('is_active', 1)
+            ->orderByRaw('CHAR_LENGTH(company_name) DESC')
+            ->first();
+
+        if ($reverse) {
+            Log::info('CODEF: 보험사 역방향 매칭', [
+                'codef_name' => $companyName,
+                'matched' => $reverse->company_name,
+                'company_id' => $reverse->company_id,
+            ]);
+            return $reverse->company_id;
+        }
+
+        // 4) 매칭 실패 → 자동 생성 (is_active=0으로 앱 목록에 노출 안 됨)
+        Log::warning('CODEF: 매칭 실패, 신규 보험사 자동 생성 (비활성)', ['company_name' => $companyName]);
 
         $newCompany = InsuranceCompany::create([
             'company_name' => $companyName,
-            'is_active' => 1,
+            'is_active' => 0,
         ]);
 
         return $newCompany->company_id;
