@@ -11,6 +11,7 @@ use App\Models\CalendarEvent;
 use App\Models\ClaimRequest;
 use App\Models\Consultation;
 use App\Models\Contract;
+use App\Models\CorporateInquiry;
 use App\Models\Customer;
 use App\Models\CustomerAssignment;
 use App\Models\CustomerStatus;
@@ -421,7 +422,17 @@ class AdminAgentController extends Controller
                     ->update(['assigned_agent_id' => $toAgentId]);
             }
 
-            // 11. 재배분 이력 기록
+            // 11. 기업보험 문의
+            $counts['corporate_inquiries'] = CorporateInquiry::where('agent_id', $fromAgentId)
+                ->update(['agent_id' => $toAgentId]);
+
+            // 12. 불만접수
+            $counts['complaints'] = DB::table('complaint')
+                ->where('assignee_agent_id', $fromAgentId)
+                ->whereIn('customer_id', $validCustomerIds)
+                ->update(['assignee_agent_id' => $toAgentId]);
+
+            // 13. 재배분 이력 기록
             $now = now();
             foreach ($validCustomerIds as $customerId) {
                 CustomerAssignment::create([
