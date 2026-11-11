@@ -2,7 +2,7 @@
 
 > **최종 업데이트**: 2026-11-10
 > **DB**: MySQL (MariaDB)
-> **총 테이블**: 72개 (비즈니스 64개 + Laravel 시스템 8개)
+> **총 테이블**: 73개 (비즈니스 65개 + Laravel 시스템 8개)
 
 ---
 
@@ -12,7 +12,7 @@
 2. [보험/계약](#2-보험계약) — insurance_company, insurance, contract
 3. [보험청구](#3-보험청구) — insurance_claim, claim_form, form_page, form_field, claim_field_value, supporting_document, claim_document
 4. [건강/의료](#4-건강의료) — medical_record, health_checkup, health_external_account, health_prediction, disclosure_obligation
-5. [고객 관리](#5-고객-관리) — customer_status, customer_assignment, memo, consultation, complaint
+5. [고객 관리](#5-고객-관리) — customer_status, customer_assignment, assignment_log, memo, consultation, complaint
 6. [커뮤니케이션](#6-커뮤니케이션) — message, notification, notice, satisfaction_survey
 7. [실적/통계](#7-실적통계) — performance
 8. [병원 혜택](#8-병원-혜택) — partner_hospital, hospital_benefit, benefit_usage
@@ -628,6 +628,24 @@ DB 배분 (고객 배정).
 | updated_by_id | char(8) | YES | | | |
 | created_at | datetime | NO | | CURRENT_TIMESTAMP | |
 | updated_at | datetime | YES | | CURRENT_TIMESTAMP ON UPDATE | |
+
+### assignment_log
+
+DB 배분/회수 이력 로그.
+
+| 컬럼 | 타입 | NULL | Key | Default | 비고 |
+|------|------|------|-----|---------|------|
+| id | bigint unsigned | NO | PRI | auto_increment | |
+| action | enum('assign','recall') | NO | MUL | | 배분/회수 |
+| customer_id | char(8) | NO | MUL | | → customer FK |
+| agent_id | char(8) | NO | MUL | | → agent FK |
+| admin_id | char(8) | YES | | NULL | 실행 관리자 |
+| assignment_id | int(11) | YES | | NULL | → customer_assignment FK |
+| reason | varchar(500) | YES | | NULL | 회수 사유 |
+| created_at | datetime | NO | MUL | CURRENT_TIMESTAMP | |
+
+- **Model**: `AssignmentLog` ✅
+- **용도**: 배분/회수 통계, 감사 추적
 
 ### memo
 

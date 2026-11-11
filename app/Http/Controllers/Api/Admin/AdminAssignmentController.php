@@ -9,6 +9,7 @@ use App\Models\Customer;
 use App\Models\Agent;
 use App\Models\CustomerAssignment;
 use App\Models\DistributionQueue;
+use App\Models\AssignmentLog;
 use App\Models\Notification;
 use App\Services\FcmService;
 use Illuminate\Http\JsonResponse;
@@ -92,6 +93,15 @@ class AdminAssignmentController extends Controller
 
             $customer->update(['agent_id' => $agent->agent_id]);
 
+            AssignmentLog::create([
+                'action' => 'assign',
+                'customer_id' => $customer->customer_id,
+                'agent_id' => $agent->agent_id,
+                'admin_id' => $adminId,
+                'assignment_id' => $assignment->assignment_id,
+                'created_at' => now(),
+            ]);
+
             DistributionQueue::where('customer_id', $customer->customer_id)
                 ->whereIn('status', ['pending', 'assigned'])
                 ->update(['status' => 'completed', 'viewed_at' => now()]);
@@ -160,7 +170,7 @@ class AdminAssignmentController extends Controller
                     continue;
                 }
 
-                CustomerAssignment::create([
+                $bulkAssignment = CustomerAssignment::create([
                     'customer_id' => $customer->customer_id,
                     'agent_id' => $agent->agent_id,
                     'admin_id' => $adminId,
@@ -171,6 +181,15 @@ class AdminAssignmentController extends Controller
                 ]);
 
                 $customer->update(['agent_id' => $agent->agent_id]);
+
+                AssignmentLog::create([
+                    'action' => 'assign',
+                    'customer_id' => $customer->customer_id,
+                    'agent_id' => $agent->agent_id,
+                    'admin_id' => $adminId,
+                    'assignment_id' => $bulkAssignment->assignment_id,
+                    'created_at' => now(),
+                ]);
 
                 DistributionQueue::where('customer_id', $customer->customer_id)
                     ->whereIn('status', ['pending', 'assigned'])
@@ -252,6 +271,16 @@ class AdminAssignmentController extends Controller
             if ($customer) {
                 $customer->update(['agent_id' => null]);
             }
+
+            AssignmentLog::create([
+                'action' => 'recall',
+                'customer_id' => $assignment->customer_id,
+                'agent_id' => $agentId,
+                'admin_id' => $adminId,
+                'assignment_id' => $assignment->assignment_id,
+                'reason' => $recallReason ?: null,
+                'created_at' => now(),
+            ]);
 
             $assignment->delete();
 
