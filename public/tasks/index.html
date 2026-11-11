@@ -514,22 +514,23 @@ textarea.form-input { resize: vertical; min-height: 70px; }
           <textarea class="form-input" v-model="form.description" maxlength="2000" placeholder="상세 내용 (선택)" rows="3"></textarea>
         </div>
 
-        <div v-if="editing" class="form-group img-section">
+        <div class="form-group img-section">
           <label class="form-label">첨부 이미지</label>
           <div class="img-grid">
-            <div v-for="(url, idx) in (editing.images||[])" :key="idx" class="img-thumb" @click.stop="lightboxUrl=url">
+            <div v-for="(url, idx) in (editing ? (editing.images||[]) : [])" :key="'s'+idx" class="img-thumb" @click.stop="lightboxUrl=url">
               <img :src="url" alt="">
               <button class="del-btn" @click.stop="doDeleteImage(url)" title="삭제">&times;</button>
+            </div>
+            <div v-for="(f, idx) in pendingFiles" :key="'p'+idx" class="img-thumb">
+              <img :src="f.preview" alt="">
+              <button class="del-btn" @click.stop="removePending(idx)" title="제거">&times;</button>
             </div>
             <label class="img-upload-btn">
               <span class="material-symbols-outlined">add_photo_alternate</span>
               <span>{{ imgUploading ? '...' : '추가' }}</span>
-              <input type="file" accept="image/*" multiple hidden @change="doUploadImages($event)">
+              <input type="file" accept="image/*" multiple hidden @change="onFileSelect($event)">
             </label>
           </div>
-        </div>
-        <div v-if="!editing" class="form-group" style="font-size:12px;color:var(--text3)">
-          💡 저장 후 수정 화면에서 이미지를 첨부할 수 있습니다.
         </div>
 
         <div class="form-group">
@@ -615,6 +616,7 @@ createApp({
     const perPage = ref(20)
     const imgUploading = ref(false)
     const lightboxUrl = ref('')
+    const pendingFiles = ref([])
 
     const categories = ['설계사','관리자','사용자','복합','기타']
     const priorities = ['P0','P1','P2','P3']
@@ -750,6 +752,8 @@ createApp({
 
     function openModal(task) {
       editing.value = task
+      pendingFiles.value.forEach(f => URL.revokeObjectURL(f.preview))
+      pendingFiles.value = []
       if (task) {
         form.value = {
           title: task.title,
@@ -776,15 +780,21 @@ createApp({
           description: form.value.description.trim() || null,
           target_month: form.value.target_month || null
         }
+        const isNew = !editing.value
         const url = editing.value ? API+'/admin/maintenance-tasks/'+editing.value.id : API+'/admin/maintenance-tasks'
         const method = editing.value ? 'PUT' : 'POST'
         const res = await fetch(url, { method, headers: headers(), body: JSON.stringify(body) })
         if (res.status === 401) { doLogout(); return }
+        const json = await res.json()
         if (!res.ok) {
-          const err = await res.json()
-          alert(err.message || '저장 실패')
+          alert(json.message || '저장 실패')
           return
         }
+        if (isNew && pendingFiles.value.length && json.data?.id) {
+          await uploadImagesToTask(json.data.id, pendingFiles.value)
+        }
+        pendingFiles.value.forEach(f => URL.revokeObjectURL(f.preview))
+        pendingFiles.value = []
         showModal.value = false
         loadTasks()
       } catch(e) { console.error(e) }
@@ -802,29 +812,43 @@ createApp({
       finally { saving.value = false }
     }
 
-    async function doUploadImages(event) {
-      if (!editing.value) return
+    function onFileSelect(event) {
       const files = event.target.files
       if (!files || !files.length) return
+      if (editing.value) {
+        uploadImagesToTask(editing.value.id, files)
+      } else {
+        for (const file of files) {
+          pendingFiles.value.push({ file, preview: URL.createObjectURL(file) })
+        }
+      }
+      event.target.value = ''
+    }
+
+    function removePending(idx) {
+      URL.revokeObjectURL(pendingFiles.value[idx].preview)
+      pendingFiles.value.splice(idx, 1)
+    }
+
+    async function uploadImagesToTask(taskId, files) {
       imgUploading.value = true
       for (const file of files) {
         try {
           const fd = new FormData()
-          fd.append('image', file)
-          const res = await fetch(API+'/admin/maintenance-tasks/'+editing.value.id+'/upload-image', {
+          fd.append('image', file instanceof File ? file : file.file)
+          const res = await fetch(API+'/admin/maintenance-tasks/'+taskId+'/upload-image', {
             method: 'POST',
             headers: { Authorization: 'Bearer ' + token.value, Accept: 'application/json' },
             body: fd
           })
           if (res.status === 401) { doLogout(); return }
           const json = await res.json()
-          if (json.success) {
+          if (json.success && editing.value) {
             editing.value.images = json.data.images
           }
         } catch(e) { console.error(e) }
       }
       imgUploading.value = false
-      event.target.value = ''
     }
 
     async function doDeleteImage(url) {
@@ -859,7 +883,7 @@ createApp({
       prevMonth, nextMonth, toggleMonthAll,
       curPage, perPage, totalPages, pagedTasks, visiblePages,
       openModal, doSave, doDelete, fmtDate, inlineUpdate,
-      imgUploading, lightboxUrl, doUploadImages, doDeleteImage
+      imgUploading, lightboxUrl, pendingFiles, onFileSelect, removePending, doDeleteImage
     }
   }
 }).mount('#app')
