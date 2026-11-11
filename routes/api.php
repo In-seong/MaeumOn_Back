@@ -362,6 +362,8 @@ Route::middleware('auth:sanctum')->group(function () {
 
         // 유지보수 요청 관리
         Route::apiResource('maintenance-tasks', AdminMaintenanceTaskController::class)->except(['show']);
+        Route::post('maintenance-tasks/{id}/upload-image', [AdminMaintenanceTaskController::class, 'uploadImage']);
+        Route::post('maintenance-tasks/{id}/delete-image', [AdminMaintenanceTaskController::class, 'deleteImage']);
     });
 
     // 설계사 API

@@ -298,6 +298,46 @@ textarea.form-input { resize: vertical; min-height: 70px; }
 .btn-save:hover { background: var(--orange-hover); }
 .btn-save:disabled, .btn-delete:disabled { opacity: 0.5; cursor: not-allowed; }
 
+/* Images */
+.img-section { margin-top: 2px; }
+.img-grid { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
+.img-thumb {
+  position: relative; width: 80px; height: 80px; border-radius: 10px;
+  overflow: hidden; border: 1px solid var(--border); cursor: pointer;
+}
+.img-thumb img { width: 100%; height: 100%; object-fit: cover; }
+.img-thumb .del-btn {
+  position: absolute; top: 2px; right: 2px; width: 20px; height: 20px;
+  border-radius: 50%; background: rgba(0,0,0,0.6); color: #fff;
+  border: none; cursor: pointer; display: flex; align-items: center;
+  justify-content: center; font-size: 14px; line-height: 1;
+}
+.img-thumb .del-btn:hover { background: var(--red); }
+.img-upload-btn {
+  width: 80px; height: 80px; border: 2px dashed var(--border);
+  border-radius: 10px; background: var(--gray-bg); cursor: pointer;
+  display: flex; flex-direction: column; align-items: center;
+  justify-content: center; color: var(--text3); font-size: 11px;
+  transition: border-color 0.15s;
+}
+.img-upload-btn:hover { border-color: var(--orange); color: var(--orange); }
+.img-upload-btn .material-symbols-outlined { font-size: 24px; }
+.img-cnt { font-size: 11px; color: var(--orange); margin-left: 4px; font-weight: 600; }
+
+/* Lightbox */
+.lightbox {
+  position: fixed; inset: 0; z-index: 100; background: rgba(0,0,0,0.85);
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer;
+}
+.lightbox img { max-width: 92vw; max-height: 90vh; border-radius: 8px; }
+.lightbox-close {
+  position: absolute; top: 16px; right: 16px; width: 36px; height: 36px;
+  border-radius: 50%; background: rgba(255,255,255,0.2); border: none;
+  color: #fff; cursor: pointer; display: flex; align-items: center;
+  justify-content: center;
+}
+
 @media (max-width: 640px) {
   .card { overflow-x: auto; -webkit-overflow-scrolling: touch; }
   .form-row { flex-direction: column; gap: 0; }
@@ -402,7 +442,11 @@ textarea.form-input { resize: vertical; min-height: 70px; }
               </select>
             </td>
             <td class="title-cell" @click="openModal(t)">
-              <div class="title">{{ t.title }}</div>
+              <div class="title">{{ t.title }}
+                <span v-if="t.images && t.images.length" class="img-cnt">
+                  <span class="material-symbols-outlined" style="font-size:14px;vertical-align:middle">image</span>{{ t.images.length }}
+                </span>
+              </div>
               <div v-if="t.description" class="desc">{{ t.description }}</div>
             </td>
             <td>
@@ -449,6 +493,12 @@ textarea.form-input { resize: vertical; min-height: 70px; }
       <p>등록된 요청이 없습니다.</p>
     </div>
 
+    <!-- Lightbox -->
+    <div v-if="lightboxUrl" class="lightbox" @click="lightboxUrl=''">
+      <img :src="lightboxUrl" @click.stop>
+      <button class="lightbox-close" @click="lightboxUrl=''">&times;</button>
+    </div>
+
     <!-- Modal (for title/description/target_month editing + new task) -->
     <div v-if="showModal" class="overlay" @click.self="showModal=false">
       <div class="modal">
@@ -462,6 +512,24 @@ textarea.form-input { resize: vertical; min-height: 70px; }
         <div class="form-group">
           <label class="form-label">설명</label>
           <textarea class="form-input" v-model="form.description" maxlength="2000" placeholder="상세 내용 (선택)" rows="3"></textarea>
+        </div>
+
+        <div v-if="editing" class="form-group img-section">
+          <label class="form-label">첨부 이미지</label>
+          <div class="img-grid">
+            <div v-for="(url, idx) in (editing.images||[])" :key="idx" class="img-thumb" @click.stop="lightboxUrl=url">
+              <img :src="url" alt="">
+              <button class="del-btn" @click.stop="doDeleteImage(url)" title="삭제">&times;</button>
+            </div>
+            <label class="img-upload-btn">
+              <span class="material-symbols-outlined">add_photo_alternate</span>
+              <span>{{ imgUploading ? '...' : '추가' }}</span>
+              <input type="file" accept="image/*" multiple hidden @change="doUploadImages($event)">
+            </label>
+          </div>
+        </div>
+        <div v-if="!editing" class="form-group" style="font-size:12px;color:var(--text3)">
+          💡 저장 후 수정 화면에서 이미지를 첨부할 수 있습니다.
         </div>
 
         <div class="form-group">
@@ -545,6 +613,8 @@ createApp({
     const inlineSaving = ref(false)
     const curPage = ref(1)
     const perPage = ref(20)
+    const imgUploading = ref(false)
+    const lightboxUrl = ref('')
 
     const categories = ['설계사','관리자','사용자','복합','기타']
     const priorities = ['P0','P1','P2','P3']
@@ -732,6 +802,46 @@ createApp({
       finally { saving.value = false }
     }
 
+    async function doUploadImages(event) {
+      if (!editing.value) return
+      const files = event.target.files
+      if (!files || !files.length) return
+      imgUploading.value = true
+      for (const file of files) {
+        try {
+          const fd = new FormData()
+          fd.append('image', file)
+          const res = await fetch(API+'/admin/maintenance-tasks/'+editing.value.id+'/upload-image', {
+            method: 'POST',
+            headers: { Authorization: 'Bearer ' + token.value, Accept: 'application/json' },
+            body: fd
+          })
+          if (res.status === 401) { doLogout(); return }
+          const json = await res.json()
+          if (json.success) {
+            editing.value.images = json.data.images
+          }
+        } catch(e) { console.error(e) }
+      }
+      imgUploading.value = false
+      event.target.value = ''
+    }
+
+    async function doDeleteImage(url) {
+      if (!editing.value || !confirm('이 이미지를 삭제하시겠습니까?')) return
+      try {
+        const res = await fetch(API+'/admin/maintenance-tasks/'+editing.value.id+'/delete-image', {
+          method: 'POST', headers: headers(),
+          body: JSON.stringify({ url })
+        })
+        if (res.status === 401) { doLogout(); return }
+        const json = await res.json()
+        if (json.success) {
+          editing.value.images = json.data.images
+        }
+      } catch(e) { console.error(e) }
+    }
+
     function fmtDate(iso) {
       if (!iso) return '-'
       const d = new Date(iso)
@@ -748,7 +858,8 @@ createApp({
       openCount, doneCount, categoryTabs, statusFilters, filteredTasks,
       prevMonth, nextMonth, toggleMonthAll,
       curPage, perPage, totalPages, pagedTasks, visiblePages,
-      openModal, doSave, doDelete, fmtDate, inlineUpdate
+      openModal, doSave, doDelete, fmtDate, inlineUpdate,
+      imgUploading, lightboxUrl, doUploadImages, doDeleteImage
     }
   }
 }).mount('#app')

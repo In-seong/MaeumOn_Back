@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\MaintenanceTask;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
 
 class AdminMaintenanceTaskController extends Controller
 {
@@ -78,6 +79,43 @@ class AdminMaintenanceTaskController extends Controller
         $task->update($validated);
 
         return response()->json(['success' => true, 'data' => $task->fresh()]);
+    }
+
+    public function uploadImage(Request $request, int $id): JsonResponse
+    {
+        $task = MaintenanceTask::findOrFail($id);
+
+        $request->validate([
+            'image' => 'required|image|max:5120',
+        ]);
+
+        $path = $request->file('image')->store('maintenance-tasks', 's3');
+        $url = Storage::disk('s3')->url($path);
+
+        $images = $task->images ?? [];
+        $images[] = $url;
+        $task->update(['images' => $images]);
+
+        return response()->json(['success' => true, 'data' => ['url' => $url, 'images' => $images]]);
+    }
+
+    public function deleteImage(Request $request, int $id): JsonResponse
+    {
+        $task = MaintenanceTask::findOrFail($id);
+
+        $request->validate(['url' => 'required|string']);
+
+        $url = $request->input('url');
+        $images = $task->images ?? [];
+        $images = array_values(array_filter($images, fn ($img) => $img !== $url));
+        $task->update(['images' => $images]);
+
+        $parsed = parse_url($url, PHP_URL_PATH);
+        if ($parsed) {
+            Storage::disk('s3')->delete(ltrim($parsed, '/'));
+        }
+
+        return response()->json(['success' => true, 'data' => ['images' => $images]]);
     }
 
     public function destroy(int $id): JsonResponse

@@ -17,9 +17,11 @@ class MaintenanceTask extends Model
         'category',
         'target_month',
         'completed_at',
+        'images',
     ];
 
     protected $casts = [
         'completed_at' => 'datetime',
+        'images' => 'array',
     ];
 }
