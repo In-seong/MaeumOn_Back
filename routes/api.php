@@ -220,6 +220,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::apiResource('agents', AdminAgentController::class);
         Route::patch('/agents/{id}/toggle-active', [AdminAgentController::class, 'toggleActive']);
         Route::post('agents/{id}/reassign', [AdminAgentController::class, 'reassignCustomers']);
+        Route::post('agents/{id}/reassign-preview', [AdminAgentController::class, 'reassignPreview']);
 
         // DB 배분 (SFR-039)
         Route::get('/assignments', [AdminAssignmentController::class, 'index']);

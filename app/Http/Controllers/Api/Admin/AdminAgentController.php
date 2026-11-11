@@ -322,6 +322,55 @@ class AdminAgentController extends Controller
     /**
      * 고객 재배분: 특정 설계사의 고객(및 관련 데이터)을 다른 설계사에게 이관
      */
+    public function reassignPreview(Request $request, string $fromAgentId): JsonResponse
+    {
+        $validated = $request->validate([
+            'customer_ids' => 'required|array|min:1',
+            'customer_ids.*' => 'string|exists:customer,customer_id',
+        ]);
+
+        $validCustomerIds = Customer::where('agent_id', $fromAgentId)
+            ->whereIn('customer_id', $validated['customer_ids'])
+            ->pluck('customer_id')
+            ->toArray();
+
+        $counts = [];
+        $counts['customers'] = count($validCustomerIds);
+
+        $counts['claims'] = InsuranceClaim::where('agent_id', $fromAgentId)
+            ->whereIn('customer_id', $validCustomerIds)->count();
+
+        $counts['batch_claims'] = BatchClaim::where('agent_id', $fromAgentId)
+            ->whereIn('customer_id', $validCustomerIds)->count();
+
+        $counts['contracts'] = Contract::where('agent_id', $fromAgentId)
+            ->whereIn('customer_id', $validCustomerIds)->count();
+
+        $counts['consultations'] = Consultation::where('assignee_id', $fromAgentId)
+            ->whereIn('customer_id', $validCustomerIds)->count();
+
+        $counts['calendar_events'] = CalendarEvent::where('agent_id', $fromAgentId)
+            ->whereIn('customer_id', $validCustomerIds)->count();
+
+        $counts['claim_requests'] = 0;
+        $claimIds = InsuranceClaim::where('agent_id', $fromAgentId)
+            ->whereIn('customer_id', $validCustomerIds)
+            ->pluck('claim_id')->toArray();
+        if (!empty($claimIds)) {
+            $counts['claim_requests'] = ClaimRequest::where('assigned_agent_id', $fromAgentId)
+                ->whereIn('linked_claim_id', $claimIds)->count();
+        }
+
+        $counts['corporate_inquiries'] = CorporateInquiry::where('agent_id', $fromAgentId)
+            ->count();
+
+        $counts['complaints'] = DB::table('complaint')
+            ->where('assignee_agent_id', $fromAgentId)
+            ->whereIn('customer_id', $validCustomerIds)->count();
+
+        return response()->json(['success' => true, 'data' => $counts]);
+    }
+
     public function reassignCustomers(Request $request, string $fromAgentId): JsonResponse
     {
         $validated = $request->validate([
