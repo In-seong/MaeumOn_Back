@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\InsuranceCompany;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
 
 class InsuranceCompanyController extends Controller
 {
@@ -126,6 +127,35 @@ class InsuranceCompanyController extends Controller
             'success' => true,
             'data' => $company,
             'message' => '보험사 정보가 수정되었습니다.',
+        ]);
+    }
+
+    /**
+     * 관리자: 보험사 로고 업로드
+     */
+    public function uploadLogo(Request $request, int $id): JsonResponse
+    {
+        $company = InsuranceCompany::findOrFail($id);
+
+        $request->validate([
+            'logo' => 'required|image|mimes:png,jpg,jpeg,gif,svg,webp|max:2048',
+        ]);
+
+        if ($company->logo_path) {
+            Storage::disk('s3')->delete($company->logo_path);
+        }
+
+        $path = $request->file('logo')->store(
+            'insurance-company-logos',
+            's3'
+        );
+
+        $company->update(['logo_path' => $path]);
+
+        return response()->json([
+            'success' => true,
+            'data' => $company->fresh(),
+            'message' => '로고가 업로드되었습니다.',
         ]);
     }
 

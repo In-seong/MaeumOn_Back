@@ -176,6 +176,7 @@ Route::middleware('auth:sanctum')->group(function () {
 
         // 보험사 관리
         Route::apiResource('insurance-companies', InsuranceCompanyController::class);
+        Route::post('insurance-companies/{id}/logo', [InsuranceCompanyController::class, 'uploadLogo']);
 
         // 양식 템플릿 관리
         Route::apiResource('claim-forms', ClaimFormController::class);
