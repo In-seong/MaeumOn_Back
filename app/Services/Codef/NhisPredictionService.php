@@ -259,9 +259,10 @@ class NhisPredictionService
         $birthDate = $data['birthDate'] ?? $customer?->birth_date?->format('Ymd');
         $phoneNo = $data['phoneNo'] ?? $customer?->phone;
         $telecom = $data['telecom'] ?? $customer?->telecom;
+        $loginType = $data['loginType'] ?? '5';
 
-        if ($userName === null || $userName === '' || $birthDate === null || $birthDate === '' || $phoneNo === null || $phoneNo === '' || $telecom === null || $telecom === '') {
-            throw new \RuntimeException('인증정보(이름/생년월일/전화번호/통신사)를 입력해주세요.');
+        if ($userName === null || $userName === '' || $birthDate === null || $birthDate === '' || $phoneNo === null || $phoneNo === '') {
+            throw new \RuntimeException('인증정보(이름/생년월일/전화번호)를 입력해주세요.');
         }
 
         $birthDateDigits = preg_replace('/\D/', '', (string) $birthDate);
@@ -271,16 +272,20 @@ class NhisPredictionService
 
         $params = [
             'organization' => $this->organization,
-            'loginType' => '5',
+            'loginType' => $loginType,
             'loginTypeLevel' => (string) $data['loginTypeLevel'],
             'userName' => $userName,
-            // ★ NHIS 간편인증: identity = 생년월일 YYYYMMDD
             'identity' => $birthDateDigits,
             'phoneNo' => preg_replace('/\D/', '', $phoneNo),
-            'telecom' => (string) $telecom,
+            'telecom' => (string) ($telecom ?? ''),
             'id' => $customer?->customer_id ?? ($data['customer_id'] ?? null),
             'type' => (string) $linkType,
         ];
+
+        // SMS 인증: loginType="2", loginTypeLevel="1"
+        if ($loginType === '2' && ($data['loginTypeLevel'] ?? '') === '1') {
+            $params['authMethod'] = $data['authMethod'] ?? '0';
+        }
 
         // 검진일자 (선택)
         if (!empty($data['date'])) {

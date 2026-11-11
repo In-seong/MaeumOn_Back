@@ -307,8 +307,9 @@ class AgentCodefController extends Controller
         $agentId = $request->user()->agent->agent_id;
 
         $validated = $request->validate([
-            'loginTypeLevel' => 'required|string|in:1,3,4,5,6,7,8,10',
-            'telecom' => 'required|string|in:0,1,2,3,4,5',
+            'loginType' => 'nullable|string|in:2,5',
+            'loginTypeLevel' => 'required|string|in:0,1,3,4,5,6,7,8,10',
+            'telecom' => 'nullable|string|in:0,1,2,3,4,5',
             'startDate' => 'nullable|string',
             'endDate' => 'nullable|string',
             'includeSensitive' => 'nullable|boolean',
@@ -327,11 +328,12 @@ class AgentCodefController extends Controller
                 [
                     'customer' => $customer,
                     'customer_id' => $customer->customer_id,
+                    'loginType' => $validated['loginType'] ?? '5',
                     'loginTypeLevel' => $validated['loginTypeLevel'],
                     'userName' => $validated['userName'] ?? $customer->name,
                     'identity' => $validated['identity'] ?? $customer->resident_number,
                     'phoneNo' => $validated['phoneNo'] ?? $customer->phone,
-                    'telecom' => $validated['telecom'],
+                    'telecom' => $validated['telecom'] ?? $customer->telecom ?? '',
                 ],
                 $startDate,
                 $endDate,
@@ -431,8 +433,9 @@ class AgentCodefController extends Controller
         $customer = $this->resolveCustomer($request, $customerId);
 
         $validated = $request->validate([
-            'loginTypeLevel' => 'required|string|in:1,3,4,5,6,7,8,10',
-            'telecom' => 'required|string|in:0,1,2,3,4,5',
+            'loginType' => 'nullable|string|in:2,5',
+            'loginTypeLevel' => 'required|string|in:0,1,3,4,5,6,7,8,10',
+            'telecom' => 'nullable|string|in:0,1,2,3,4,5',
             'searchStartYear' => 'nullable|string|regex:/^\d{4}$/',
             'searchEndYear' => 'nullable|string|regex:/^\d{4}$/',
             'userName' => 'nullable|string',
@@ -455,11 +458,12 @@ class AgentCodefController extends Controller
             $result = $this->nhisHealthService->fetchCheckupResult([
                 'customer' => $customer,
                 'customer_id' => $customer->customer_id,
+                'loginType' => $validated['loginType'] ?? '5',
                 'loginTypeLevel' => $validated['loginTypeLevel'],
                 'userName' => $validated['userName'] ?? $customer->name,
                 'birthDate' => $birthDate,
                 'phoneNo' => $validated['phoneNo'] ?? $customer->phone,
-                'telecom' => $validated['telecom'],
+                'telecom' => $validated['telecom'] ?? $customer->telecom ?? '',
                 'searchStartYear' => $validated['searchStartYear'] ?? null,
                 'searchEndYear' => $validated['searchEndYear'] ?? null,
             ]);
@@ -562,8 +566,9 @@ class AgentCodefController extends Controller
         $customer = $this->resolveCustomer($request, $customerId);
 
         $validated = $request->validate([
-            'loginTypeLevel' => 'required|string|in:1,3,4,5,6,7,8,10',
-            'telecom' => 'required|string|in:0,1,2,3,4,5',
+            'loginType' => 'nullable|string|in:2,5',
+            'loginTypeLevel' => 'required|string|in:0,1,3,4,5,6,7,8,10',
+            'telecom' => 'nullable|string|in:0,1,2,3,4,5',
             'date' => 'nullable|string',
             'userName' => 'nullable|string',
             'phoneNo' => 'nullable|string',
@@ -585,11 +590,12 @@ class AgentCodefController extends Controller
             $result = $this->predictionService->fetchHealthAge([
                 'customer' => $customer,
                 'customer_id' => $customer->customer_id,
+                'loginType' => $validated['loginType'] ?? '5',
                 'loginTypeLevel' => $validated['loginTypeLevel'],
                 'userName' => $validated['userName'] ?? $customer->name,
                 'birthDate' => $birthDate,
                 'phoneNo' => $validated['phoneNo'] ?? $customer->phone,
-                'telecom' => $validated['telecom'],
+                'telecom' => $validated['telecom'] ?? $customer->telecom ?? '',
                 'type' => '0',
                 'date' => $validated['date'] ?? null,
             ]);

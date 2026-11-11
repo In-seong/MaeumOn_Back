@@ -295,22 +295,29 @@ class HiraMedicalInfoService
         $identity = $data['identity'] ?? $customer?->resident_number;
         $phoneNo = $data['phoneNo'] ?? $customer?->phone;
         $telecom = $data['telecom'] ?? $customer?->telecom;
+        $loginType = $data['loginType'] ?? '5';
 
-        if ($identity === null || $identity === '' || $userName === null || $userName === '' || $phoneNo === null || $phoneNo === '' || $telecom === null || $telecom === '') {
-            throw new \RuntimeException('인증정보(이름/주민번호/전화번호/통신사)를 입력해주세요.');
+        if ($identity === null || $identity === '' || $userName === null || $userName === '' || $phoneNo === null || $phoneNo === '') {
+            throw new \RuntimeException('인증정보(이름/주민번호/전화번호)를 입력해주세요.');
         }
 
-        return [
+        $params = [
             'organization' => $this->organization,
-            'loginType' => '5',
+            'loginType' => $loginType,
             'loginTypeLevel' => (string) $data['loginTypeLevel'],
             'userName' => $userName,
-            // identity는 평문 13자리 전송 (CODEF 기본 방식)
             'identity' => preg_replace('/\D/', '', $identity),
             'phoneNo' => preg_replace('/\D/', '', $phoneNo),
-            'telecom' => (string) $telecom,
+            'telecom' => (string) ($telecom ?? ''),
             'id' => $customer?->customer_id ?? ($data['customer_id'] ?? null),
         ];
+
+        // SMS 인증: loginType="2", loginTypeLevel="1"
+        if ($loginType === '2' && ($data['loginTypeLevel'] ?? '') === '1') {
+            $params['authMethod'] = $data['authMethod'] ?? '0';
+        }
+
+        return $params;
     }
 
     /**

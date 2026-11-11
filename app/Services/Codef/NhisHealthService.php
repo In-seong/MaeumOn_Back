@@ -394,33 +394,38 @@ class NhisHealthService
         /** @var Customer|null $customer */
         $customer = $data['customer'] ?? null;
 
-        // 요청값 우선, customer 폴백
         $userName = $data['userName'] ?? $customer?->name;
         $birthDate = $data['birthDate'] ?? $customer?->birth_date?->format('Ymd');
         $phoneNo = $data['phoneNo'] ?? $customer?->phone;
         $telecom = $data['telecom'] ?? $customer?->telecom;
+        $loginType = $data['loginType'] ?? '5';
 
-        if ($userName === null || $userName === '' || $birthDate === null || $birthDate === '' || $phoneNo === null || $phoneNo === '' || $telecom === null || $telecom === '') {
-            throw new \RuntimeException('인증정보(이름/생년월일/전화번호/통신사)를 입력해주세요.');
+        if ($userName === null || $userName === '' || $birthDate === null || $birthDate === '' || $phoneNo === null || $phoneNo === '') {
+            throw new \RuntimeException('인증정보(이름/생년월일/전화번호)를 입력해주세요.');
         }
 
-        // 생년월일 정규화 (YYYYMMDD 8자리)
         $birthDateDigits = preg_replace('/\D/', '', (string) $birthDate);
         if (strlen($birthDateDigits) !== 8) {
             throw new \RuntimeException('생년월일은 YYYYMMDD 8자리로 입력해주세요.');
         }
 
-        return [
+        $params = [
             'organization' => $this->organization,
-            'loginType' => '5',
+            'loginType' => $loginType,
             'loginTypeLevel' => (string) $data['loginTypeLevel'],
             'userName' => $userName,
-            // ★ NHIS 간편인증: identity = 생년월일 YYYYMMDD (주민번호 아님)
             'identity' => $birthDateDigits,
             'phoneNo' => preg_replace('/\D/', '', $phoneNo),
-            'telecom' => (string) $telecom,
+            'telecom' => (string) ($telecom ?? ''),
             'id' => $customer?->customer_id ?? ($data['customer_id'] ?? null),
         ];
+
+        // SMS 인증: loginType="2", loginTypeLevel="1"
+        if ($loginType === '2' && ($data['loginTypeLevel'] ?? '') === '1') {
+            $params['authMethod'] = $data['authMethod'] ?? '0';
+        }
+
+        return $params;
     }
 
     /**
