@@ -410,6 +410,11 @@ class CodefApiService
             'method' => $responseData['method'] ?? 'N/A',
             'secureNoImage_in_data' => isset($responseData['secureNoImage']) ? 'yes(len=' . strlen($responseData['secureNoImage']) . ')' : 'no',
             'secureNoImage_in_extra' => isset($extraInfo['secureNoImage']) ? 'yes(len=' . strlen($extraInfo['secureNoImage']) . ')' : 'no',
+            'reqSecureNo_value_type' => isset($extraInfo['reqSecureNo']) ? gettype($extraInfo['reqSecureNo']) : 'N/A',
+            'reqSecureNo_value_len' => isset($extraInfo['reqSecureNo']) ? strlen((string) $extraInfo['reqSecureNo']) : 0,
+            'reqSecureNo_value_preview' => isset($extraInfo['reqSecureNo']) ? substr((string) $extraInfo['reqSecureNo'], 0, 100) : 'N/A',
+            'reqSecureNoRefresh_value' => isset($extraInfo['reqSecureNoRefresh']) ? substr((string) $extraInfo['reqSecureNoRefresh'], 0, 100) : 'N/A',
+            'all_extraInfo_values_len' => is_array($extraInfo) ? array_map(fn($v) => strlen((string) $v), $extraInfo) : 'N/A',
         ]);
 
         if (!$continue2Way) {
