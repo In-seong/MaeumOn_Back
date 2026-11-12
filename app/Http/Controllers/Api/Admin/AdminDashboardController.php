@@ -5,10 +5,10 @@ namespace App\Http\Controllers\Api\Admin;
 use App\Http\Controllers\Controller;
 use App\Http\Traits\BranchFilterable;
 use App\Models\Agent;
-use App\Models\ClaimRequest;
 use App\Models\Consultation;
 use App\Models\Contract;
 use App\Models\Customer;
+use App\Models\CustomerAssignment;
 use App\Models\InsuranceClaim;
 use App\Models\Notice;
 use App\Models\PartnerHospital;
@@ -53,8 +53,8 @@ class AdminDashboardController extends Controller
         $newAgentQuery = Agent::where('is_active', true)->whereNull('deleted_at')
             ->whereBetween('created_at', [$start, $end]);
         $totalCustomerQuery = Customer::whereNull('deleted_at');
-        $hospitalQuery = PartnerHospital::where('is_active', true)->where('is_deleted', false);
-        $newHospitalQuery = PartnerHospital::where('is_active', true)->where('is_deleted', false)
+        $hospitalQuery = PartnerHospital::where('is_active', true);
+        $newHospitalQuery = PartnerHospital::where('is_active', true)
             ->whereBetween('created_at', [$start, $end]);
         $apiLogQuery = DB::table('codef_api_logs')
             ->whereBetween('created_at', [$start, $end]);
@@ -77,32 +77,28 @@ class AdminDashboardController extends Controller
         $contractCount = $contractQuery->count();
         $contractAmount = (int) $contractQuery->sum('contract_amount');
 
-        $dbDistributedCount = DB::table('distribution_queue')
-            ->whereBetween('created_at', [$start, $end])
-            ->count();
-        $dbAssignedCount = DB::table('distribution_queue')
-            ->whereBetween('created_at', [$start, $end])
-            ->whereNotNull('assigned_agent_id')
-            ->count();
+        $newDbCount = $newCustomerQuery->count();
 
-        $conversionRate = $dbDistributedCount > 0
-            ? round(($contractCount / $dbDistributedCount) * 100, 1)
+        $conversionRate = $newDbCount > 0
+            ? round(($contractCount / $newDbCount) * 100, 1)
             : 0;
-        $assignRate = $dbDistributedCount > 0
-            ? round(($dbAssignedCount / $dbDistributedCount) * 100, 0)
+
+        $assignedCustomerCount = CustomerAssignment::whereBetween('created_at', [$start, $end])->count();
+        $assignRate = $newDbCount > 0
+            ? round(($assignedCustomerCount / $newDbCount) * 100, 0)
             : 0;
 
         return [
             'contract_amount' => $contractAmount,
             'contract_count' => $contractCount,
-            'db_count' => $dbDistributedCount,
+            'db_count' => $newDbCount,
             'conversion_rate' => $conversionRate,
-            'new_db_count' => $newCustomerQuery->count(),
+            'new_db_count' => $newDbCount,
             'assign_complete_rate' => $assignRate,
             'active_agents' => $agentQuery->count(),
             'new_agents' => $newAgentQuery->count(),
             'total_customers' => $totalCustomerQuery->count(),
-            'new_customers' => $newCustomerQuery->count(),
+            'new_customers' => (int) Customer::whereNull('deleted_at')->whereBetween('created_at', [$start, $end])->count(),
             'hospitals' => $hospitalQuery->count(),
             'new_hospitals' => $newHospitalQuery->count(),
             'api_usage' => $apiLogQuery->count(),
@@ -184,7 +180,7 @@ class AdminDashboardController extends Controller
             WHERE a.is_active = 1 AND a.deleted_at IS NULL
             " . ($branchId !== null ? "AND a.agent_id IN (SELECT agent_id FROM agent_branch WHERE branch_id = ?)" : "") . "
             HAVING (contract_count + db_count + api_count + claim_count) > 0
-            ORDER BY contract_count DESC, claim_count DESC
+            ORDER BY (COALESCE(c.contract_count,0)*10 + COALESCE(cl.claim_count,0)*3 + COALESCE(api.api_count,0)) DESC
         ", $branchId !== null
             ? [$start->format('Y-m-d'), $end->format('Y-m-d'), $startStr, $endStr, $startStr, $endStr, $startStr, $endStr, $branchId]
             : [$start->format('Y-m-d'), $end->format('Y-m-d'), $startStr, $endStr, $startStr, $endStr, $startStr, $endStr]
