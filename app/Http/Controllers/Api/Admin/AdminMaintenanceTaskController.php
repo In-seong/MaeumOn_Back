@@ -36,6 +36,13 @@ class AdminMaintenanceTaskController extends Controller
 
         $tasks = $query->paginate($request->input('per_page', 100));
 
+        $tasks->getCollection()->transform(function ($task) {
+            if (!empty($task->images)) {
+                $task->image_urls = array_map(fn ($path) => $this->toSignedUrl($path), $task->images);
+            }
+            return $task;
+        });
+
         return response()->json(['success' => true, 'data' => $tasks]);
     }
 
@@ -90,32 +97,41 @@ class AdminMaintenanceTaskController extends Controller
         ]);
 
         $path = $request->file('image')->store('maintenance-tasks', 's3');
-        $url = Storage::disk('s3')->url($path);
 
         $images = $task->images ?? [];
-        $images[] = $url;
+        $images[] = $path;
         $task->update(['images' => $images]);
 
-        return response()->json(['success' => true, 'data' => ['url' => $url, 'images' => $images]]);
+        $imageUrls = array_map(fn ($p) => $this->toSignedUrl($p), $images);
+
+        return response()->json(['success' => true, 'data' => ['url' => $this->toSignedUrl($path), 'images' => $images, 'image_urls' => $imageUrls]]);
     }
 
     public function deleteImage(Request $request, int $id): JsonResponse
     {
         $task = MaintenanceTask::findOrFail($id);
 
-        $request->validate(['url' => 'required|string']);
+        $request->validate(['path' => 'required|string']);
 
-        $url = $request->input('url');
+        $path = $request->input('path');
         $images = $task->images ?? [];
-        $images = array_values(array_filter($images, fn ($img) => $img !== $url));
+        $images = array_values(array_filter($images, fn ($img) => $img !== $path));
         $task->update(['images' => $images]);
 
-        $parsed = parse_url($url, PHP_URL_PATH);
-        if ($parsed) {
-            Storage::disk('s3')->delete(ltrim($parsed, '/'));
-        }
+        Storage::disk('s3')->delete($path);
 
-        return response()->json(['success' => true, 'data' => ['images' => $images]]);
+        $imageUrls = array_map(fn ($p) => $this->toSignedUrl($p), $images);
+
+        return response()->json(['success' => true, 'data' => ['images' => $images, 'image_urls' => $imageUrls]]);
+    }
+
+    private function toSignedUrl(string $pathOrUrl): string
+    {
+        if (str_starts_with($pathOrUrl, 'http')) {
+            $parsed = parse_url($pathOrUrl, PHP_URL_PATH);
+            $pathOrUrl = $parsed ? ltrim($parsed, '/') : $pathOrUrl;
+        }
+        return Storage::disk('s3')->temporaryUrl($pathOrUrl, now()->addHours(2));
     }
 
     public function destroy(int $id): JsonResponse

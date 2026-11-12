@@ -517,9 +517,9 @@ textarea.form-input { resize: vertical; min-height: 70px; }
         <div class="form-group img-section">
           <label class="form-label">첨부 이미지</label>
           <div class="img-grid">
-            <div v-for="(url, idx) in (editing ? (editing.images||[]) : [])" :key="'s'+idx" class="img-thumb" @click.stop="lightboxUrl=url">
+            <div v-for="(url, idx) in (editing ? (editing.image_urls||[]) : [])" :key="'s'+idx" class="img-thumb" @click.stop="lightboxUrl=url">
               <img :src="url" alt="">
-              <button class="del-btn" @click.stop="doDeleteImage(url)" title="삭제">&times;</button>
+              <button class="del-btn" @click.stop="doDeleteImage(idx)" title="삭제">&times;</button>
             </div>
             <div v-for="(f, idx) in pendingFiles" :key="'p'+idx" class="img-thumb">
               <img :src="f.preview" alt="">
@@ -845,23 +845,27 @@ createApp({
           const json = await res.json()
           if (json.success && editing.value) {
             editing.value.images = json.data.images
+            editing.value.image_urls = json.data.image_urls
           }
         } catch(e) { console.error(e) }
       }
       imgUploading.value = false
     }
 
-    async function doDeleteImage(url) {
+    async function doDeleteImage(idx) {
       if (!editing.value || !confirm('이 이미지를 삭제하시겠습니까?')) return
+      const path = (editing.value.images || [])[idx]
+      if (!path) return
       try {
         const res = await fetch(API+'/admin/maintenance-tasks/'+editing.value.id+'/delete-image', {
           method: 'POST', headers: headers(),
-          body: JSON.stringify({ url })
+          body: JSON.stringify({ path })
         })
         if (res.status === 401) { doLogout(); return }
         const json = await res.json()
         if (json.success) {
           editing.value.images = json.data.images
+          editing.value.image_urls = json.data.image_urls
         }
       } catch(e) { console.error(e) }
     }
