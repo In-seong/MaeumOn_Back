@@ -82,9 +82,11 @@ class ClaimFormController extends Controller
             });
         }
 
-        // 활성화 필터
+        // 활성화 필터 (기본: 활성만)
         if ($request->has('is_active')) {
             $query->where('is_active', $request->boolean('is_active'));
+        } else {
+            $query->where('is_active', true);
         }
 
         $templates = $query->withCount('formFields')
@@ -265,15 +267,15 @@ class ClaimFormController extends Controller
     {
         $template = ClaimForm::findOrFail($id);
 
-        // 연관된 청구가 있는지 확인
         if ($template->insuranceClaims()->count() > 0) {
+            $template->update(['is_active' => false]);
+
             return response()->json([
-                'success' => false,
-                'message' => '이 양식으로 작성된 청구가 있어 삭제할 수 없습니다.',
-            ], 400);
+                'success' => true,
+                'message' => '연관 청구가 있어 비활성 처리되었습니다.',
+            ]);
         }
 
-        // 이미지 파일 삭제
         if ($template->template_image_path) {
             Storage::disk('s3')->delete($template->template_image_path);
         }
