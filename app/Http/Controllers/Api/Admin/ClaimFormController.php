@@ -19,7 +19,7 @@ class ClaimFormController extends Controller
     public function publicIndex(Request $request): JsonResponse
     {
         $query = ClaimForm::active()
-            ->with(['insuranceCompany:company_id,company_name,category,company_code', 'formPages'])
+            ->with(['insuranceCompany:company_id,company_name,category,company_code,logo_path', 'formPages'])
             ->select('claim_form_id', 'company_id', 'form_name', 'form_description');
 
         // 보험사 필터
@@ -66,7 +66,7 @@ class ClaimFormController extends Controller
      */
     public function index(Request $request): JsonResponse
     {
-        $query = ClaimForm::with('insuranceCompany:company_id,company_name,category,company_code,fax_number,contact_phone');
+        $query = ClaimForm::with('insuranceCompany:company_id,company_name,category,company_code,fax_number,contact_phone,logo_path');
 
         // 보험사 필터
         if ($request->has('company_id')) {
@@ -195,7 +195,7 @@ class ClaimFormController extends Controller
 
         return response()->json([
             'success' => true,
-            'data' => $template->load(['insuranceCompany:company_id,company_name,category,company_code', 'formPages']),
+            'data' => $template->load(['insuranceCompany:company_id,company_name,category,company_code,logo_path', 'formPages']),
             'message' => '양식이 등록되었습니다.',
         ], 201);
     }
@@ -206,7 +206,7 @@ class ClaimFormController extends Controller
     public function show(int $id): JsonResponse
     {
         $template = ClaimForm::with([
-            'insuranceCompany:company_id,company_name,category,company_code,fax_number,contact_phone',
+            'insuranceCompany:company_id,company_name,category,company_code,fax_number,contact_phone,logo_path',
             'formPages.formFields',
             'formFields',
         ])->findOrFail($id);
@@ -255,7 +255,7 @@ class ClaimFormController extends Controller
 
         return response()->json([
             'success' => true,
-            'data' => $template->load('insuranceCompany:company_id,company_name,category,company_code,fax_number,contact_phone'),
+            'data' => $template->load('insuranceCompany:company_id,company_name,category,company_code,fax_number,contact_phone,logo_path'),
             'message' => '양식이 수정되었습니다.',
         ]);
     }
