@@ -289,9 +289,9 @@ class ClaimFormController extends Controller
     }
 
     /**
-     * 관리자: 페이지 일괄 교체 (다중 이미지/PDF)
+     * 관리자: 페이지 추가 (다중 이미지/PDF, 기존 페이지 뒤에 이어붙임)
      */
-    public function replacePages(Request $request, int $id): JsonResponse
+    public function addPages(Request $request, int $id): JsonResponse
     {
         $template = ClaimForm::findOrFail($id);
 
@@ -305,16 +305,9 @@ class ClaimFormController extends Controller
             return response()->json(['success' => false, 'message' => '파일이 없습니다.'], 422);
         }
 
-        // 기존 페이지 이미지 S3에서 삭제
-        foreach ($template->formPages as $page) {
-            if ($page->page_image_path) {
-                Storage::disk('s3')->delete($page->page_image_path);
-            }
-        }
-        // 기존 페이지 + 필드 삭제
-        $template->formPages()->delete();
+        // 기존 마지막 페이지 번호
+        $lastPageNumber = $template->formPages()->max('page_number') ?? 0;
 
-        // 새 페이지 생성 (store()와 동일한 로직)
         $imageSources = [];
         $tempDirs = [];
         $pdfService = app(PdfToImageService::class);
@@ -332,7 +325,8 @@ class ClaimFormController extends Controller
                 }
             }
 
-            $pageNumber = 1;
+            $pageNumber = $lastPageNumber + 1;
+            $addedCount = 0;
             foreach ($imageSources as $source) {
                 $filename = "template_{$template->claim_form_id}_page_{$pageNumber}_" . time() . '_' . uniqid() . '.png';
 
@@ -354,6 +348,7 @@ class ClaimFormController extends Controller
                     'image_height' => $image->height(),
                 ]);
                 $pageNumber++;
+                $addedCount++;
             }
         } finally {
             foreach ($tempDirs as $dir) {
@@ -364,7 +359,7 @@ class ClaimFormController extends Controller
         return response()->json([
             'success' => true,
             'data' => $template->load('formPages'),
-            'message' => ($pageNumber - 1) . '페이지가 교체되었습니다.',
+            'message' => $addedCount . '페이지가 추가되었습니다. (총 ' . ($lastPageNumber + $addedCount) . '페이지)',
         ]);
     }
 
