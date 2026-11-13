@@ -6,11 +6,13 @@ use App\Http\Controllers\Controller;
 use App\Models\Agent;
 use App\Models\CalendarEvent;
 use App\Models\Consultation;
+use App\Models\Contract;
 use App\Models\Customer;
 use App\Models\CustomerAssignment;
 use App\Models\DisclosureObligation;
 use App\Models\ClaimRequest;
 use App\Models\InsuranceClaim;
+use App\Models\Notice;
 use App\Models\Notification;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -60,6 +62,181 @@ class AgentDashboardController extends Controller
                 'upcoming_obligations' => $upcomingObligations,
             ],
             'message' => '대시보드 정보를 조회했습니다.',
+        ]);
+    }
+
+    /**
+     * 설계사 대시보드 통합 조회
+     */
+    public function full(Request $request): JsonResponse
+    {
+        $agent = $request->user()->agent;
+        $agentId = $agent->agent_id;
+        $today = Carbon::today();
+        $monthStart = $today->copy()->startOfMonth();
+        $monthEnd = $today->copy()->endOfMonth();
+
+        $branch = $agent->branches()->first();
+
+        // 1. 오늘의 일정
+        $todaySchedules = CalendarEvent::where('agent_id', $agentId)
+            ->where('event_date', $today)
+            ->with('customer:customer_id,name')
+            ->orderBy('start_time')
+            ->limit(10)
+            ->get(['event_id', 'agent_id', 'customer_id', 'event_type', 'title', 'memo', 'event_date', 'start_time', 'end_time', 'is_completed']);
+
+        // 2. 이달의 실적
+        $contractsThisMonth = Contract::where('agent_id', $agentId)
+            ->whereBetween('contract_date', [$monthStart, $monthEnd])
+            ->get(['contract_id', 'contract_amount']);
+        $contractsCount = $contractsThisMonth->count();
+        $contractsAmount = (int) $contractsThisMonth->sum('contract_amount');
+
+        $dbCount = CustomerAssignment::where('agent_id', $agentId)
+            ->whereBetween('assignment_date', [$monthStart, $monthEnd])
+            ->count();
+
+        $conversionRate = $dbCount > 0 ? round(($contractsCount / $dbCount) * 100) : 0;
+
+        $newCustomers = Customer::where('agent_id', $agentId)
+            ->where('is_active', true)
+            ->whereBetween('created_at', [$monthStart, $monthEnd])
+            ->count();
+
+        $branchRank = null;
+        $branchTotal = null;
+        if ($branch) {
+            $branchAgentIds = $branch->agents()->pluck('agent.agent_id');
+            $branchTotal = $branchAgentIds->count();
+
+            $agentContractCounts = Contract::whereIn('agent_id', $branchAgentIds)
+                ->whereBetween('contract_date', [$monthStart, $monthEnd])
+                ->selectRaw('agent_id, COUNT(*) as cnt')
+                ->groupBy('agent_id')
+                ->orderByDesc('cnt')
+                ->pluck('cnt', 'agent_id');
+
+            $rank = 1;
+            $found = false;
+            foreach ($agentContractCounts as $aid => $cnt) {
+                if ($aid === $agentId) {
+                    $found = true;
+                    break;
+                }
+                $rank++;
+            }
+            $branchRank = $found ? $rank : $branchTotal;
+        }
+
+        // 3. 체크리스트
+        $unregisteredDb = ClaimRequest::where('assigned_agent_id', $agentId)
+            ->where('status', 'assigned')
+            ->count();
+
+        $incompleteClaims = InsuranceClaim::where('agent_id', $agentId)
+            ->whereIn('claim_status', ['draft', 'pending'])
+            ->count();
+
+        $pendingConsultations = Consultation::where('assignee_id', $agentId)
+            ->where('consultation_status', 'pending')
+            ->count();
+
+        // 4. DB 배분 내역 (최근 10건)
+        $dbDistributions = CustomerAssignment::where('agent_id', $agentId)
+            ->with('customer:customer_id,name,phone,hospital')
+            ->orderByDesc('assignment_date')
+            ->limit(10)
+            ->get()
+            ->map(fn ($a) => [
+                'assignment_id' => $a->assignment_id,
+                'assignment_date' => $a->assignment_date?->format('Y-m-d'),
+                'deadline' => $a->assignment_date ? $a->assignment_date->copy()->addDays(3)->format('Y-m-d') : null,
+                'customer_name' => $a->customer->name ?? '-',
+                'customer_phone' => $a->customer->phone ?? '-',
+                'hospital' => $a->customer->hospital ?? '-',
+                'customer_id' => $a->customer_id,
+            ]);
+
+        // 5. 고객 관리 알림 — 갱신예정 (30일 이내)
+        $renewals = Contract::where('agent_id', $agentId)
+            ->where('expiration_date', '>=', $today)
+            ->where('expiration_date', '<=', $today->copy()->addDays(30))
+            ->with('customer:customer_id,name')
+            ->orderBy('expiration_date')
+            ->limit(5)
+            ->get()
+            ->map(fn ($c) => [
+                'type' => 'renewal',
+                'customer_name' => $c->customer->name ?? '-',
+                'customer_id' => $c->customer_id,
+                'date' => $c->expiration_date?->format('Y-m-d'),
+                'label' => $c->insurance_product ?? '보험 갱신',
+            ]);
+
+        // 5-2. 생일 (7일 이내)
+        $birthdayDates = [];
+        for ($i = 0; $i <= 7; $i++) {
+            $birthdayDates[] = $today->copy()->addDays($i)->format('m-d');
+        }
+        $birthdays = Customer::where('agent_id', $agentId)
+            ->where('is_active', true)
+            ->whereNotNull('birth_date')
+            ->whereRaw("DATE_FORMAT(birth_date, '%m-%d') IN (" . implode(',', array_fill(0, count($birthdayDates), '?')) . ")", $birthdayDates)
+            ->select('customer_id', 'name', 'birth_date')
+            ->limit(10)
+            ->get()
+            ->map(fn ($c) => [
+                'type' => 'birthday',
+                'customer_name' => $c->name,
+                'customer_id' => $c->customer_id,
+                'date' => $c->birth_date?->format('Y-m-d'),
+                'label' => '생일',
+            ]);
+
+        // 6. 공지·교육
+        $notices = Notice::where(function ($q) use ($branch) {
+                $q->whereNull('branch_id');
+                if ($branch) {
+                    $q->orWhere('branch_id', $branch->branch_id);
+                }
+            })
+            ->where(function ($q) use ($today) {
+                $q->where(fn ($q2) => $q2->whereNull('display_start_date')->orWhere('display_start_date', '<=', $today));
+                $q->where(fn ($q2) => $q2->whereNull('display_end_date')->orWhere('display_end_date', '>=', $today));
+            })
+            ->orderByDesc('is_pinned')
+            ->orderByDesc('created_at')
+            ->limit(5)
+            ->get(['notice_id', 'title', 'notice_type', 'is_pinned', 'created_at']);
+
+        return response()->json([
+            'success' => true,
+            'data' => [
+                'header' => [
+                    'agent_name' => $agent->name,
+                    'branch_name' => $branch->branch_name ?? '',
+                    'today' => $today->format('Y-m-d'),
+                ],
+                'today_schedules' => $todaySchedules,
+                'performance' => [
+                    'contracts_count' => $contractsCount,
+                    'contracts_amount' => $contractsAmount,
+                    'db_count' => $dbCount,
+                    'conversion_rate' => $conversionRate,
+                    'new_customers' => $newCustomers,
+                    'branch_rank' => $branchRank,
+                    'branch_total' => $branchTotal,
+                ],
+                'checklist' => [
+                    'unregistered_db' => $unregisteredDb,
+                    'incomplete_claims' => $incompleteClaims,
+                    'pending_consultations' => $pendingConsultations,
+                ],
+                'db_distributions' => $dbDistributions,
+                'customer_alerts' => $renewals->concat($birthdays)->sortBy('date')->values(),
+                'notices' => $notices,
+            ],
         ]);
     }
 

@@ -372,6 +372,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::prefix('agent')->middleware('role:AGENT')->group(function () {
         // 대시보드
         Route::get('/dashboard', [AgentDashboardController::class, 'index']);
+        Route::get('/dashboard/full', [AgentDashboardController::class, 'full']);
         Route::get('/dashboard/today-tasks', [AgentDashboardController::class, 'todayTasks']);
         Route::get('/profile', [AgentDashboardController::class, 'profile']);
         Route::put('/profile', [AgentDashboardController::class, 'updateProfile']);
