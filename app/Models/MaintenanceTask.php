@@ -13,6 +13,7 @@ class MaintenanceTask extends Model
         'description',
         'priority',
         'status',
+        'status_reason',
         'source',
         'category',
         'target_month',
