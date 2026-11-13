@@ -154,11 +154,18 @@ class AgentClaimController extends Controller
             ], 400);
         }
 
+        // 자동이체 계좌 수령 체크 시 계좌 필드 검증 스킵
+        $skipFieldCodes = $this->getAutoTransferSkipCodes($claimForm, collect($validated['fields']));
+
         // 필수 필드 검증
         $requiredFields = $claimForm->formFields->where('is_required', true);
         $inputFieldIds = collect($validated['fields'])->pluck('form_field_id')->toArray();
 
         foreach ($requiredFields as $requiredField) {
+            if (in_array($requiredField->standard_field_code, $skipFieldCodes, true)) {
+                continue;
+            }
+
             if (!in_array($requiredField->form_field_id, $inputFieldIds)) {
                 return response()->json([
                     'success' => false,
@@ -279,10 +286,15 @@ class AgentClaimController extends Controller
 
         // 필수 필드 검증
         $claimForm = $claim->claimForm()->with('formFields')->first();
+        $skipFieldCodes = $this->getAutoTransferSkipCodes($claimForm, collect($validated['fields']));
         $requiredFields = $claimForm->formFields->where('is_required', true);
         $inputFieldIds = collect($validated['fields'])->pluck('form_field_id')->toArray();
 
         foreach ($requiredFields as $requiredField) {
+            if (in_array($requiredField->standard_field_code, $skipFieldCodes, true)) {
+                continue;
+            }
+
             if (!in_array($requiredField->form_field_id, $inputFieldIds)) {
                 return response()->json([
                     'success' => false,
@@ -833,7 +845,14 @@ class AgentClaimController extends Controller
         $fieldValues = $claim->fieldValues()->get();
         $inputFieldIds = $fieldValues->pluck('form_field_id')->toArray();
 
+        // 자동이체 계좌 수령 체크 시 계좌 필드 검증 스킵
+        $skipFieldCodes = $this->getAutoTransferSkipCodesFromDb($claimForm, $fieldValues);
+
         foreach ($requiredFields as $requiredField) {
+            if (in_array($requiredField->standard_field_code, $skipFieldCodes, true)) {
+                continue;
+            }
+
             if (!in_array($requiredField->form_field_id, $inputFieldIds)) {
                 return response()->json([
                     'success' => false,
@@ -1116,5 +1135,31 @@ class AgentClaimController extends Controller
             'email' => $customerData['email'],
             'is_active' => true,
         ], fn($v) => $v !== null));
+    }
+
+    private const ACCOUNT_SKIP_CODES = ['BANK_NAME', 'ACCOUNT_NUMBER', 'ACCOUNT_HOLDER', 'ACCOUNT_HOLDER_RRN'];
+
+    private function getAutoTransferSkipCodes($claimForm, $inputFields): array
+    {
+        $atField = $claimForm->formFields->firstWhere('standard_field_code', 'AUTO_TRANSFER_ACCOUNT');
+        if (!$atField) return [];
+
+        $atInput = $inputFields->firstWhere('form_field_id', $atField->form_field_id);
+        $atValue = is_array($atInput) ? ($atInput['field_value'] ?? '') : ($atInput->field_value ?? '');
+        if (empty($atValue) || $atValue === '[]') return [];
+
+        return self::ACCOUNT_SKIP_CODES;
+    }
+
+    private function getAutoTransferSkipCodesFromDb($claimForm, $fieldValues): array
+    {
+        $atField = $claimForm->formFields->firstWhere('standard_field_code', 'AUTO_TRANSFER_ACCOUNT');
+        if (!$atField) return [];
+
+        $atRecord = $fieldValues->firstWhere('form_field_id', $atField->form_field_id);
+        $atValue = $atRecord->field_value ?? '';
+        if (empty($atValue) || $atValue === '[]') return [];
+
+        return self::ACCOUNT_SKIP_CODES;
     }
 }
