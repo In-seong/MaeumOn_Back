@@ -289,6 +289,86 @@ class ClaimFormController extends Controller
     }
 
     /**
+     * 관리자: 페이지 일괄 교체 (다중 이미지/PDF)
+     */
+    public function replacePages(Request $request, int $id): JsonResponse
+    {
+        $template = ClaimForm::findOrFail($id);
+
+        $request->validate([
+            'images' => 'required|array|min:1',
+            'images.*' => 'file|mimes:jpeg,png,jpg,pdf|max:20480',
+        ]);
+
+        $uploadedFiles = $request->file('images');
+        if (!$uploadedFiles || !is_array($uploadedFiles)) {
+            return response()->json(['success' => false, 'message' => '파일이 없습니다.'], 422);
+        }
+
+        // 기존 페이지 이미지 S3에서 삭제
+        foreach ($template->formPages as $page) {
+            if ($page->page_image_path) {
+                Storage::disk('s3')->delete($page->page_image_path);
+            }
+        }
+        // 기존 페이지 + 필드 삭제
+        $template->formPages()->delete();
+
+        // 새 페이지 생성 (store()와 동일한 로직)
+        $imageSources = [];
+        $tempDirs = [];
+        $pdfService = app(PdfToImageService::class);
+
+        try {
+            foreach ($uploadedFiles as $file) {
+                if ($file->getClientOriginalExtension() === 'pdf') {
+                    $result = $pdfService->convertToImages($file->path());
+                    $tempDirs[] = $result['tempDir'];
+                    foreach ($result['images'] as $pngPath) {
+                        $imageSources[] = ['type' => 'path', 'path' => $pngPath];
+                    }
+                } else {
+                    $imageSources[] = ['type' => 'uploaded', 'file' => $file];
+                }
+            }
+
+            $pageNumber = 1;
+            foreach ($imageSources as $source) {
+                $filename = "template_{$template->claim_form_id}_page_{$pageNumber}_" . time() . '_' . uniqid() . '.png';
+
+                if ($source['type'] === 'uploaded') {
+                    $ext = $source['file']->getClientOriginalExtension();
+                    $filename = "template_{$template->claim_form_id}_page_{$pageNumber}_" . time() . '_' . uniqid() . '.' . $ext;
+                    $path = $source['file']->storeAs('templates', $filename, 's3');
+                    $image = Image::read($source['file']->path());
+                } else {
+                    Storage::disk('s3')->put("templates/{$filename}", file_get_contents($source['path']));
+                    $path = "templates/{$filename}";
+                    $image = Image::read($source['path']);
+                }
+
+                $template->formPages()->create([
+                    'page_number' => $pageNumber,
+                    'page_image_path' => $path,
+                    'image_width' => $image->width(),
+                    'image_height' => $image->height(),
+                ]);
+                $pageNumber++;
+            }
+        } finally {
+            foreach ($tempDirs as $dir) {
+                $pdfService->cleanup($dir);
+            }
+        }
+
+        return response()->json([
+            'success' => true,
+            'data' => $template->load('formPages'),
+            'message' => ($pageNumber - 1) . '페이지가 교체되었습니다.',
+        ]);
+    }
+
+    /**
      * 관리자: 양식 이미지 업로드
      */
     public function uploadImage(Request $request, int $id): JsonResponse

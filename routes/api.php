@@ -181,6 +181,7 @@ Route::middleware('auth:sanctum')->group(function () {
         // 양식 템플릿 관리
         Route::apiResource('claim-forms', ClaimFormController::class);
         Route::post('/claim-forms/{id}/upload-image', [ClaimFormController::class, 'uploadImage']);
+        Route::post('/claim-forms/{id}/replace-pages', [ClaimFormController::class, 'replacePages']);
 
         // 페이지 관리
         Route::get('/claim-forms/{templateId}/pages', [FormPageController::class, 'index']);
