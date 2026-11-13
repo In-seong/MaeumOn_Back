@@ -416,7 +416,7 @@ textarea.form-input { resize: vertical; min-height: 70px; }
       <table>
         <thead>
           <tr>
-            <th style="width:36px">No.</th>
+            <th style="width:46px">#</th>
             <th style="width:62px">우선순위</th>
             <th style="width:62px">분류</th>
             <th>제목</th>
@@ -428,7 +428,7 @@ textarea.form-input { resize: vertical; min-height: 70px; }
         </thead>
         <tbody>
           <tr v-for="(t,i) in pagedTasks" :key="t.id" class="row">
-            <td class="source-text">{{ (curPage-1)*perPage + i + 1 }}</td>
+            <td class="source-text">#{{ t.id }}</td>
             <td>
               <select class="inline-sel" :class="'sel-'+t.priority"
                 :value="t.priority" @change="inlineUpdate(t, 'priority', $event.target.value)">
