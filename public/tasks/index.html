@@ -448,7 +448,7 @@ textarea.form-input { resize: vertical; min-height: 70px; }
                 </span>
               </div>
               <div v-if="t.description" class="desc">{{ t.description }}</div>
-              <div v-if="t.status_reason" class="desc" style="color:var(--red);margin-top:2px">사유: {{ t.status_reason }}</div>
+              <div v-if="t.status_reason" class="desc" :style="{color: t.status==='보류'||t.status==='테스트실패' ? 'var(--red)' : 'var(--blue)', marginTop:'2px'}">{{ t.status==='보류'||t.status==='테스트실패' ? '사유' : '답변' }}: {{ t.status_reason }}</div>
             </td>
             <td>
               <select class="inline-sel" :class="'sel-st-'+t.status"
@@ -567,9 +567,9 @@ textarea.form-input { resize: vertical; min-height: 70px; }
           </div>
         </div>
 
-        <div v-if="form.status==='보류'||form.status==='테스트실패'" class="form-group">
-          <label class="form-label">사유</label>
-          <textarea class="form-input" v-model="form.status_reason" maxlength="500" :placeholder="form.status==='보류' ? '보류 사유를 입력하세요' : '실패 사유를 입력하세요'" rows="2" style="font-size:13px"></textarea>
+        <div class="form-group">
+          <label class="form-label">답변/메모</label>
+          <textarea class="form-input" v-model="form.status_reason" maxlength="500" placeholder="처리 결과, 보류 사유, 안내사항 등" rows="2" style="font-size:13px"></textarea>
         </div>
 
         <div class="form-group">
@@ -785,7 +785,7 @@ createApp({
           ...form.value,
           title: form.value.title.trim(),
           description: form.value.description.trim() || null,
-          status_reason: (form.value.status==='보류'||form.value.status==='테스트실패') ? (form.value.status_reason.trim() || null) : null,
+          status_reason: form.value.status_reason.trim() || null,
           target_month: form.value.target_month || null
         }
         const isNew = !editing.value
