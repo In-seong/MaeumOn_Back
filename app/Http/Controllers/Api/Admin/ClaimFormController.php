@@ -121,12 +121,21 @@ class ClaimFormController extends Controller
             'images.*' => 'file|mimes:jpeg,png,jpg,pdf|max:20480',
         ]);
 
-        $company = InsuranceCompany::create([
-            'company_name' => $validated['company_name'],
-            'category' => $validated['category'],
-            'fax_number' => $validated['fax_number'],
-            'contact_phone' => $validated['contact_phone'] ?? null,
-        ]);
+        $company = InsuranceCompany::where('company_name', $validated['company_name'])->first();
+        if ($company) {
+            $company->update(array_filter([
+                'category' => $validated['category'],
+                'fax_number' => $validated['fax_number'],
+                'contact_phone' => $validated['contact_phone'] ?? null,
+            ]));
+        } else {
+            $company = InsuranceCompany::create([
+                'company_name' => $validated['company_name'],
+                'category' => $validated['category'],
+                'fax_number' => $validated['fax_number'],
+                'contact_phone' => $validated['contact_phone'] ?? null,
+            ]);
+        }
 
         $template = ClaimForm::create([
             'company_id' => $company->company_id,
