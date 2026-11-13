@@ -97,6 +97,7 @@
 | hire_date | date | YES | | | 입사일 |
 | resignation_date | date | YES | | | 퇴사일 |
 | is_active | tinyint(1) | NO | MUL | 1 | |
+| birthday_alarm_enabled | tinyint(1) | NO | | 1 | 생일 알림 수신 여부 |
 | created_at | datetime | NO | | CURRENT_TIMESTAMP | |
 | updated_at | datetime | YES | | CURRENT_TIMESTAMP ON UPDATE | |
 | deleted_at | timestamp | YES | | NULL | 소프트 삭제 (완전삭제 시 설정) |
@@ -1309,6 +1310,8 @@ FaxClientNC 연동용 테이블. **테이블명 반드시 대문자 유지**.
 | 2026-07-04 | codef_api_logs 테이블 신규 생성 — 설계사별 CODEF API 사용 로그 (월별 정산용). Model: CodefApiLog. 관리자 정산 API 3개 추가 (summary/logs/mark-billed) |
 | 2026-08-19 | 지사(Branch) 분리 아키텍처 Phase 1: branch 테이블 신규 (Model: Branch), agent_branch 중간 테이블 신규 (설계사-지사 N:N). admin에 branch_id/admin_role 컬럼 추가. notice에 branch_id 추가. performance에 branch_id 추가. Admin/Agent/Notice/Performance 모델 업데이트. AdminBranchController, AdminAccountController 추가 |
 | 2026-08-25 | partner_hospital, health_center에 branch_id INT(11) NULL 컬럼 추가 (관할 지사 지정, FK → branch). PartnerHospital/HealthCenter 모델에 branch() belongsTo 관계 추가. AdminHospitalController/AdminHealthCenterController에 BranchFilterable 적용 + branch_id 저장/필터링. AdminReservationController에 병원/센터 branch_id 기반 필터링 추가 |
+| 2026-11-13 | agent에 birthday_alarm_enabled TINYINT(1) NOT NULL DEFAULT 1 추가 — 설계사별 생일 알림 수신 on/off |
+| 2026-11-13 | maintenance_tasks에 status_reason TEXT NULL 추가 — 태스크 답변/메모/보류 사유 |
 
 ---
 
