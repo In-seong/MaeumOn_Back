@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<title>요청 관리</title>
+<title>온마음 요청관리</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Pretendard:wght@400;500;600;700&display=swap" rel="stylesheet">
 <link href="https://fonts.googleapis.com/icon?family=Material+Symbols+Outlined" rel="stylesheet">
@@ -350,7 +350,7 @@ textarea.form-input { resize: vertical; min-height: 70px; }
   <!-- Login -->
   <div v-if="!token" class="login-wrap">
     <div class="login-box">
-      <h1>요청 관리</h1>
+      <h1>온마음 요청관리</h1>
       <p>관리자 계정으로 로그인하세요</p>
       <div v-if="loginError" class="login-error">{{ loginError }}</div>
       <input v-model="loginForm.username" placeholder="아이디" @keyup.enter="doLogin">
@@ -367,7 +367,7 @@ textarea.form-input { resize: vertical; min-height: 70px; }
 
     <div class="header">
       <div>
-        <h1>요청 관리</h1>
+        <h1>온마음 요청관리</h1>
         <div class="sub">진행 {{ openCount }}건 · 완료 {{ doneCount }}건 · 전체 {{ tasks.length }}건</div>
       </div>
       <div class="header-right">
