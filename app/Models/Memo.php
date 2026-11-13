@@ -17,11 +17,28 @@ class Memo extends Model
         'title',
         'content',
         'memo_date',
+        'attachments',
     ];
 
     protected $casts = [
         'memo_date' => 'date:Y-m-d',
+        'attachments' => 'array',
     ];
+
+    protected $appends = ['attachment_urls'];
+
+    public function getAttachmentUrlsAttribute(): array
+    {
+        if (empty($this->attachments)) return [];
+
+        return collect($this->attachments)->map(function ($path) {
+            return [
+                'path' => $path,
+                'url' => \Illuminate\Support\Facades\Storage::disk('s3')->temporaryUrl($path, now()->addMinutes(60)),
+                'name' => basename($path),
+            ];
+        })->all();
+    }
 
     public function customer(): BelongsTo
     {

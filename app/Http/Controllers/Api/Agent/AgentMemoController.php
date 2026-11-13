@@ -7,6 +7,7 @@ use App\Models\Customer;
 use App\Models\Memo;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
 
 class AgentMemoController extends Controller
 {
@@ -48,13 +49,21 @@ class AgentMemoController extends Controller
             'title' => 'nullable|string|max:200',
             'content' => 'required|string',
             'memo_date' => 'required|date',
+            'files' => 'nullable|array|max:5',
+            'files.*' => 'file|max:10240|mimes:jpg,jpeg,png,gif,pdf,heic,heif',
         ]);
 
-        $memo = Memo::create(array_merge($validated, [
+        $attachments = $this->uploadFiles($request, $customerId);
+
+        $memo = Memo::create([
             'customer_id' => $customerId,
             'author_id' => $agentId,
             'author_type' => 'AGENT',
-        ]));
+            'title' => $validated['title'] ?? null,
+            'content' => $validated['content'],
+            'memo_date' => $validated['memo_date'],
+            'attachments' => !empty($attachments) ? $attachments : null,
+        ]);
 
         return response()->json([
             'success' => true,
@@ -89,9 +98,29 @@ class AgentMemoController extends Controller
             'title' => 'nullable|string|max:200',
             'content' => 'sometimes|required|string',
             'memo_date' => 'sometimes|required|date',
+            'files' => 'nullable|array|max:5',
+            'files.*' => 'file|max:10240|mimes:jpg,jpeg,png,gif,pdf,heic,heif',
+            'remove_attachments' => 'nullable|array',
+            'remove_attachments.*' => 'string',
         ]);
 
-        $memo->update($validated);
+        $updateData = collect($validated)->only(['title', 'content', 'memo_date'])->toArray();
+
+        $currentAttachments = $memo->attachments ?? [];
+
+        if (!empty($validated['remove_attachments'])) {
+            foreach ($validated['remove_attachments'] as $path) {
+                Storage::disk('s3')->delete($path);
+                $currentAttachments = array_values(array_filter($currentAttachments, fn($a) => $a !== $path));
+            }
+        }
+
+        $newFiles = $this->uploadFiles($request, $memo->customer_id);
+        $currentAttachments = array_merge($currentAttachments, $newFiles);
+
+        $updateData['attachments'] = !empty($currentAttachments) ? array_values($currentAttachments) : null;
+
+        $memo->update($updateData);
 
         return response()->json([
             'success' => true,
@@ -122,11 +151,28 @@ class AgentMemoController extends Controller
             ], 403);
         }
 
+        if (!empty($memo->attachments)) {
+            foreach ($memo->attachments as $path) {
+                Storage::disk('s3')->delete($path);
+            }
+        }
+
         $memo->delete();
 
         return response()->json([
             'success' => true,
             'message' => '메모가 삭제되었습니다.',
         ]);
+    }
+
+    private function uploadFiles(Request $request, string $customerId): array
+    {
+        $paths = [];
+        if ($request->hasFile('files')) {
+            foreach ($request->file('files') as $file) {
+                $paths[] = $file->store("memos/{$customerId}", 's3');
+            }
+        }
+        return $paths;
     }
 }
