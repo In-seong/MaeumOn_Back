@@ -2,6 +2,7 @@
 
 namespace App\Console\Commands;
 
+use App\Models\Agent;
 use App\Models\CalendarEvent;
 use App\Models\Contract;
 use App\Models\Customer;
@@ -32,7 +33,8 @@ class GenerateCalendarReminders extends Command
     {
         $today = Carbon::today();
 
-        // birth_date가 있고 활성 상태인 고객 중, 담당 설계사가 있는 고객
+        $disabledAgentIds = Agent::where('birthday_alarm_enabled', false)->pluck('agent_id')->all();
+
         $customers = Customer::whereNotNull('birth_date')
             ->whereNotNull('agent_id')
             ->where('is_active', true)
@@ -41,6 +43,9 @@ class GenerateCalendarReminders extends Command
         $created = 0;
 
         foreach ($customers as $customer) {
+            if (in_array($customer->agent_id, $disabledAgentIds, true)) {
+                continue;
+            }
             // 올해 생일 계산
             $birthday = Carbon::parse($customer->birth_date)->setYear($today->year);
             // 올해 생일이 이미 지났으면 내년

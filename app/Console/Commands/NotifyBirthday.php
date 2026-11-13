@@ -2,6 +2,7 @@
 
 namespace App\Console\Commands;
 
+use App\Models\Agent;
 use App\Models\Customer;
 use App\Models\Notification;
 use App\Services\FcmService;
@@ -19,11 +20,14 @@ class NotifyBirthday extends Command
         $month = (int) $today->format('m');
         $day = (int) $today->format('d');
 
+        $disabledAgentIds = Agent::where('birthday_alarm_enabled', false)->pluck('agent_id')->all();
+
         $customers = Customer::where('is_active', true)
             ->whereNotNull('agent_id')
             ->whereNotNull('birth_date')
             ->whereMonth('birth_date', $month)
             ->whereDay('birth_date', $day)
+            ->when(!empty($disabledAgentIds), fn ($q) => $q->whereNotIn('agent_id', $disabledAgentIds))
             ->get(['customer_id', 'name', 'agent_id', 'birth_date']);
 
         if ($customers->isEmpty()) {

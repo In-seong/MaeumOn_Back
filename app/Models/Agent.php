@@ -28,10 +28,12 @@ class Agent extends Model
         'hire_date',
         'resignation_date',
         'is_active',
+        'birthday_alarm_enabled',
     ];
 
     protected $casts = [
         'is_active' => 'boolean',
+        'birthday_alarm_enabled' => 'boolean',
     ];
 
     public function branches(): BelongsToMany

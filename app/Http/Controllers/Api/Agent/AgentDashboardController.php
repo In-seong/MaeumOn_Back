@@ -304,6 +304,7 @@ class AgentDashboardController extends Controller
             'email' => 'sometimes|email|max:100',
             'office_location' => 'sometimes|nullable|string|max:100',
             'specialization' => 'sometimes|nullable|string|max:200',
+            'birthday_alarm_enabled' => 'sometimes|boolean',
         ]);
 
         $agent->update($validated);
