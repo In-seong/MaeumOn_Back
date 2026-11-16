@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api\Admin;
 use App\Http\Controllers\Controller;
 use App\Http\Traits\BranchFilterable;
 use App\Models\Agent;
+use App\Models\AssignmentLog;
 use App\Models\ClaimRequest;
 use App\Models\CorporateInquiry;
 use App\Models\Notification;
@@ -308,11 +309,50 @@ class AdminClaimRequestController extends Controller
             }
         }
 
+        $recallQuery = AssignmentLog::select('agent_id', DB::raw('COUNT(*) as count'))
+            ->where('action', 'recall')
+            ->whereBetween('created_at', [$startDate, $endDate]);
+
+        if ($branchId !== null) {
+            $recallQuery->whereExists(function ($sub) use ($branchId) {
+                $sub->select(DB::raw(1))
+                    ->from('agent_branch')
+                    ->whereColumn('agent_branch.agent_id', 'assignment_log.agent_id')
+                    ->where('agent_branch.branch_id', $branchId);
+            });
+        }
+
+        $recallCounts = $recallQuery->groupBy('agent_id')->pluck('count', 'agent_id');
+
+        foreach ($recallCounts as $agentId => $count) {
+            if (!isset($grouped[$agentId])) {
+                $agent = Agent::where('agent_id', $agentId)->select('agent_id', 'name')->first();
+                $grouped[$agentId] = [
+                    'agent_id' => $agentId,
+                    'agent_name' => $agent?->name ?? '(알 수 없음)',
+                    'resident' => 0,
+                    'distribution' => 0,
+                    'corporate' => 0,
+                    'recall' => 0,
+                    'total' => 0,
+                ];
+            }
+            $grouped[$agentId]['recall'] = (int) $count;
+        }
+
+        foreach ($grouped as &$row) {
+            if (!isset($row['recall'])) {
+                $row['recall'] = 0;
+            }
+        }
+        unset($row);
+
         $result = collect($grouped)->sortByDesc('total')->values();
 
         $totalResident = $result->sum('resident');
         $totalDistribution = $result->sum('distribution');
         $totalCorporate = $result->sum('corporate');
+        $totalRecall = $result->sum('recall');
 
         $hospitals = PartnerHospital::where('is_active', true)
             ->select('hospital_id', 'hospital_name')
@@ -367,6 +407,7 @@ class AdminClaimRequestController extends Controller
                     'total_resident' => $totalResident,
                     'total_distribution' => $totalDistribution,
                     'total_corporate' => $totalCorporate,
+                    'total_recall' => $totalRecall,
                     'total' => $totalResident + $totalDistribution + $totalCorporate,
                 ],
                 'hospitals' => $hospitals,
