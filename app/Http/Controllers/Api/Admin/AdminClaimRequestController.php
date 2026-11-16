@@ -309,12 +309,12 @@ class AdminClaimRequestController extends Controller
             }
         }
 
-        $recallQuery = AssignmentLog::select('agent_id', DB::raw('COUNT(*) as count'))
-            ->where('action', 'recall')
+        $logQuery = AssignmentLog::select('agent_id', 'action', DB::raw('COUNT(*) as count'))
+            ->whereIn('action', ['recall', 'reject'])
             ->whereBetween('created_at', [$startDate, $endDate]);
 
         if ($branchId !== null) {
-            $recallQuery->whereExists(function ($sub) use ($branchId) {
+            $logQuery->whereExists(function ($sub) use ($branchId) {
                 $sub->select(DB::raw(1))
                     ->from('agent_branch')
                     ->whereColumn('agent_branch.agent_id', 'assignment_log.agent_id')
@@ -322,9 +322,10 @@ class AdminClaimRequestController extends Controller
             });
         }
 
-        $recallCounts = $recallQuery->groupBy('agent_id')->pluck('count', 'agent_id');
+        $logCounts = $logQuery->groupBy('agent_id', 'action')->get();
 
-        foreach ($recallCounts as $agentId => $count) {
+        foreach ($logCounts as $row) {
+            $agentId = $row->agent_id;
             if (!isset($grouped[$agentId])) {
                 $agent = Agent::where('agent_id', $agentId)->select('agent_id', 'name')->first();
                 $grouped[$agentId] = [
@@ -334,15 +335,19 @@ class AdminClaimRequestController extends Controller
                     'distribution' => 0,
                     'corporate' => 0,
                     'recall' => 0,
+                    'reject' => 0,
                     'total' => 0,
                 ];
             }
-            $grouped[$agentId]['recall'] = (int) $count;
+            $grouped[$agentId][$row->action] = (int) $row->count;
         }
 
         foreach ($grouped as &$row) {
             if (!isset($row['recall'])) {
                 $row['recall'] = 0;
+            }
+            if (!isset($row['reject'])) {
+                $row['reject'] = 0;
             }
         }
         unset($row);
@@ -353,6 +358,7 @@ class AdminClaimRequestController extends Controller
         $totalDistribution = $result->sum('distribution');
         $totalCorporate = $result->sum('corporate');
         $totalRecall = $result->sum('recall');
+        $totalReject = $result->sum('reject');
 
         $hospitals = PartnerHospital::where('is_active', true)
             ->select('hospital_id', 'hospital_name')
@@ -408,6 +414,7 @@ class AdminClaimRequestController extends Controller
                     'total_distribution' => $totalDistribution,
                     'total_corporate' => $totalCorporate,
                     'total_recall' => $totalRecall,
+                    'total_reject' => $totalReject,
                     'total' => $totalResident + $totalDistribution + $totalCorporate,
                 ],
                 'hospitals' => $hospitals,

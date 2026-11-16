@@ -256,8 +256,13 @@ class AdminAssignmentController extends Controller
     public function destroy(Request $request, int $id): JsonResponse
     {
         $request->validate([
+            'action_type' => 'nullable|string|in:recall,reject',
             'recall_reason' => 'nullable|string|max:500',
         ]);
+
+        $actionType = $request->input('action_type', 'recall');
+        $isReject = $actionType === 'reject';
+        $actionLabel = $isReject ? '반려' : '회수';
 
         $assignment = CustomerAssignment::with(['customer:customer_id,name', 'agent:agent_id,name'])->findOrFail($id);
         $agentId = $assignment->agent_id;
@@ -267,13 +272,13 @@ class AdminAssignmentController extends Controller
 
         $customer = Customer::where('customer_id', $assignment->customer_id)->first();
 
-        DB::transaction(function () use ($assignment, $customer, $agentId, $customerName, $recallReason, $adminId) {
+        DB::transaction(function () use ($assignment, $customer, $agentId, $customerName, $recallReason, $adminId, $actionType, $actionLabel, $isReject) {
             if ($customer) {
                 $customer->update(['agent_id' => null]);
             }
 
             AssignmentLog::create([
-                'action' => 'recall',
+                'action' => $actionType,
                 'customer_id' => $assignment->customer_id,
                 'agent_id' => $agentId,
                 'admin_id' => $adminId,
@@ -285,7 +290,7 @@ class AdminAssignmentController extends Controller
             $assignment->delete();
 
             $reasonText = $recallReason ? " (사유: {$recallReason})" : '';
-            $message = "고객 '{$customerName}'님의 DB 배분이 회수되었습니다.{$reasonText}";
+            $message = "고객 '{$customerName}'님의 DB 배분이 {$actionLabel}되었습니다.{$reasonText}";
 
             Notification::create([
                 'receiver_id' => $agentId,
@@ -293,22 +298,22 @@ class AdminAssignmentController extends Controller
                 'sender_id' => $adminId,
                 'sender_type' => 'ADMIN',
                 'notification_type' => 'ASSIGNMENT',
-                'title' => 'DB 배분 회수 알림',
+                'title' => "DB 배분 {$actionLabel} 알림",
                 'content' => $message,
                 'is_read' => false,
                 'sent_at' => now(),
             ]);
 
             try {
-                app(FcmService::class)->sendToUsers('AGENT', [$agentId], 'DB 배분 회수', $message);
+                app(FcmService::class)->sendToUsers('AGENT', [$agentId], "DB 배분 {$actionLabel}", $message);
             } catch (\Exception $e) {
-                Log::error('배분 회수 알림 FCM 발송 실패', ['agent_id' => $agentId, 'error' => $e->getMessage()]);
+                Log::error("배분 {$actionLabel} 알림 FCM 발송 실패", ['agent_id' => $agentId, 'error' => $e->getMessage()]);
             }
         });
 
         return response()->json([
             'success' => true,
-            'message' => 'DB 배분이 회수되었습니다.',
+            'message' => "DB 배분이 {$actionLabel}되었습니다.",
         ]);
     }
 }
