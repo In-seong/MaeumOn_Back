@@ -30,6 +30,7 @@
 22. [양식 다운로드](#22-양식-다운로드) — form_downloads
 24. [유지보수 요청](#24-유지보수-요청) — maintenance_tasks
 23. [시상안](#23-시상안) — award_plans
+25. [숨은 보험금 찾기](#25-숨은-보험금-찾기) — unclaimed_session, unclaimed_result, unclaimed_consent
 
 ---
 
@@ -1582,3 +1583,81 @@ FaxClientNC 연동용 테이블. **테이블명 반드시 대문자 유지**.
 **인덱스**: `idx_maintenance_tasks_status` (status), `idx_maintenance_tasks_priority` (priority), `idx_maintenance_tasks_category` (category), `idx_maintenance_tasks_target_month` (target_month)
 **Model**: `App\Models\MaintenanceTask` ✅
 **변경 이력**: 2026-11-10 유지보수 요청 관리 기능 신규 추가, category/target_month 컬럼 추가
+
+---
+
+## 25. 숨은 보험금 찾기
+
+### unclaimed_session
+
+숨은보험금 조회 세션. 설계사가 고객의 숨은 보험금을 찾기 위한 세션을 관리.
+
+| 컬럼 | 타입 | NULL | Key | Default | 비고 |
+|------|------|------|-----|---------|------|
+| session_id | int | NO | PRI | auto_increment | |
+| agent_id | char(8) | NO | FK,MUL | | → agent.agent_id |
+| customer_id | char(8) | YES | FK,MUL | NULL | → customer.customer_id |
+| customer_name | varchar(50) | NO | | | |
+| customer_phone | varchar(20) | NO | | | |
+| customer_birth_date | date | NO | | | |
+| customer_resident_number | varchar(500) | YES | | NULL | 암호화 저장 |
+| customer_address | varchar(255) | YES | | NULL | |
+| customer_detailed_address | varchar(255) | YES | | NULL | |
+| customer_gender | enum('M','F','OTHER') | YES | | NULL | |
+| customer_telecom | varchar(20) | YES | | NULL | 통신사 |
+| status | enum('consent','identity_verify','id_upload','signature','fetching','analyzing','completed','cancelled') | NO | MUL | 'consent' | |
+| id_card_path | varchar(500) | YES | | NULL | S3 경로 |
+| signature_path | varchar(500) | YES | | NULL | S3 경로 |
+| total_unclaimed_amount | decimal(15,2) | YES | | 0 | 총 미청구 추정액 |
+| analyzed_at | datetime | YES | | NULL | 분석 완료 시각 |
+| notes | text | YES | | NULL | |
+| created_at | timestamp | YES | | NULL | |
+| updated_at | timestamp | YES | | NULL | |
+
+**인덱스**: `idx_unclaimed_session_agent` (agent_id), `idx_unclaimed_session_customer` (customer_id), `idx_unclaimed_session_status` (status)
+**Model**: `App\Models\UnclaimedSession` ✅
+
+### unclaimed_result
+
+숨은보험금 분석 결과 (건별). 진료내역과 보험계약 매칭 결과.
+
+| 컬럼 | 타입 | NULL | Key | Default | 비고 |
+|------|------|------|-----|---------|------|
+| result_id | int | NO | PRI | auto_increment | |
+| session_id | int | NO | FK,MUL | | → unclaimed_session.session_id (CASCADE) |
+| medical_record_id | int | YES | | NULL | |
+| insurance_id | int | YES | | NULL | |
+| visit_date | date | YES | | NULL | 진료일 |
+| hospital_name | varchar(100) | YES | | NULL | 병원명 |
+| diagnosis | varchar(255) | YES | | NULL | 진단명 |
+| treatment_type | varchar(50) | YES | | NULL | 입원/통원/수술 |
+| total_cost | decimal(15,2) | YES | | 0 | 진료비 |
+| estimated_claim_amount | decimal(15,2) | YES | | 0 | 추정 청구 가능액 |
+| matched_insurance_product | varchar(200) | YES | | NULL | 매칭 보험상품 |
+| matched_coverage | varchar(200) | YES | | NULL | 매칭 보장항목 |
+| claim_status | enum('unclaimed','claiming','claimed','not_applicable') | NO | MUL | 'unclaimed' | |
+| claim_id | int | YES | | NULL | 청구 연결 시 |
+| notes | text | YES | | NULL | |
+| created_at | timestamp | YES | | NULL | |
+| updated_at | timestamp | YES | | NULL | |
+
+**인덱스**: `idx_unclaimed_result_session` (session_id), `idx_unclaimed_result_claim_status` (claim_status)
+**Model**: `App\Models\UnclaimedResult` ✅
+
+### unclaimed_consent
+
+숨은보험금 동의 기록. 세션별 동의서 제출 이력.
+
+| 컬럼 | 타입 | NULL | Key | Default | 비고 |
+|------|------|------|-----|---------|------|
+| consent_id | int | NO | PRI | auto_increment | |
+| session_id | int | NO | FK,MUL | | → unclaimed_session.session_id (CASCADE) |
+| consent_template_id | int | NO | FK | | → consent_template.consent_template_id |
+| agreed_at | datetime | NO | | | 동의 시각 |
+| ip_address | varchar(45) | YES | | NULL | |
+| created_at | timestamp | YES | | NULL | |
+| updated_at | timestamp | YES | | NULL | |
+
+**인덱스**: `idx_unclaimed_consent_session` (session_id)
+**Model**: `App\Models\UnclaimedConsent` ✅
+**변경 이력**: 2026-11-16 숨은 보험금 찾기 기능 신규 추가

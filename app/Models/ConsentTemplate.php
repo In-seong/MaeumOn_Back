@@ -16,6 +16,12 @@ class ConsentTemplate extends Model
     const TYPE_HEALTH_CHECKUP = 'health_checkup';
     const TYPE_MEDICAL_INFO = 'medical_info';
 
+    const TYPE_UNCLAIMED_SENSITIVE = 'unclaimed_sensitive';
+    const TYPE_UNCLAIMED_PERSONAL = 'unclaimed_personal';
+    const TYPE_UNCLAIMED_THIRD_PARTY = 'unclaimed_third_party';
+    const TYPE_UNCLAIMED_TERMS = 'unclaimed_terms';
+    const TYPE_UNCLAIMED_MEDICAL_RECORD = 'unclaimed_medical_record';
+
     protected $fillable = [
         'consent_type',
         'title',
