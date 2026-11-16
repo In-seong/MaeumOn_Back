@@ -172,6 +172,8 @@ class GenerateCalendarReminders extends Command
     {
         $today = Carbon::today();
 
+        $disabledAgentIds = Agent::where('birthday_alarm_enabled', false)->pluck('agent_id')->all();
+
         $reminders = Reminder::where('is_sent', false)
             ->with('event.customer:customer_id,name')
             ->get();
@@ -181,6 +183,11 @@ class GenerateCalendarReminders extends Command
         foreach ($reminders as $reminder) {
             $event = $reminder->event;
             if (!$event) {
+                continue;
+            }
+
+            if ($event->event_type === CalendarEvent::TYPE_BIRTHDAY
+                && in_array($reminder->agent_id, $disabledAgentIds, true)) {
                 continue;
             }
 
