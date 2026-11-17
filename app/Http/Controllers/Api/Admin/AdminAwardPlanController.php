@@ -33,6 +33,7 @@ class AdminAwardPlanController extends Controller
             ->map(function ($item) {
                 $arr = $item->toArray();
                 $arr['company_name'] = $item->formDownload?->company_name;
+                $arr['category'] = $item->formDownload?->category;
                 return $arr;
             });
 
