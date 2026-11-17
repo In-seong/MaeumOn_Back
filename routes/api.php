@@ -66,6 +66,7 @@ use App\Http\Controllers\Api\Admin\AdminClaimRequestController;
 use App\Http\Controllers\Api\Admin\AdminSettingController;
 use App\Http\Controllers\Api\Admin\AdminReservationController;
 use App\Http\Controllers\Api\Admin\AdminBannerController;
+use App\Http\Controllers\Api\Admin\AdminPopupNoticeController;
 use App\Http\Controllers\Api\Admin\AdminBranchController;
 use App\Http\Controllers\Api\Admin\AdminAccountController;
 use App\Http\Controllers\Api\Admin\AdminMaintenanceTaskController;
@@ -299,6 +300,12 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('/banners/{id}', [AdminBannerController::class, 'update']);
         Route::delete('/banners/{id}', [AdminBannerController::class, 'destroy']);
 
+        // 팝업 공지 관리
+        Route::get('/popup-notices', [AdminPopupNoticeController::class, 'index']);
+        Route::post('/popup-notices', [AdminPopupNoticeController::class, 'store']);
+        Route::post('/popup-notices/{id}', [AdminPopupNoticeController::class, 'update']);
+        Route::delete('/popup-notices/{id}', [AdminPopupNoticeController::class, 'destroy']);
+
         // 청구 신청 관리
         Route::get('/claim-requests/statistics', [AdminClaimRequestController::class, 'statistics']);
         Route::get('/claim-requests/statistics/details', [AdminClaimRequestController::class, 'statisticsDetails']);
@@ -373,6 +380,13 @@ Route::middleware('auth:sanctum')->group(function () {
 
     // 설계사 API
     Route::prefix('agent')->middleware('role:AGENT')->group(function () {
+        // 팝업 공지 (활성 항목만)
+        Route::get('/popup-notices/active', function () {
+            return response()->json([
+                'data' => \App\Models\PopupNotice::active()->orderBy('sort_order')->get(),
+            ]);
+        });
+
         // 대시보드
         Route::get('/dashboard', [AgentDashboardController::class, 'index']);
         Route::get('/dashboard/full', [AgentDashboardController::class, 'full']);
