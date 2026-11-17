@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\ClaimForm;
 use App\Models\FormPage;
+use App\Services\PdfToImageService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
@@ -152,25 +153,41 @@ class FormPageController extends Controller
             ->findOrFail($pageId);
 
         $request->validate([
-            'image' => 'required|image|mimes:jpeg,png,jpg|max:10240', // 최대 10MB
+            'image' => 'required|file|mimes:jpeg,png,jpg,pdf|max:20480',
         ]);
 
-        // 기존 이미지 삭제
         if ($page->page_image_path) {
             Storage::disk('s3')->delete($page->page_image_path);
         }
 
-        // 새 이미지 저장
         $file = $request->file('image');
-        $filename = 'template_' . $templateId . '_page_' . $page->page_number . '_' . time() . '.' . $file->getClientOriginalExtension();
-        $path = $file->storeAs('templates', $filename, 's3');
+        $ext = strtolower($file->getClientOriginalExtension());
+        $uniqueId = time() . '_' . uniqid();
 
-        // 이미지 크기 가져오기
-        $image = Image::read($file->path());
+        if ($ext === 'pdf') {
+            $pdfService = app(PdfToImageService::class);
+            $result = $pdfService->convertToImages($file->path());
+            try {
+                $firstPage = $result['images'][0] ?? null;
+                if (!$firstPage) {
+                    return response()->json(['success' => false, 'message' => 'PDF에서 이미지를 추출할 수 없습니다.'], 422);
+                }
+                $filename = "template_{$templateId}_page_{$page->page_number}_{$uniqueId}.png";
+                Storage::disk('s3')->put("templates/{$filename}", file_get_contents($firstPage));
+                $path = "templates/{$filename}";
+                $image = Image::read($firstPage);
+            } finally {
+                $pdfService->cleanup($result['tempDir']);
+            }
+        } else {
+            $filename = "template_{$templateId}_page_{$page->page_number}_{$uniqueId}.{$ext}";
+            $path = $file->storeAs('templates', $filename, 's3');
+            $image = Image::read($file->path());
+        }
+
         $width = $image->width();
         $height = $image->height();
 
-        // 페이지 업데이트
         $page->update([
             'page_image_path' => $path,
             'image_width' => $width,
