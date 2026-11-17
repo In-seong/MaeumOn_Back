@@ -394,7 +394,7 @@ class AdminAgentController extends Controller
             ], 422);
         }
 
-        Agent::where('agent_id', $fromAgentId)->firstOrFail();
+        $fromAgent = Agent::where('agent_id', $fromAgentId)->firstOrFail();
         $toAgent = Agent::where('agent_id', $toAgentId)->firstOrFail();
 
         // 실제로 원래 설계사에 속한 고객만 필터
@@ -495,7 +495,7 @@ class AdminAgentController extends Controller
                     'admin_id' => $adminId,
                     'assignment_type' => 'reassign',
                     'assignment_date' => $now->toDateString(),
-                    'notes' => "재배분: {$fromAgentId} → {$toAgentId}",
+                    'notes' => "재배분: {$fromAgent->name} → {$toAgent->name}",
                     'created_by_id' => $adminId,
                 ]);
             }

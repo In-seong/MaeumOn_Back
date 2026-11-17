@@ -53,6 +53,24 @@ class AdminAssignmentController extends Controller
         $perPage = min(max((int) $request->get('per_page', 15), 1), 100);
         $assignments = $query->paginate($perPage);
 
+        $agentIds = [];
+        foreach ($assignments->items() as $item) {
+            if ($item->notes && preg_match_all('/A\d{7}/', $item->notes, $matches)) {
+                $agentIds = array_merge($agentIds, $matches[0]);
+            }
+        }
+        if ($agentIds) {
+            $agentNames = Agent::whereIn('agent_id', array_unique($agentIds))
+                ->pluck('name', 'agent_id');
+            foreach ($assignments->items() as $item) {
+                if ($item->notes) {
+                    $item->notes = preg_replace_callback('/A\d{7}/', function ($m) use ($agentNames) {
+                        return $agentNames[$m[0]] ?? $m[0];
+                    }, $item->notes);
+                }
+            }
+        }
+
         return response()->json([
             'success' => true,
             'data' => $assignments,
