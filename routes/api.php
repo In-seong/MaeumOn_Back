@@ -180,9 +180,11 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('insurance-companies/{id}/logo', [InsuranceCompanyController::class, 'uploadLogo']);
 
         // 양식 템플릿 관리
+        Route::post('/claim-forms/preview-pdf', [ClaimFormController::class, 'previewPdf']);
         Route::apiResource('claim-forms', ClaimFormController::class);
         Route::post('/claim-forms/{id}/upload-image', [ClaimFormController::class, 'uploadImage']);
         Route::post('/claim-forms/{id}/add-pages', [ClaimFormController::class, 'addPages']);
+        Route::post('/claim-forms/{id}/confirm-pdf', [ClaimFormController::class, 'confirmPdfPages']);
 
         // 페이지 관리
         Route::get('/claim-forms/{templateId}/pages', [FormPageController::class, 'index']);

@@ -416,4 +416,104 @@ class ClaimFormController extends Controller
             'message' => '이미지가 업로드되었습니다.',
         ]);
     }
+
+    public function previewPdf(Request $request): JsonResponse
+    {
+        $request->validate([
+            'pdf' => 'required|file|mimes:pdf|max:20480',
+        ]);
+
+        $file = $request->file('pdf');
+        $pdfService = app(PdfToImageService::class);
+        $result = $pdfService->convertToImages($file->path());
+
+        $previewKey = 'pdf_' . time() . '_' . uniqid();
+        $previewDir = storage_path("app/temp/pdf_previews/{$previewKey}");
+        mkdir($previewDir, 0755, true);
+
+        $pages = [];
+        try {
+            foreach ($result['images'] as $index => $imagePath) {
+                $pageNum = $index + 1;
+                $destPath = "{$previewDir}/page-{$pageNum}.png";
+                copy($imagePath, $destPath);
+
+                $image = Image::read($imagePath);
+                $width = $image->width();
+                $height = $image->height();
+
+                $thumb = Image::read($imagePath);
+                $thumb->scaleDown(width: 300);
+                $thumbBase64 = base64_encode((string) $thumb->toPng());
+
+                $pages[] = [
+                    'page_number' => $pageNum,
+                    'width' => $width,
+                    'height' => $height,
+                    'thumbnail' => "data:image/png;base64,{$thumbBase64}",
+                ];
+            }
+        } finally {
+            $pdfService->cleanup($result['tempDir']);
+        }
+
+        return response()->json([
+            'success' => true,
+            'data' => [
+                'preview_key' => $previewKey,
+                'page_count' => count($pages),
+                'pages' => $pages,
+            ],
+        ]);
+    }
+
+    public function confirmPdfPages(Request $request, int $id): JsonResponse
+    {
+        $template = ClaimForm::findOrFail($id);
+
+        $request->validate([
+            'preview_key' => 'required|string|max:100|regex:/^pdf_[0-9]+_[a-f0-9]+$/',
+        ]);
+
+        $previewKey = $request->input('preview_key');
+        $previewDir = storage_path("app/temp/pdf_previews/{$previewKey}");
+
+        if (!is_dir($previewDir)) {
+            return response()->json(['success' => false, 'message' => '미리보기 세션이 만료되었습니다. 다시 업로드해주세요.'], 422);
+        }
+
+        $lastPageNumber = $template->formPages()->max('page_number') ?? 0;
+
+        $imageFiles = glob("{$previewDir}/page-*.png");
+        natsort($imageFiles);
+
+        $pageNumber = $lastPageNumber + 1;
+        $addedCount = 0;
+
+        foreach ($imageFiles as $imagePath) {
+            $uniqueId = time() . '_' . uniqid();
+            $filename = "template_{$id}_page_{$pageNumber}_{$uniqueId}.png";
+            Storage::disk('s3')->put("templates/{$filename}", file_get_contents($imagePath));
+
+            $image = Image::read($imagePath);
+            $template->formPages()->create([
+                'page_number' => $pageNumber,
+                'page_image_path' => "templates/{$filename}",
+                'image_width' => $image->width(),
+                'image_height' => $image->height(),
+            ]);
+
+            $pageNumber++;
+            $addedCount++;
+        }
+
+        array_map('unlink', glob("{$previewDir}/*"));
+        rmdir($previewDir);
+
+        return response()->json([
+            'success' => true,
+            'data' => $template->load('formPages'),
+            'message' => "{$addedCount}페이지가 추가되었습니다. (총 " . ($lastPageNumber + $addedCount) . '페이지)',
+        ]);
+    }
 }
