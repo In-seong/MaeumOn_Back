@@ -94,6 +94,11 @@ class AdminAgentController extends Controller
                           ->orderByDesc('month')
                           ->limit(12);
                 },
+                'contracts' => function ($query) {
+                    $query->with(['customer:customer_id,name,phone', 'insuranceCompany:company_id,company_name'])
+                          ->orderByDesc('contract_date')
+                          ->limit(20);
+                },
             ])
             ->withCount(['customers', 'contracts'])
             ->where('agent_id', $id)
