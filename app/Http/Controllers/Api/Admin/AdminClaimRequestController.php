@@ -659,6 +659,71 @@ class AdminClaimRequestController extends Controller
         ]);
     }
 
+    public function recall(Request $request, int $id): JsonResponse
+    {
+        $request->validate([
+            'action_type' => 'nullable|string|in:recall,reject',
+            'recall_reason' => 'nullable|string|max:500',
+        ]);
+
+        $claimRequest = ClaimRequest::with('assignedAgent:agent_id,name')->findOrFail($id);
+
+        if (!$claimRequest->assigned_agent_id) {
+            return response()->json([
+                'success' => false,
+                'message' => '배정된 설계사가 없습니다.',
+            ], 422);
+        }
+
+        $actionType = $request->input('action_type', 'recall');
+        $isReject = $actionType === 'reject';
+        $actionLabel = $isReject ? '반려' : '회수';
+        $agentId = $claimRequest->assigned_agent_id;
+        $agentName = $claimRequest->assignedAgent?->name ?? '';
+        $recallReason = $request->input('recall_reason', '');
+        $adminId = $request->user()->admin->admin_id ?? null;
+
+        $claimRequest->update([
+            'assigned_agent_id' => null,
+            'status' => 'pending',
+        ]);
+
+        AssignmentLog::create([
+            'action' => $actionType,
+            'customer_id' => null,
+            'agent_id' => $agentId,
+            'admin_id' => $adminId,
+            'assignment_id' => null,
+            'reason' => $recallReason ?: null,
+            'notes' => "청구배정 {$actionLabel}: {$claimRequest->name} (request_id: {$claimRequest->request_id})",
+        ]);
+
+        $reasonText = $recallReason ? " (사유: {$recallReason})" : '';
+        Notification::create([
+            'agent_id' => $agentId,
+            'type' => 'CLAIM_REQUEST',
+            'title' => "청구 배정 {$actionLabel}",
+            'message' => "\"{$claimRequest->name}\" 청구 배정이 {$actionLabel}되었습니다.{$reasonText}",
+            'reference_type' => 'claim_request',
+            'reference_id' => $claimRequest->request_id,
+        ]);
+
+        try {
+            app(FcmService::class)->sendToAgent(
+                $agentId,
+                "청구 배정 {$actionLabel}",
+                "\"{$claimRequest->name}\" 청구 배정이 {$actionLabel}되었습니다.{$reasonText}"
+            );
+        } catch (\Throwable $e) {
+            Log::warning("FCM 발송 실패 (청구배정 {$actionLabel}): " . $e->getMessage());
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => "청구 배정이 {$actionLabel}되었습니다.",
+        ]);
+    }
+
     public function destroy(int $id): JsonResponse
     {
         $claimRequest = ClaimRequest::findOrFail($id);
