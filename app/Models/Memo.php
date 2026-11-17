@@ -31,11 +31,13 @@ class Memo extends Model
     {
         if (empty($this->attachments)) return [];
 
-        return collect($this->attachments)->map(function ($path) {
+        return collect($this->attachments)->map(function ($a) {
+            $path = is_string($a) ? $a : ($a['path'] ?? '');
+            $name = is_string($a) ? basename($a) : ($a['name'] ?? basename($path));
             return [
                 'path' => $path,
                 'url' => \Illuminate\Support\Facades\Storage::disk('s3')->temporaryUrl($path, now()->addMinutes(60)),
-                'name' => basename($path),
+                'name' => $name,
             ];
         })->all();
     }

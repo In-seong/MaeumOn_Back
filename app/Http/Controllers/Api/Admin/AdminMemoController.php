@@ -47,7 +47,7 @@ class AdminMemoController extends Controller
             'files.*' => 'file|max:10240|mimes:jpg,jpeg,png,gif,pdf,heic,heif',
         ]);
 
-        $attachments = $this->uploadFiles($request, $customerId);
+        $uploaded = $this->uploadFiles($request, $customerId);
 
         $memo = Memo::create([
             'customer_id' => $customerId,
@@ -56,7 +56,7 @@ class AdminMemoController extends Controller
             'title' => $validated['title'] ?? null,
             'content' => $validated['content'],
             'memo_date' => $validated['memo_date'],
-            'attachments' => !empty($attachments) ? $attachments : null,
+            'attachments' => !empty($uploaded) ? $uploaded : null,
         ]);
 
         return response()->json([
@@ -95,12 +95,14 @@ class AdminMemoController extends Controller
 
         $updateData = collect($validated)->only(['title', 'content', 'memo_date'])->toArray();
 
-        $currentAttachments = $memo->attachments ?? [];
+        $currentAttachments = collect($memo->attachments ?? [])->map(function ($a) {
+            return is_string($a) ? ['path' => $a, 'name' => basename($a)] : $a;
+        })->all();
 
         if (!empty($validated['remove_attachments'])) {
             foreach ($validated['remove_attachments'] as $path) {
                 Storage::disk('s3')->delete($path);
-                $currentAttachments = array_values(array_filter($currentAttachments, fn($a) => $a !== $path));
+                $currentAttachments = array_values(array_filter($currentAttachments, fn($a) => $a['path'] !== $path));
             }
         }
 
@@ -136,8 +138,9 @@ class AdminMemoController extends Controller
         }
 
         if (!empty($memo->attachments)) {
-            foreach ($memo->attachments as $path) {
-                Storage::disk('s3')->delete($path);
+            foreach ($memo->attachments as $a) {
+                $path = is_string($a) ? $a : ($a['path'] ?? '');
+                if ($path) Storage::disk('s3')->delete($path);
             }
         }
 
@@ -151,12 +154,16 @@ class AdminMemoController extends Controller
 
     private function uploadFiles(Request $request, string $customerId): array
     {
-        $paths = [];
+        $items = [];
         if ($request->hasFile('files')) {
             foreach ($request->file('files') as $file) {
-                $paths[] = $file->store("memos/{$customerId}", 's3');
+                $path = $file->store("memos/{$customerId}", 's3');
+                $items[] = [
+                    'path' => $path,
+                    'name' => $file->getClientOriginalName(),
+                ];
             }
         }
-        return $paths;
+        return $items;
     }
 }
