@@ -72,6 +72,8 @@ use App\Http\Controllers\Api\Admin\AdminAccountController;
 use App\Http\Controllers\Api\Admin\AdminMaintenanceTaskController;
 use App\Http\Controllers\Api\CorporateInquiryController;
 use App\Http\Controllers\Api\Admin\AdminCorporateInquiryController;
+use App\Http\Controllers\Api\Agent\AgentInquiryController;
+use App\Http\Controllers\Api\Admin\AdminInquiryController;
 use App\Http\Controllers\Api\FaxCallbackController;
 
 /*
@@ -376,6 +378,11 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::apiResource('maintenance-tasks', AdminMaintenanceTaskController::class)->except(['show']);
         Route::post('maintenance-tasks/{id}/upload-image', [AdminMaintenanceTaskController::class, 'uploadImage']);
         Route::post('maintenance-tasks/{id}/delete-image', [AdminMaintenanceTaskController::class, 'deleteImage']);
+
+        // 설계사 문의 관리
+        Route::get('/inquiries', [AdminInquiryController::class, 'index']);
+        Route::get('/inquiries/{id}', [AdminInquiryController::class, 'show']);
+        Route::put('/inquiries/{id}/answer', [AdminInquiryController::class, 'answer']);
     });
 
     // 설계사 API
@@ -547,6 +554,11 @@ Route::middleware('auth:sanctum')->group(function () {
             Route::get('/sessions/{sessionId}/results', [AgentUnclaimedController::class, 'results']);
             Route::post('/sessions/{sessionId}/cancel', [AgentUnclaimedController::class, 'cancel']);
         });
+
+        // 설계사 문의하기
+        Route::get('/inquiries', [AgentInquiryController::class, 'index']);
+        Route::post('/inquiries', [AgentInquiryController::class, 'store']);
+        Route::get('/inquiries/{id}', [AgentInquiryController::class, 'show']);
     });
 
     // 고객 API

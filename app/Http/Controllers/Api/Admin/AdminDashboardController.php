@@ -125,11 +125,14 @@ class AdminDashboardController extends Controller
 
         $unansweredQna = Consultation::where('consultation_status', 'pending')->count();
 
+        $pendingInquiries = DB::table('agent_inquiry')->where('status', 'pending')->count();
+
         return [
             'unassigned_db' => $unassignedDb,
             'no_contact_db' => $noContactDb,
             'pending_reservations' => $pendingReservations,
             'unanswered_qna' => $unansweredQna,
+            'pending_inquiries' => $pendingInquiries,
         ];
     }
 

@@ -1661,3 +1661,26 @@ FaxClientNC 연동용 테이블. **테이블명 반드시 대문자 유지**.
 **인덱스**: `idx_unclaimed_consent_session` (session_id)
 **Model**: `App\Models\UnclaimedConsent` ✅
 **변경 이력**: 2026-11-16 숨은 보험금 찾기 기능 신규 추가
+
+### agent_inquiry
+
+설계사 문의하기. 설계사→관리자 문의/건의 및 답변.
+
+| 컬럼 | 타입 | NULL | Key | Default | 비고 |
+|------|------|------|-----|---------|------|
+| inquiry_id | bigint unsigned | NO | PRI | auto_increment | |
+| agent_id | char(8) | NO | MUL | | → agent.agent_id |
+| category | enum('system_error','feature_request','business','other') | NO | | 'other' | |
+| title | varchar(200) | NO | | | |
+| content | text | NO | | | |
+| attachments | json | YES | | NULL | S3 파일 목록 |
+| answer | text | YES | | NULL | 관리자 답변 |
+| answered_by | int unsigned | YES | | NULL | → admin.admin_id |
+| answered_at | timestamp | YES | | NULL | |
+| status | enum('pending','answered') | NO | MUL | 'pending' | |
+| created_at | timestamp | YES | | NULL | |
+| updated_at | timestamp | YES | | NULL | |
+
+**인덱스**: `idx_agent_inquiry_agent` (agent_id), `idx_agent_inquiry_status` (status), `idx_agent_inquiry_created` (created_at)
+**Model**: `App\Models\AgentInquiry` ✅
+**변경 이력**: 2026-11-18 #36 문의하기 기능 신규 추가
