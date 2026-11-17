@@ -19,6 +19,7 @@ use App\Http\Controllers\Api\Agent\AgentNotificationController;
 use App\Http\Controllers\Api\Agent\AgentObligationController;
 use App\Http\Controllers\Api\Agent\AgentSatisfactionController;
 use App\Http\Controllers\Api\Agent\AgentCodefController;
+use App\Http\Controllers\Api\Agent\AgentUnclaimedController;
 use App\Http\Controllers\Api\Agent\AgentDbDistributionController;
 use App\Http\Controllers\Api\Admin\AdminNoticeController;
 use App\Http\Controllers\Api\Admin\AdminCustomerController;
@@ -513,6 +514,22 @@ Route::middleware('auth:sanctum')->group(function () {
                 Route::post('/health-age/fetch', [AgentCodefController::class, 'fetchHealthAge']);
                 Route::post('/health-age/confirm', [AgentCodefController::class, 'confirmHealthAge']);
             });
+        });
+
+        // 설계사 - 숨은 보험금 찾기
+        Route::prefix('unclaimed')->group(function () {
+            Route::get('/consent-templates', [AgentUnclaimedController::class, 'consentTemplates']);
+            Route::get('/sessions', [AgentUnclaimedController::class, 'index']);
+            Route::post('/sessions', [AgentUnclaimedController::class, 'store']);
+            Route::get('/sessions/{sessionId}', [AgentUnclaimedController::class, 'show']);
+            Route::post('/sessions/{sessionId}/consents', [AgentUnclaimedController::class, 'submitConsents']);
+            Route::post('/sessions/{sessionId}/id-card', [AgentUnclaimedController::class, 'uploadIdCard']);
+            Route::post('/sessions/{sessionId}/signature', [AgentUnclaimedController::class, 'uploadSignature']);
+            Route::post('/sessions/{sessionId}/fetch', [AgentUnclaimedController::class, 'startFetch']);
+            Route::post('/sessions/{sessionId}/fetch/confirm', [AgentUnclaimedController::class, 'confirmFetch']);
+            Route::post('/sessions/{sessionId}/analyze', [AgentUnclaimedController::class, 'analyze']);
+            Route::get('/sessions/{sessionId}/results', [AgentUnclaimedController::class, 'results']);
+            Route::post('/sessions/{sessionId}/cancel', [AgentUnclaimedController::class, 'cancel']);
         });
     });
 
