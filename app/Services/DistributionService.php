@@ -256,10 +256,12 @@ class DistributionService
             'is_read' => false,
             'sent_at' => now(),
             'created_at' => now(),
+            'reference_id' => $customerId,
+            'reference_type' => 'customer',
         ]);
 
         try {
-            $this->fcmService->sendToUsers('AGENT', [$agentId], '새 고객 배분', "새로운 고객이 배분되었습니다: {$customerName}");
+            $this->fcmService->sendToUsers('AGENT', [$agentId], '새 고객 배분', "새로운 고객이 배분되었습니다: {$customerName}", ['notification_type' => 'distribution', 'reference_type' => 'customer', 'reference_id' => $customerId]);
         } catch (\Exception $e) {
             Log::error('배분 알림 FCM 발송 실패', ['agent_id' => $agentId, 'error' => $e->getMessage()]);
         }
@@ -305,11 +307,13 @@ class DistributionService
             'is_read' => false,
             'sent_at' => $now,
             'created_at' => $now,
+            'reference_id' => $customerId,
+            'reference_type' => 'customer',
         ], $adminIds);
         Notification::insert($rows);
 
         try {
-            $this->fcmService->sendToUsers('ADMIN', $adminIds, $title, $body);
+            $this->fcmService->sendToUsers('ADMIN', $adminIds, $title, $body, ['notification_type' => 'db_inflow', 'reference_type' => 'customer', 'reference_id' => $customerId]);
         } catch (\Exception $e) {
             Log::error('DB 유입 알림 FCM 발송 실패', ['error' => $e->getMessage()]);
         }
@@ -339,11 +343,13 @@ class DistributionService
             'is_read' => false,
             'sent_at' => $now,
             'created_at' => $now,
+            'reference_id' => $customerId,
+            'reference_type' => 'customer',
         ], $adminIds);
         Notification::insert($rows);
 
         try {
-            $this->fcmService->sendToUsers('ADMIN', $adminIds, $title, $body);
+            $this->fcmService->sendToUsers('ADMIN', $adminIds, $title, $body, ['notification_type' => 'distribution_failed', 'reference_type' => 'customer', 'reference_id' => $customerId]);
         } catch (\Exception $e) {
             Log::error('배분 실패 알림 FCM 발송 실패', ['error' => $e->getMessage()]);
         }

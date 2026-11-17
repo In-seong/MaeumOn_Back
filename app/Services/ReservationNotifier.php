@@ -48,6 +48,7 @@ class ReservationNotifier
         $body = "{$facilityName} {$date} {$time} 예약이 {$label}되었습니다.";
 
         $now = now();
+        $reservationId = $reservation->reservation_id ?? null;
         $rows = array_map(fn($id) => [
             'receiver_id'       => $id,
             'receiver_type'     => 'CUSTOMER',
@@ -59,9 +60,15 @@ class ReservationNotifier
             'is_read'           => false,
             'sent_at'           => $now,
             'created_at'        => $now,
+            'reference_id'      => $reservationId,
+            'reference_type'    => 'reservation',
         ], $customers);
 
         Notification::insert($rows);
-        $this->fcm->sendToUsers('CUSTOMER', $customers, $title, $body);
+        $fcmData = ['notification_type' => 'reservation_status', 'reference_type' => 'reservation'];
+        if ($reservationId) {
+            $fcmData['reference_id'] = (string) $reservationId;
+        }
+        $this->fcm->sendToUsers('CUSTOMER', $customers, $title, $body, $fcmData);
     }
 }

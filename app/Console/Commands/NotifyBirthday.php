@@ -47,6 +47,8 @@ class NotifyBirthday extends Command
                 ? "오늘은 '{$names}'님의 생일입니다."
                 : "오늘 생일인 고객이 {$count}명 있습니다: {$names}";
 
+            $referenceId = $count === 1 ? $agentCustomers->first()->customer_id : null;
+
             Notification::create([
                 'receiver_id' => $agentId,
                 'receiver_type' => 'AGENT',
@@ -57,10 +59,17 @@ class NotifyBirthday extends Command
                 'is_read' => false,
                 'sent_at' => now(),
                 'created_at' => now(),
+                'reference_id' => $referenceId,
+                'reference_type' => $referenceId ? 'customer' : null,
             ]);
 
             try {
-                $fcmService->sendToUsers('AGENT', [$agentId], $title, $content);
+                $fcmData = ['notification_type' => 'BIRTHDAY'];
+                if ($referenceId) {
+                    $fcmData['reference_type'] = 'customer';
+                    $fcmData['reference_id'] = $referenceId;
+                }
+                $fcmService->sendToUsers('AGENT', [$agentId], $title, $content, $fcmData);
             } catch (\Exception $e) {
                 Log::error('FCM 생일 알림 실패', ['agent_id' => $agentId, 'error' => $e->getMessage()]);
             }

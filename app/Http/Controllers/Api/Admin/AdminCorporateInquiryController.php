@@ -126,6 +126,8 @@ class AdminCorporateInquiryController extends Controller
                     'content' => "새로운 기업 문의 '{$inquiry->company_name}'이(가) 배분되었습니다.",
                     'is_read' => false,
                     'sent_at' => now(),
+                    'reference_id' => $inquiry->id,
+                    'reference_type' => 'corporate_inquiry',
                 ]);
             }
         }
@@ -133,7 +135,7 @@ class AdminCorporateInquiryController extends Controller
         if ($count > 0) {
             try {
                 $companyNames = CorporateInquiry::whereIn('id', $validated['inquiry_ids'])->pluck('company_name')->implode(', ');
-                app(FcmService::class)->sendToUsers('AGENT', [$agentId], '기업 DB 배분 알림', "새로운 기업 문의 {$count}건이 배분되었습니다. ({$companyNames})");
+                app(FcmService::class)->sendToUsers('AGENT', [$agentId], '기업 DB 배분 알림', "새로운 기업 문의 {$count}건이 배분되었습니다. ({$companyNames})", ['notification_type' => 'ASSIGNMENT', 'reference_type' => 'corporate_inquiry']);
             } catch (\Exception $e) {
                 Log::error('기업 배분 알림 FCM 발송 실패', ['agent_id' => $agentId, 'error' => $e->getMessage()]);
             }
@@ -187,10 +189,12 @@ class AdminCorporateInquiryController extends Controller
                 'content' => "새로운 기업 문의 '{$inquiry->company_name}'이(가) 배분되었습니다.",
                 'is_read' => false,
                 'sent_at' => now(),
+                'reference_id' => $inquiry->id,
+                'reference_type' => 'corporate_inquiry',
             ]);
 
             try {
-                app(FcmService::class)->sendToUsers('AGENT', [$validated['agent_id']], '기업 DB 배분 알림', "새로운 기업 문의 '{$inquiry->company_name}'이(가) 배분되었습니다.");
+                app(FcmService::class)->sendToUsers('AGENT', [$validated['agent_id']], '기업 DB 배분 알림', "새로운 기업 문의 '{$inquiry->company_name}'이(가) 배분되었습니다.", ['notification_type' => 'ASSIGNMENT', 'reference_type' => 'corporate_inquiry', 'reference_id' => (string) $inquiry->id]);
             } catch (\Exception $e) {
                 Log::error('기업 배분 알림 FCM 발송 실패', ['agent_id' => $validated['agent_id'], 'error' => $e->getMessage()]);
             }

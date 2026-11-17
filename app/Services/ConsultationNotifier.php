@@ -24,11 +24,11 @@ class ConsultationNotifier
         $body  = sprintf('%s 고객의 %s 요청', $customer->name, $c->consultation_type);
 
         if ($c->assignee_type === 'AGENT' && $c->assignee_id) {
-            $this->push('AGENT', [$c->assignee_id], $title, $body, 'consultation_request');
+            $this->push('AGENT', [$c->assignee_id], $title, $body, 'consultation_request', 'consultation', $c->consultation_id);
             return;
         }
         $adminIds = Admin::where('is_active', 1)->pluck('admin_id')->all();
-        $this->push('ADMIN', $adminIds, $title, $body, 'consultation_request');
+        $this->push('ADMIN', $adminIds, $title, $body, 'consultation_request', 'consultation', $c->consultation_id);
     }
 
     public function onAssigned(Consultation $c, Customer $customer): void
@@ -39,11 +39,11 @@ class ConsultationNotifier
 
         $agentTitle = '상담 담당 배정';
         $agentBody  = sprintf('%s 고객의 %s 상담이 배정되었습니다.', $customer->name, $c->consultation_type);
-        $this->push('AGENT', [$c->assignee_id], $agentTitle, $agentBody, 'consultation_assigned');
+        $this->push('AGENT', [$c->assignee_id], $agentTitle, $agentBody, 'consultation_assigned', 'consultation', $c->consultation_id);
 
         $customerTitle = '담당 설계사 배정';
         $customerBody  = sprintf('요청하신 %s에 담당 설계사가 배정되었습니다.', $c->consultation_type);
-        $this->push('CUSTOMER', [$customer->customer_id], $customerTitle, $customerBody, 'consultation_assigned');
+        $this->push('CUSTOMER', [$customer->customer_id], $customerTitle, $customerBody, 'consultation_assigned', 'consultation', $c->consultation_id);
     }
 
     public function onAnswered(Consultation $c, Customer $customer, string $answererType): void
@@ -51,12 +51,12 @@ class ConsultationNotifier
         $title = '상담 답변 도착';
         $body  = sprintf('요청하신 %s에 답변이 등록되었습니다.', $c->consultation_type);
 
-        $this->push('CUSTOMER', [$customer->customer_id], $title, $body, 'consultation_answered');
+        $this->push('CUSTOMER', [$customer->customer_id], $title, $body, 'consultation_answered', 'consultation', $c->consultation_id);
 
         // 관리자가 답변했고 담당설계사가 배정되어 있으면 설계사에게도 통보
         if ($answererType === 'ADMIN' && $c->assignee_type === 'AGENT' && $c->assignee_id) {
             $agentBody = sprintf('%s 고객 상담에 관리자 답변이 등록되었습니다.', $customer->name);
-            $this->push('AGENT', [$c->assignee_id], $title, $agentBody, 'consultation_answered');
+            $this->push('AGENT', [$c->assignee_id], $title, $agentBody, 'consultation_answered', 'consultation', $c->consultation_id);
         }
     }
 
@@ -64,7 +64,7 @@ class ConsultationNotifier
      * notification 테이블 적재 + FCM 푸시.
      * sender_type ENUM이 ('AGENT','ADMIN','SYSTEM')만 허용 → 모든 시스템 알림은 SYSTEM.
      */
-    private function push(string $userType, array $userIds, string $title, string $body, string $type): void
+    private function push(string $userType, array $userIds, string $title, string $body, string $type, ?string $referenceType = null, $referenceId = null): void
     {
         if (empty($userIds)) {
             return;
@@ -81,8 +81,15 @@ class ConsultationNotifier
             'is_read'           => false,
             'sent_at'           => $now,
             'created_at'        => $now,
+            'reference_id'      => $referenceId,
+            'reference_type'    => $referenceType,
         ], $userIds);
         Notification::insert($rows);
-        $this->fcm->sendToUsers($userType, $userIds, $title, $body);
+        $fcmData = ['notification_type' => $type];
+        if ($referenceType) {
+            $fcmData['reference_type'] = $referenceType;
+            $fcmData['reference_id'] = (string) ($referenceId ?? '');
+        }
+        $this->fcm->sendToUsers($userType, $userIds, $title, $body, $fcmData);
     }
 }

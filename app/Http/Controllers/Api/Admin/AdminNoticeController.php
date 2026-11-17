@@ -112,6 +112,8 @@ class AdminNoticeController extends Controller
                 'content' => mb_substr($notice->content, 0, 100),
                 'is_read' => false,
                 'sent_at' => now(),
+                'reference_id' => $notice->notice_id,
+                'reference_type' => 'notice',
             ]);
         }
 

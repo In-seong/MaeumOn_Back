@@ -132,7 +132,7 @@ class AgentCustomerController extends Controller
         ]));
 
         $agent = $request->user()->agent;
-        $this->notifyAdminsCustomerRegistered($agent->name ?? $agentId, $customer->name);
+        $this->notifyAdminsCustomerRegistered($agent->name ?? $agentId, $customer->name, $customer->customer_id);
 
         return response()->json([
             'success' => true,
@@ -419,7 +419,7 @@ class AgentCustomerController extends Controller
         ]);
     }
 
-    private function notifyAdminsCustomerRegistered(string $agentName, string $customerName): void
+    private function notifyAdminsCustomerRegistered(string $agentName, string $customerName, ?string $customerId = null): void
     {
         $adminIds = Admin::where('is_active', 1)->pluck('admin_id')->all();
         if (empty($adminIds)) {
@@ -440,11 +440,18 @@ class AgentCustomerController extends Controller
             'is_read' => false,
             'sent_at' => $now,
             'created_at' => $now,
+            'reference_id' => $customerId,
+            'reference_type' => $customerId ? 'customer' : null,
         ], $adminIds);
         Notification::insert($rows);
 
         try {
-            app(FcmService::class)->sendToUsers('ADMIN', $adminIds, $title, $body);
+            $fcmData = ['notification_type' => 'customer_registered'];
+            if ($customerId) {
+                $fcmData['reference_type'] = 'customer';
+                $fcmData['reference_id'] = $customerId;
+            }
+            app(FcmService::class)->sendToUsers('ADMIN', $adminIds, $title, $body, $fcmData);
         } catch (\Exception $e) {
             \Illuminate\Support\Facades\Log::error('고객 등록 알림 FCM 발송 실패', ['error' => $e->getMessage()]);
         }

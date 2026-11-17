@@ -28,7 +28,7 @@ class FcmService
     /**
      * 특정 사용자들에게 푸시 알림 발송
      */
-    public function sendToUsers(string $userType, array $userIds, string $title, string $body): array
+    public function sendToUsers(string $userType, array $userIds, string $title, string $body, array $data = []): array
     {
         if (!$this->messaging) {
             Log::warning('FCM messaging not initialized');
@@ -47,13 +47,13 @@ class FcmService
             return ['success' => 0, 'failure' => 0, 'no_token' => count($userIds)];
         }
 
-        return $this->sendToTokens($tokens, $title, $body);
+        return $this->sendToTokens($tokens, $title, $body, $data);
     }
 
     /**
      * FCM 토큰 목록에 푸시 발송
      */
-    public function sendToTokens(array $tokens, string $title, string $body): array
+    public function sendToTokens(array $tokens, string $title, string $body, array $data = []): array
     {
         if (!$this->messaging || empty($tokens)) {
             return ['success' => 0, 'failure' => count($tokens)];
@@ -63,11 +63,11 @@ class FcmService
 
         $message = CloudMessage::new()
             ->withNotification($notification)
-            ->withData([
+            ->withData(array_merge([
                 'title' => $title,
                 'body' => $body,
                 'click_action' => 'OPEN_ACTIVITY',
-            ]);
+            ], $data));
 
         try {
             $report = $this->messaging->sendMulticast($message, $tokens);

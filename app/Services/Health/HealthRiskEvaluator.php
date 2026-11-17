@@ -111,10 +111,12 @@ class HealthRiskEvaluator
                 'is_read' => false,
                 'sent_at' => now(),
                 'created_at' => now(),
+                'reference_id' => $customer->customer_id,
+                'reference_type' => 'customer',
             ]);
 
             // 2) 고객 FCM
-            $this->fcmService->sendToUsers('CUSTOMER', [$customer->customer_id], $title, $body);
+            $this->fcmService->sendToUsers('CUSTOMER', [$customer->customer_id], $title, $body, ['notification_type' => $notificationType, 'reference_type' => 'customer', 'reference_id' => $customer->customer_id]);
 
             // 3) 담당 설계사에게도 알림 (있는 경우)
             if ($customer->agent_id) {
@@ -129,9 +131,11 @@ class HealthRiskEvaluator
                     'content' => $agentBody,
                     'is_read' => false,
                     'sent_at' => now(),
+                    'reference_id' => $customer->customer_id,
+                    'reference_type' => 'customer',
                 ]);
 
-                $this->fcmService->sendToUsers('AGENT', [$customer->agent_id], $title, $agentBody);
+                $this->fcmService->sendToUsers('AGENT', [$customer->agent_id], $title, $agentBody, ['notification_type' => $notificationType, 'reference_type' => 'customer', 'reference_id' => $customer->customer_id]);
             }
 
             return true;

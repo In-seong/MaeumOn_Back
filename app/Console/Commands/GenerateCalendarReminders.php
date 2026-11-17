@@ -212,12 +212,14 @@ class GenerateCalendarReminders extends Command
                 'content' => "{$event->title} ({$timeLabel})",
                 'is_read' => false,
                 'sent_at' => now(),
+                'reference_id' => $event->event_id,
+                'reference_type' => 'calendar_event',
             ]);
 
             // FCM 푸시 알림 발송
             try {
                 $fcm = app(FcmService::class);
-                $fcm->sendToUsers('AGENT', [$reminder->agent_id], $event->title, "{$event->title} ({$timeLabel})");
+                $fcm->sendToUsers('AGENT', [$reminder->agent_id], $event->title, "{$event->title} ({$timeLabel})", ['notification_type' => 'schedule', 'reference_type' => 'calendar_event', 'reference_id' => (string) $event->event_id]);
             } catch (\Exception $e) {
                 // FCM 실패해도 리마인더 처리는 계속
             }

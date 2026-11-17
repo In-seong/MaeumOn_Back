@@ -102,7 +102,8 @@ class AdminNotificationController extends Controller
                 'AGENT',
                 $agentIds,
                 $validated['title'],
-                $validated['content']
+                $validated['content'],
+                ['notification_type' => 'ADMIN_MESSAGE']
             );
         } catch (\Exception $e) {
             $fcmResult = ['success' => 0, 'failure' => count($agentIds)];

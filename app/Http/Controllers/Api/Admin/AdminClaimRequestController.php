@@ -67,7 +67,7 @@ class AdminClaimRequestController extends Controller
         $claimRequest->load('files', 'assignedAgent', 'hospital');
 
         if ($agentId) {
-            $this->notifyAgentClaimAssigned($agentId, $validated['name']);
+            $this->notifyAgentClaimAssigned($agentId, $validated['name'], 1, $claimRequest->request_id);
         }
 
         return response()->json([
@@ -155,7 +155,7 @@ class AdminClaimRequestController extends Controller
 
         $claimRequest->load('assignedAgent');
 
-        $this->notifyAgentClaimAssigned($validated['agent_id'], $claimRequest->name);
+        $this->notifyAgentClaimAssigned($validated['agent_id'], $claimRequest->name, 1, $claimRequest->request_id);
 
         return response()->json([
             'success' => true,
@@ -574,7 +574,7 @@ class AdminClaimRequestController extends Controller
         ]);
     }
 
-    private function notifyAgentClaimAssigned(string $agentId, ?string $customerName, int $count = 1): void
+    private function notifyAgentClaimAssigned(string $agentId, ?string $customerName, int $count = 1, ?int $requestId = null): void
     {
         $content = $count > 1
             ? "새로운 청구신청 {$count}건이 배정되었습니다."
@@ -589,10 +589,12 @@ class AdminClaimRequestController extends Controller
             'content' => $content,
             'is_read' => false,
             'sent_at' => now(),
+            'reference_id' => $requestId,
+            'reference_type' => 'claim_request',
         ]);
 
         try {
-            app(FcmService::class)->sendToUsers('AGENT', [$agentId], '청구 배정 알림', $content);
+            app(FcmService::class)->sendToUsers('AGENT', [$agentId], '청구 배정 알림', $content, ['notification_type' => 'ASSIGNMENT', 'reference_type' => 'claim_request', 'reference_id' => (string) ($requestId ?? '')]);
         } catch (\Exception $e) {
             Log::error('청구배정 알림 FCM 발송 실패', ['agent_id' => $agentId, 'error' => $e->getMessage()]);
         }
@@ -637,10 +639,12 @@ class AdminClaimRequestController extends Controller
                 'content' => $message,
                 'is_read' => false,
                 'sent_at' => now(),
+                'reference_id' => $claimRequest->request_id,
+                'reference_type' => 'claim_request',
             ]);
 
             try {
-                app(FcmService::class)->sendToUsers('AGENT', [$agentId], '추가 서류 전달', $message);
+                app(FcmService::class)->sendToUsers('AGENT', [$agentId], '추가 서류 전달', $message, ['notification_type' => 'CLAIM_REQUEST', 'reference_type' => 'claim_request', 'reference_id' => (string) $claimRequest->request_id]);
             } catch (\Exception $e) {
                 Log::error('추가 서류 알림 FCM 발송 실패', ['agent_id' => $agentId, 'error' => $e->getMessage()]);
             }

@@ -116,10 +116,12 @@ class AdminAssignmentController extends Controller
                 'content' => "새로운 고객 '{$customer->name}'님이 배분되었습니다.",
                 'is_read' => false,
                 'sent_at' => now(),
+                'reference_id' => $customer->customer_id,
+                'reference_type' => 'customer',
             ]);
 
             try {
-                app(FcmService::class)->sendToUsers('AGENT', [$agent->agent_id], 'DB 배분 알림', "새로운 고객 '{$customer->name}'님이 배분되었습니다.");
+                app(FcmService::class)->sendToUsers('AGENT', [$agent->agent_id], 'DB 배분 알림', "새로운 고객 '{$customer->name}'님이 배분되었습니다.", ['notification_type' => 'ASSIGNMENT', 'reference_type' => 'customer', 'reference_id' => $customer->customer_id]);
             } catch (\Exception $e) {
                 Log::error('배분 알림 FCM 발송 실패', ['agent_id' => $agent->agent_id, 'error' => $e->getMessage()]);
             }
@@ -205,10 +207,12 @@ class AdminAssignmentController extends Controller
                     'content' => "새로운 고객 '{$customer->name}'님이 배분되었습니다.",
                     'is_read' => false,
                     'sent_at' => now(),
+                    'reference_id' => $customer->customer_id,
+                    'reference_type' => 'customer',
                 ]);
 
                 try {
-                    app(FcmService::class)->sendToUsers('AGENT', [$agent->agent_id], 'DB 배분 알림', "새로운 고객 '{$customer->name}'님이 배분되었습니다.");
+                    app(FcmService::class)->sendToUsers('AGENT', [$agent->agent_id], 'DB 배분 알림', "새로운 고객 '{$customer->name}'님이 배분되었습니다.", ['notification_type' => 'ASSIGNMENT', 'reference_type' => 'customer', 'reference_id' => $customer->customer_id]);
                 } catch (\Exception $e) {
                     Log::error('배분 알림 FCM 발송 실패', ['agent_id' => $agent->agent_id, 'error' => $e->getMessage()]);
                 }
@@ -302,10 +306,12 @@ class AdminAssignmentController extends Controller
                 'content' => $message,
                 'is_read' => false,
                 'sent_at' => now(),
+                'reference_id' => $assignment->customer_id,
+                'reference_type' => 'customer',
             ]);
 
             try {
-                app(FcmService::class)->sendToUsers('AGENT', [$agentId], "DB 배분 {$actionLabel}", $message);
+                app(FcmService::class)->sendToUsers('AGENT', [$agentId], "DB 배분 {$actionLabel}", $message, ['notification_type' => 'ASSIGNMENT', 'reference_type' => 'customer', 'reference_id' => $assignment->customer_id]);
             } catch (\Exception $e) {
                 Log::error("배분 {$actionLabel} 알림 FCM 발송 실패", ['agent_id' => $agentId, 'error' => $e->getMessage()]);
             }

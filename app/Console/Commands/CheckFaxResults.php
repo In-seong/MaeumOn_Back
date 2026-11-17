@@ -70,10 +70,12 @@ class CheckFaxResults extends Command
             'is_read' => false,
             'sent_at' => now(),
             'created_at' => now(),
+            'reference_id' => $claim->claim_id,
+            'reference_type' => 'claim',
         ]);
 
         try {
-            app(FcmService::class)->sendToUsers('AGENT', [$claim->agent_id], '팩스 발송 실패', "'{$customerName}'님 청구서 팩스가 시간 초과로 실패했습니다.");
+            app(FcmService::class)->sendToUsers('AGENT', [$claim->agent_id], '팩스 발송 실패', "'{$customerName}'님 청구서 팩스가 시간 초과로 실패했습니다.", ['notification_type' => 'FAX_RESULT', 'reference_type' => 'claim', 'reference_id' => (string) $claim->claim_id]);
         } catch (\Exception $e) {
             Log::error('FCM 팩스 타임아웃 알림 실패', ['error' => $e->getMessage()]);
         }

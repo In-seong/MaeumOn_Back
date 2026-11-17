@@ -412,10 +412,12 @@ class FaxService
             'is_read' => false,
             'sent_at' => now(),
             'created_at' => now(),
+            'reference_id' => $claim->claim_id,
+            'reference_type' => 'claim',
         ]);
 
         try {
-            app(FcmService::class)->sendToUsers('AGENT', [$claim->agent_id], $title, $content);
+            app(FcmService::class)->sendToUsers('AGENT', [$claim->agent_id], $title, $content, ['notification_type' => 'FAX_RESULT', 'reference_type' => 'claim', 'reference_id' => (string) $claim->claim_id]);
         } catch (\Exception $e) {
             Log::error('FCM 팩스 결과 알림 실패', ['error' => $e->getMessage()]);
         }
