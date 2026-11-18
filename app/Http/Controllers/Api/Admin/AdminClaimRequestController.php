@@ -700,19 +700,26 @@ class AdminClaimRequestController extends Controller
 
         $reasonText = $recallReason ? " (사유: {$recallReason})" : '';
         Notification::create([
-            'agent_id' => $agentId,
-            'type' => 'CLAIM_REQUEST',
+            'receiver_id' => $agentId,
+            'receiver_type' => 'AGENT',
+            'sender_id' => $adminId,
+            'sender_type' => 'ADMIN',
+            'notification_type' => 'CLAIM_REQUEST',
             'title' => "청구 배정 {$actionLabel}",
-            'message' => "\"{$claimRequest->name}\" 청구 배정이 {$actionLabel}되었습니다.{$reasonText}",
+            'content' => "\"{$claimRequest->name}\" 청구 배정이 {$actionLabel}되었습니다.{$reasonText}",
+            'is_read' => false,
+            'sent_at' => now(),
             'reference_type' => 'claim_request',
             'reference_id' => $claimRequest->request_id,
         ]);
 
         try {
-            app(FcmService::class)->sendToAgent(
-                $agentId,
+            app(FcmService::class)->sendToUsers(
+                'AGENT',
+                [$agentId],
                 "청구 배정 {$actionLabel}",
-                "\"{$claimRequest->name}\" 청구 배정이 {$actionLabel}되었습니다.{$reasonText}"
+                "\"{$claimRequest->name}\" 청구 배정이 {$actionLabel}되었습니다.{$reasonText}",
+                ['notification_type' => 'CLAIM_REQUEST', 'reference_type' => 'claim_request', 'reference_id' => $claimRequest->request_id]
             );
         } catch (\Throwable $e) {
             Log::warning("FCM 발송 실패 (청구배정 {$actionLabel}): " . $e->getMessage());
