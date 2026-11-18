@@ -638,12 +638,13 @@ DB 배분/회수 이력 로그.
 | 컬럼 | 타입 | NULL | Key | Default | 비고 |
 |------|------|------|-----|---------|------|
 | id | bigint unsigned | NO | PRI | auto_increment | |
-| action | enum('assign','recall') | NO | MUL | | 배분/회수 |
-| customer_id | char(8) | NO | MUL | | → customer FK |
+| action | enum('assign','recall','reject') | NO | MUL | | 배분/회수/반려 |
+| customer_id | char(8) | YES | MUL | NULL | → customer FK (청구배정 회수 시 null) |
 | agent_id | char(8) | NO | MUL | | → agent FK |
 | admin_id | char(8) | YES | | NULL | 실행 관리자 |
 | assignment_id | int(11) | YES | | NULL | → customer_assignment FK |
 | reason | varchar(500) | YES | | NULL | 회수 사유 |
+| notes | varchar(500) | YES | | NULL | 부가 메모 (청구배정 회수 등) |
 | created_at | datetime | NO | MUL | CURRENT_TIMESTAMP | |
 
 - **Model**: `AssignmentLog` ✅
