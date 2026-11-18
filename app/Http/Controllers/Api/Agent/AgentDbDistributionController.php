@@ -54,6 +54,10 @@ class AgentDbDistributionController extends Controller
             ], 404);
         }
 
+        if (!$assignment->confirmed_at) {
+            $assignment->update(['confirmed_at' => now()]);
+        }
+
         return response()->json([
             'success' => true,
             'data' => $assignment,
@@ -126,6 +130,54 @@ class AgentDbDistributionController extends Controller
             ->firstOrFail();
 
         return Storage::disk('s3')->download($file->file_url, $file->file_name);
+    }
+
+    /**
+     * DB 배분 단건 확인 처리
+     */
+    public function confirm(Request $request, $id): JsonResponse
+    {
+        $agentId = $request->user()->agent->agent_id;
+
+        $assignment = CustomerAssignment::where('assignment_id', $id)
+            ->where('agent_id', $agentId)
+            ->first();
+
+        if (!$assignment) {
+            return response()->json([
+                'success' => false,
+                'data' => null,
+                'message' => '배정 정보를 찾을 수 없습니다.',
+            ], 404);
+        }
+
+        if (!$assignment->confirmed_at) {
+            $assignment->update(['confirmed_at' => now()]);
+        }
+
+        return response()->json([
+            'success' => true,
+            'data' => $assignment,
+            'message' => '배분을 확인했습니다.',
+        ]);
+    }
+
+    /**
+     * DB 배분 일괄 확인 처리
+     */
+    public function confirmAll(Request $request): JsonResponse
+    {
+        $agentId = $request->user()->agent->agent_id;
+
+        $count = CustomerAssignment::where('agent_id', $agentId)
+            ->whereNull('confirmed_at')
+            ->update(['confirmed_at' => now()]);
+
+        return response()->json([
+            'success' => true,
+            'data' => ['confirmed_count' => $count],
+            'message' => "{$count}건을 확인 처리했습니다.",
+        ]);
     }
 
     /**

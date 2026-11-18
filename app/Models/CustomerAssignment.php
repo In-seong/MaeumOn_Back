@@ -17,12 +17,14 @@ class CustomerAssignment extends Model
         'assignment_type',
         'assignment_date',
         'notes',
+        'confirmed_at',
         'created_by_id',
         'updated_by_id',
     ];
 
     protected $casts = [
         'assignment_date' => 'date',
+        'confirmed_at' => 'datetime',
     ];
 
     public function customer(): BelongsTo

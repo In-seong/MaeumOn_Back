@@ -626,6 +626,7 @@ DB 배분 (고객 배정).
 | assignment_type | varchar(50) | NO | | | 배분 유형 |
 | assignment_date | date | NO | MUL | | 배분일 |
 | notes | text | YES | | | |
+| confirmed_at | datetime | YES | | NULL | 설계사 확인 시각 (NULL=미확인) |
 | created_by_id | char(8) | YES | | | |
 | updated_by_id | char(8) | YES | | | |
 | created_at | datetime | NO | | CURRENT_TIMESTAMP | |
@@ -1511,6 +1512,7 @@ FaxClientNC 연동용 테이블. **테이블명 반드시 대문자 유지**.
 **변경 이력**: 2026-08-20 customer_assignment.admin_id: NOT NULL → NULL 허용 (자동배분 시 배정자 없음)
 **변경 이력**: 2026-08-21 customer 테이블에 acquisition_note VARCHAR(500) NULL 컬럼 추가 (가입경로 기타 메모)
 **변경 이력**: 2026-08-21 account, agent, customer 테이블에 deleted_at TIMESTAMP NULL 컬럼 추가 (3단계 상태관리: 활성화/비활성화/완전삭제)
+**변경 이력**: 2026-11-18 customer_assignment에 confirmed_at DATETIME NULL 컬럼 추가 (설계사 배분 확인 여부 추적)
 
 ---
 

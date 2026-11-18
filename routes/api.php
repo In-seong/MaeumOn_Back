@@ -505,7 +505,9 @@ Route::middleware('auth:sanctum')->group(function () {
         // DB배분 수신
         Route::get('/assignments', [AgentDbDistributionController::class, 'index']);
         Route::get('/assignments/{id}', [AgentDbDistributionController::class, 'show']);
+        Route::put('/assignments/confirm-all', [AgentDbDistributionController::class, 'confirmAll']);
         Route::put('/assignments/{id}/process', [AgentDbDistributionController::class, 'process']);
+        Route::put('/assignments/{id}/confirm', [AgentDbDistributionController::class, 'confirm']);
 
         // 양식 다운로드 (설계사용 조회 전용)
         Route::get('/form-downloads', [AdminFormDownloadController::class, 'index']);

@@ -142,6 +142,11 @@ class AgentDashboardController extends Controller
             ->where('consultation_status', 'pending')
             ->count();
 
+        // 미확인 배분 건수
+        $unconfirmedAssignments = CustomerAssignment::where('agent_id', $agentId)
+            ->whereNull('confirmed_at')
+            ->count();
+
         // 4. DB 배분 내역 (최근 10건)
         $dbDistributions = CustomerAssignment::where('agent_id', $agentId)
             ->with('customer:customer_id,name,phone,hospital')
@@ -232,6 +237,7 @@ class AgentDashboardController extends Controller
                     'unregistered_db' => $unregisteredDb,
                     'incomplete_claims' => $incompleteClaims,
                     'pending_consultations' => $pendingConsultations,
+                    'unconfirmed_assignments' => $unconfirmedAssignments,
                 ],
                 'db_distributions' => $dbDistributions,
                 'customer_alerts' => $renewals->concat($birthdays)->sortBy('date')->values(),
