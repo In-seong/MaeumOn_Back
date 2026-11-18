@@ -60,7 +60,7 @@ class AdminAssignmentController extends Controller
             }
         }
         if ($agentIds) {
-            $agentNames = Agent::whereIn('agent_id', array_unique($agentIds))
+            $agentNames = Agent::withTrashed()->whereIn('agent_id', array_unique($agentIds))
                 ->pluck('name', 'agent_id');
             foreach ($assignments->items() as $item) {
                 if ($item->notes) {
