@@ -7,6 +7,8 @@ use App\Http\Controllers\Api\Admin\ClaimFormController;
 use App\Http\Controllers\Api\Admin\FormFieldController;
 use App\Http\Controllers\Api\Admin\FormPageController;
 use App\Http\Controllers\Api\CustomerAuthController;
+use App\Http\Controllers\Api\Site\SiteSuccessCaseController;
+use App\Http\Controllers\Api\Site\SiteAdminAuthController;
 use App\Http\Controllers\Api\ClaimController;
 use App\Http\Controllers\Api\Agent\AgentDashboardController;
 use App\Http\Controllers\Api\Agent\AgentCustomerController;
@@ -161,6 +163,20 @@ Route::prefix('hospital-portal')->group(function () {
     Route::get('/schedule', [HospitalPortalController::class, 'getSchedule']);
     Route::put('/schedule', [HospitalPortalController::class, 'updateSchedule']);
     Route::post('/image', [HospitalPortalController::class, 'uploadImage']);
+});
+
+// 외부 API — 성공사례 (API 키 인증)
+Route::middleware('api-key')->group(function () {
+    // 1단계: 공개 조회
+    Route::get('/success-cases', [SiteSuccessCaseController::class, 'index']);
+    Route::get('/success-cases/{id}', [SiteSuccessCaseController::class, 'show']);
+
+    // 2단계: 관리자 기능
+    Route::get('/admin/success-cases', [SiteSuccessCaseController::class, 'adminIndex']);
+    Route::post('/admin/success-cases', [SiteSuccessCaseController::class, 'store']);
+    Route::put('/admin/success-cases/{id}', [SiteSuccessCaseController::class, 'update']);
+    Route::delete('/admin/success-cases/{id}', [SiteSuccessCaseController::class, 'destroy']);
+    Route::post('/admin/login', [SiteAdminAuthController::class, 'login']);
 });
 
 // 외부 API — 기업용 보험 문의 (API 키 인증)
