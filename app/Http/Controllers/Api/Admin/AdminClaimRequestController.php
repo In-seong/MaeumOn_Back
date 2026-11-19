@@ -671,7 +671,7 @@ class AdminClaimRequestController extends Controller
         if (!$claimRequest->assigned_agent_id) {
             return response()->json([
                 'success' => false,
-                'message' => '배정된 설계사가 없습니다.',
+                'message' => '이미 회수 또는 반려 처리된 건입니다.',
             ], 422);
         }
 

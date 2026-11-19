@@ -78,17 +78,36 @@ class AdminPerformanceController extends Controller
      */
     public function agents(Request $request): JsonResponse
     {
-        $now = Carbon::now();
         $perPage = min(max((int) $request->get('per_page', 15), 1), 100);
         $branchId = $this->resolveBranchId($request);
 
-        $startOfMonth = $now->copy()->startOfMonth();
-        $endOfMonth = $now->copy()->endOfMonth()->endOfDay();
+        $dateFrom = $request->get('date_from');
+        $dateTo = $request->get('date_to');
+        if ($dateFrom && $dateTo) {
+            $startDate = Carbon::parse($dateFrom)->startOfDay();
+            $endDate = Carbon::parse($dateTo)->endOfDay();
+        } else {
+            $startDate = Carbon::now()->startOfMonth();
+            $endDate = Carbon::now()->endOfDay();
+        }
+
+        $sortBy = $request->get('sort_by', 'agent_name');
+        $sortDir = $request->get('sort_dir', 'asc');
+        $allowedSorts = ['agent_name', 'db_assigned_count', 'contract_count', 'contract_amount'];
+        if (!in_array($sortBy, $allowedSorts)) {
+            $sortBy = 'agent_name';
+        }
+        $sortDir = $sortDir === 'desc' ? 'desc' : 'asc';
 
         $query = Agent::where('is_active', true);
         $this->applyAgentBranchFilter($query, $branchId);
 
-        $agents = $query->withCount(['customers', 'contracts'])->paginate($perPage);
+        if ($sortBy === 'agent_name') {
+            $query->orderBy('name', $sortDir);
+            $agents = $query->paginate($perPage);
+        } else {
+            $agents = $query->paginate($perPage);
+        }
 
         $agentIds = $agents->getCollection()->pluck('agent_id')->toArray();
 
@@ -98,7 +117,7 @@ class AdminPerformanceController extends Controller
         if (!empty($agentIds)) {
             $contractStats = DB::table('contract')
                 ->selectRaw('agent_id, COUNT(*) as contract_count, COALESCE(SUM(contract_amount), 0) as contract_amount')
-                ->whereBetween('contract_date', [$startOfMonth->format('Y-m-d'), $endOfMonth->format('Y-m-d')])
+                ->whereBetween('contract_date', [$startDate->format('Y-m-d'), $endDate->format('Y-m-d')])
                 ->whereIn('agent_id', $agentIds)
                 ->groupBy('agent_id')
                 ->get()
@@ -106,7 +125,7 @@ class AdminPerformanceController extends Controller
 
             $assignmentCounts = DB::table('customer_assignment')
                 ->selectRaw('agent_id, COUNT(*) as cnt')
-                ->whereBetween('created_at', [$startOfMonth, $endOfMonth])
+                ->whereBetween('created_at', [$startDate, $endDate])
                 ->whereIn('agent_id', $agentIds)
                 ->groupBy('agent_id')
                 ->pluck('cnt', 'agent_id');
@@ -130,6 +149,11 @@ class AdminPerformanceController extends Controller
                     : 0,
             ];
         });
+
+        if ($sortBy !== 'agent_name') {
+            $sorted = $agents->getCollection()->sortBy($sortBy, SORT_REGULAR, $sortDir === 'desc')->values();
+            $agents->setCollection($sorted);
+        }
 
         return response()->json([
             'success' => true,
