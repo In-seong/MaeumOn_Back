@@ -1,1 +1,0 @@
-import{N as o,c as r,o as s,aa as t}from"./agent-CEvPNvqp.js";const a={},c={class:"bg-white rounded-[16px] shadow-[0_0_10px_rgba(0,0,0,0.1)] p-5 overflow-hidden"};function n(e,d){return s(),r("div",c,[t(e.$slots,"default")])}const i=o(a,[["render",n]]);export{i as C};
