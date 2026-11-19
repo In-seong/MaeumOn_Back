@@ -160,6 +160,24 @@ class AdminAwardPlanController extends Controller
         ]);
     }
 
+    public function reorder(Request $request): JsonResponse
+    {
+        $request->validate([
+            'items' => 'required|array|min:1',
+            'items.*.id' => 'required|integer|exists:award_plans,id',
+            'items.*.sort_order' => 'required|integer|min:0',
+        ]);
+
+        foreach ($request->input('items') as $item) {
+            AwardPlan::where('id', $item['id'])->update(['sort_order' => $item['sort_order']]);
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => '순서가 변경되었습니다.',
+        ]);
+    }
+
     public function destroy(int $id): JsonResponse
     {
         $item = AwardPlan::findOrFail($id);

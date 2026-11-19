@@ -89,11 +89,6 @@ class AdminAgentController extends Controller
         $agent = Agent::with([
                 'account:account_id,username,role,is_active',
                 'branches:branch_id,branch_name',
-                'performances' => function ($query) {
-                    $query->orderByDesc('year')
-                          ->orderByDesc('month')
-                          ->limit(12);
-                },
                 'contracts' => function ($query) {
                     $query->with(['customer:customer_id,name,phone', 'insuranceCompany:company_id,company_name'])
                           ->orderByDesc('contract_date')
@@ -104,9 +99,48 @@ class AdminAgentController extends Controller
             ->where('agent_id', $id)
             ->firstOrFail();
 
+        $now = \Carbon\Carbon::now();
+        $twelveMonthsAgo = $now->copy()->subMonths(11)->startOfMonth();
+
+        $contractsByMonth = DB::table('contract')
+            ->selectRaw('YEAR(contract_date) as year, MONTH(contract_date) as month, COUNT(*) as contract_count, COALESCE(SUM(contract_amount), 0) as contract_amount')
+            ->where('agent_id', $id)
+            ->where('contract_date', '>=', $twelveMonthsAgo->format('Y-m-d'))
+            ->groupByRaw('YEAR(contract_date), MONTH(contract_date)')
+            ->get()
+            ->keyBy(fn ($r) => $r->year . '-' . $r->month);
+
+        $assignmentsByMonth = DB::table('customer_assignment')
+            ->selectRaw('YEAR(created_at) as year, MONTH(created_at) as month, COUNT(*) as cnt')
+            ->where('agent_id', $id)
+            ->where('created_at', '>=', $twelveMonthsAgo)
+            ->groupByRaw('YEAR(created_at), MONTH(created_at)')
+            ->get()
+            ->keyBy(fn ($r) => $r->year . '-' . $r->month);
+
+        $performances = [];
+        for ($i = 0; $i < 12; $i++) {
+            $date = $now->copy()->subMonths($i);
+            $key = $date->year . '-' . $date->month;
+            $cs = $contractsByMonth->get($key);
+            $as = $assignmentsByMonth->get($key);
+
+            $performances[] = [
+                'year' => $date->year,
+                'month' => $date->month,
+                'db_assigned_count' => $as ? (int) $as->cnt : 0,
+                'contract_count' => $cs ? (int) $cs->contract_count : 0,
+                'contract_amount' => $cs ? (float) $cs->contract_amount : 0,
+                'consultation_count' => 0,
+            ];
+        }
+
+        $agentData = $agent->toArray();
+        $agentData['performances'] = $performances;
+
         return response()->json([
             'success' => true,
-            'data' => $agent,
+            'data' => $agentData,
         ]);
     }
 

@@ -363,6 +363,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/award-plans', [AdminAwardPlanController::class, 'index']);
         Route::get('/award-plans/months', [AdminAwardPlanController::class, 'months']);
         Route::post('/award-plans', [AdminAwardPlanController::class, 'store']);
+        Route::post('/award-plans/reorder', [AdminAwardPlanController::class, 'reorder']);
         Route::post('/award-plans/{id}', [AdminAwardPlanController::class, 'update']);
         Route::delete('/award-plans/{id}', [AdminAwardPlanController::class, 'destroy']);
 

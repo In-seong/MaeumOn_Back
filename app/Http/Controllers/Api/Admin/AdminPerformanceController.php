@@ -5,7 +5,6 @@ namespace App\Http\Controllers\Api\Admin;
 use App\Http\Controllers\Controller;
 use App\Http\Traits\BranchFilterable;
 use App\Models\Agent;
-use App\Models\Performance;
 use App\Models\CustomerAssignment;
 use App\Models\Contract;
 use Illuminate\Http\JsonResponse;
@@ -83,27 +82,51 @@ class AdminPerformanceController extends Controller
         $perPage = min(max((int) $request->get('per_page', 15), 1), 100);
         $branchId = $this->resolveBranchId($request);
 
+        $startOfMonth = $now->copy()->startOfMonth();
+        $endOfMonth = $now->copy()->endOfMonth()->endOfDay();
+
         $query = Agent::where('is_active', true);
         $this->applyAgentBranchFilter($query, $branchId);
 
-        $agents = $query->with(['performances' => function ($q) use ($now) {
-                $q->where('year', $now->year)->where('month', $now->month);
-            }])
-            ->withCount(['customers', 'contracts'])
-            ->paginate($perPage);
+        $agents = $query->withCount(['customers', 'contracts'])->paginate($perPage);
 
-        $agents->getCollection()->transform(function ($agent) {
-            $currentPerf = $agent->performances->first();
+        $agentIds = $agents->getCollection()->pluck('agent_id')->toArray();
+
+        $contractStats = collect();
+        $assignmentCounts = collect();
+
+        if (!empty($agentIds)) {
+            $contractStats = DB::table('contract')
+                ->selectRaw('agent_id, COUNT(*) as contract_count, COALESCE(SUM(contract_amount), 0) as contract_amount')
+                ->whereBetween('contract_date', [$startOfMonth->format('Y-m-d'), $endOfMonth->format('Y-m-d')])
+                ->whereIn('agent_id', $agentIds)
+                ->groupBy('agent_id')
+                ->get()
+                ->keyBy('agent_id');
+
+            $assignmentCounts = DB::table('customer_assignment')
+                ->selectRaw('agent_id, COUNT(*) as cnt')
+                ->whereBetween('created_at', [$startOfMonth, $endOfMonth])
+                ->whereIn('agent_id', $agentIds)
+                ->groupBy('agent_id')
+                ->pluck('cnt', 'agent_id');
+        }
+
+        $agents->getCollection()->transform(function ($agent) use ($contractStats, $assignmentCounts) {
+            $cs = $contractStats->get($agent->agent_id);
+            $contractCount = $cs ? (int) $cs->contract_count : 0;
+            $contractAmount = $cs ? (float) $cs->contract_amount : 0;
+            $dbAssigned = (int) ($assignmentCounts->get($agent->agent_id) ?? 0);
 
             return [
                 'agent_id' => $agent->agent_id,
                 'agent_name' => $agent->name,
-                'db_assigned_count' => $currentPerf?->db_assigned_count ?? 0,
-                'contract_count' => $currentPerf?->contract_count ?? 0,
-                'contract_amount' => (float) ($currentPerf?->contract_amount ?? 0),
-                'consultation_count' => $currentPerf?->consultation_count ?? 0,
-                'processing_rate' => ($currentPerf?->db_assigned_count ?? 0) > 0
-                    ? round((($currentPerf?->contract_count ?? 0) / $currentPerf->db_assigned_count) * 100, 1)
+                'db_assigned_count' => $dbAssigned,
+                'contract_count' => $contractCount,
+                'contract_amount' => $contractAmount,
+                'consultation_count' => 0,
+                'processing_rate' => $dbAssigned > 0
+                    ? round(($contractCount / $dbAssigned) * 100, 1)
                     : 0,
             ];
         });
@@ -193,23 +216,43 @@ class AdminPerformanceController extends Controller
      */
     public function agentDetail(Request $request, string $id): JsonResponse
     {
-        $agent = Agent::where('agent_id', $id)->firstOrFail();
+        Agent::where('agent_id', $id)->firstOrFail();
 
-        $performances = Performance::where('agent_id', $id)
-            ->orderBy('year', 'desc')
-            ->orderBy('month', 'desc')
-            ->limit(12)
+        $now = Carbon::now();
+        $twelveMonthsAgo = $now->copy()->subMonths(11)->startOfMonth();
+
+        $contractsByMonth = DB::table('contract')
+            ->selectRaw('YEAR(contract_date) as year, MONTH(contract_date) as month, COUNT(*) as contract_count, COALESCE(SUM(contract_amount), 0) as contract_amount')
+            ->where('agent_id', $id)
+            ->where('contract_date', '>=', $twelveMonthsAgo->format('Y-m-d'))
+            ->groupByRaw('YEAR(contract_date), MONTH(contract_date)')
             ->get()
-            ->map(function ($perf) {
-                return [
-                    'year' => $perf->year,
-                    'month' => $perf->month,
-                    'db_assigned_count' => $perf->db_assigned_count,
-                    'contract_count' => $perf->contract_count,
-                    'contract_amount' => (float) $perf->contract_amount,
-                    'consultation_count' => $perf->consultation_count,
-                ];
-            });
+            ->keyBy(fn ($r) => $r->year . '-' . $r->month);
+
+        $assignmentsByMonth = DB::table('customer_assignment')
+            ->selectRaw('YEAR(created_at) as year, MONTH(created_at) as month, COUNT(*) as cnt')
+            ->where('agent_id', $id)
+            ->where('created_at', '>=', $twelveMonthsAgo)
+            ->groupByRaw('YEAR(created_at), MONTH(created_at)')
+            ->get()
+            ->keyBy(fn ($r) => $r->year . '-' . $r->month);
+
+        $performances = [];
+        for ($i = 0; $i < 12; $i++) {
+            $date = $now->copy()->subMonths($i);
+            $key = $date->year . '-' . $date->month;
+            $cs = $contractsByMonth->get($key);
+            $as = $assignmentsByMonth->get($key);
+
+            $performances[] = [
+                'year' => $date->year,
+                'month' => $date->month,
+                'db_assigned_count' => $as ? (int) $as->cnt : 0,
+                'contract_count' => $cs ? (int) $cs->contract_count : 0,
+                'contract_amount' => $cs ? (float) $cs->contract_amount : 0,
+                'consultation_count' => 0,
+            ];
+        }
 
         return response()->json([
             'success' => true,
