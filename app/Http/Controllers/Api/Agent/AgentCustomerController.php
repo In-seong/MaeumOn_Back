@@ -23,7 +23,11 @@ class AgentCustomerController extends Controller
     {
         $agentId = $request->user()->agent->agent_id;
 
-        $query = Customer::where('agent_id', $agentId);
+        $eager = [];
+        if ($request->boolean('export')) {
+            $eager[] = 'memos';
+        }
+        $query = Customer::with($eager)->where('agent_id', $agentId);
 
         // 검색 (이름, 전화번호)
         if ($request->has('search')) {
@@ -48,7 +52,8 @@ class AgentCustomerController extends Controller
             $query->orderBy($sortField, $sortDirection === 'asc' ? 'asc' : 'desc');
         }
 
-        $perPage = min(max((int) $request->get('per_page', 15), 1), 100);
+        $maxPerPage = $request->boolean('export') ? 10000 : 100;
+        $perPage = min(max((int) $request->get('per_page', 15), 1), $maxPerPage);
         $customers = $query->paginate($perPage);
 
         $customers->getCollection()->transform(function ($customer) {

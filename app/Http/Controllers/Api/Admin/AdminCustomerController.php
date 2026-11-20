@@ -21,9 +21,9 @@ class AdminCustomerController extends Controller
      */
     public function index(Request $request): JsonResponse
     {
-        $eager = ['agent:agent_id,name'];
+        $eager = ['agent:agent_id,name', 'agent.branches:branch_id,branch_name'];
         if ($request->boolean('export')) {
-            $eager[] = 'latestMemo';
+            $eager[] = 'memos';
         }
         $query = Customer::with($eager);
 
