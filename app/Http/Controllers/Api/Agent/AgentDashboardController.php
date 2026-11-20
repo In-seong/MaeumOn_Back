@@ -147,8 +147,9 @@ class AgentDashboardController extends Controller
             ->whereNull('confirmed_at')
             ->count();
 
-        // 4. DB 배분 내역 (최근 10건)
+        // 4. DB 배분 내역 (미확인 건만, 최근 10건)
         $dbDistributions = CustomerAssignment::where('agent_id', $agentId)
+            ->whereNull('confirmed_at')
             ->with('customer:customer_id,name,phone,hospital')
             ->orderByDesc('assignment_date')
             ->limit(10)
