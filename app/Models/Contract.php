@@ -21,6 +21,8 @@ class Contract extends Model
         'customer_name',
         'customer_phone',
         'insurance_product',
+        'contractor',
+        'insured_person',
         'payment_method',
         'expiration_date',
         'notes',

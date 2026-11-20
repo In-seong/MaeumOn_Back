@@ -243,6 +243,8 @@ FCM 푸시 알림 토큰. **Model: `FcmToken`** (`app/Models/FcmToken.php`, 2026
 | customer_name | varchar(50) | YES | | | 비정규화 (조회 성능) |
 | customer_phone | varchar(20) | YES | | | 비정규화 |
 | insurance_product | varchar(200) | YES | | | 보험상품명 |
+| contractor | varchar(50) | YES | | | 계약자 |
+| insured_person | varchar(50) | YES | | | 피보험자 |
 | expiration_date | date | YES | | | 만기일 |
 | payment_method | varchar(20) | YES | | | 납입 방식 |
 | notes | text | YES | | | |
