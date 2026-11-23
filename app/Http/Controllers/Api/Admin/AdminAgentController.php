@@ -315,6 +315,11 @@ class AdminAgentController extends Controller
             if ($agent->account_id) {
                 Account::where('account_id', $agent->account_id)
                     ->update(['is_active' => $newStatus]);
+
+                if (!$newStatus) {
+                    $account = Account::find($agent->account_id);
+                    $account?->tokens()->delete();
+                }
             }
         });
 
@@ -343,6 +348,7 @@ class AdminAgentController extends Controller
             if ($agent->account_id) {
                 $account = Account::where('account_id', $agent->account_id)->first();
                 if ($account) {
+                    $account->tokens()->delete();
                     $account->update([
                         'is_active' => false,
                         'username' => 'deleted_' . $account->username . '_' . time(),

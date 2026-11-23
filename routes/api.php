@@ -95,7 +95,7 @@ Route::prefix('auth')->group(function () {
     Route::post('/register', [AuthController::class, 'register']);
     Route::post('/agent-register', [AuthController::class, 'agentRegister']);
 
-    Route::middleware('auth:sanctum')->group(function () {
+    Route::middleware(['auth:sanctum', 'account-active'])->group(function () {
         Route::post('/logout', [AuthController::class, 'logout']);
         Route::put('/change-password', [AuthController::class, 'changePassword']);
         Route::get('/me', [AuthController::class, 'me']);
@@ -187,7 +187,7 @@ Route::prefix('corporate-inquiries')->middleware('api-key')->group(function () {
 });
 
 // 인증 필요 API
-Route::middleware('auth:sanctum')->group(function () {
+Route::middleware(['auth:sanctum', 'account-active'])->group(function () {
 
     // 관리자 API
     Route::prefix('admin')->middleware('role:ADMIN')->group(function () {
