@@ -452,7 +452,7 @@ class AdminAgentController extends Controller
 
         $adminId = $request->user()->admin->admin_id ?? null;
 
-        $counts = DB::transaction(function () use ($fromAgentId, $toAgentId, $validCustomerIds, $adminId) {
+        $counts = DB::transaction(function () use ($fromAgentId, $toAgentId, $validCustomerIds, $adminId, $fromAgent, $toAgent) {
             $counts = ['customers' => count($validCustomerIds)];
 
             // 1. 고객 담당자 변경
