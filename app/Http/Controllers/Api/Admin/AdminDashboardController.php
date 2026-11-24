@@ -163,10 +163,10 @@ class AdminDashboardController extends Controller
                 GROUP BY agent_id
             ) c ON a.agent_id = c.agent_id
             LEFT JOIN (
-                SELECT assigned_agent_id as agent_id, COUNT(*) as db_count
-                FROM distribution_queue
+                SELECT agent_id, COUNT(*) as db_count
+                FROM customer_assignment
                 WHERE created_at BETWEEN ? AND ?
-                GROUP BY assigned_agent_id
+                GROUP BY agent_id
             ) d ON a.agent_id = d.agent_id
             LEFT JOIN (
                 SELECT agent_id, COUNT(*) as api_count
@@ -218,7 +218,7 @@ class AdminDashboardController extends Controller
 
         return [
             'total_agents' => $totalAgents,
-            'top' => array_slice($top, 0, 5),
+            'top' => $top,
             'needs_care' => array_slice($needsCare, 0, 3),
         ];
     }

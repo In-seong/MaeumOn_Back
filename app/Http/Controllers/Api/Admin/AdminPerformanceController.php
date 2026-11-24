@@ -40,9 +40,14 @@ class AdminPerformanceController extends Controller
             $endDate = Carbon::now()->endOfDay();
         }
 
-        $assignmentQuery = CustomerAssignment::whereBetween('created_at', [$startDate, $endDate]);
-        $contractQuery = Contract::whereBetween('contract_date', [$startDate, $endDate]);
-        $contractAmountQuery = Contract::whereBetween('contract_date', [$startDate, $endDate]);
+        $activeAgentIds = Agent::where('is_active', true)->pluck('agent_id');
+
+        $assignmentQuery = CustomerAssignment::whereBetween('created_at', [$startDate, $endDate])
+            ->whereIn('agent_id', $activeAgentIds);
+        $contractQuery = Contract::whereBetween('contract_date', [$startDate, $endDate])
+            ->whereIn('agent_id', $activeAgentIds);
+        $contractAmountQuery = Contract::whereBetween('contract_date', [$startDate, $endDate])
+            ->whereIn('agent_id', $activeAgentIds);
 
         if ($branchId !== null) {
             $assignmentQuery->whereHas('agent.branches', fn($q) => $q->where('branch.branch_id', $branchId));
