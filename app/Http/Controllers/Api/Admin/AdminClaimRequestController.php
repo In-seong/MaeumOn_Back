@@ -255,8 +255,8 @@ class AdminClaimRequestController extends Controller
                 ->get();
 
             $agentIds = $stats->pluck('assigned_agent_id')->unique();
-            $agents = Agent::whereIn('agent_id', $agentIds)
-                ->select('agent_id', 'name')
+            $agents = Agent::withTrashed()->whereIn('agent_id', $agentIds)
+                ->select('agent_id', 'name', 'is_active', 'deleted_at')
                 ->get()
                 ->keyBy('agent_id');
 
@@ -266,7 +266,8 @@ class AdminClaimRequestController extends Controller
                     $agent = $agents->get($agentId);
                     $grouped[$agentId] = [
                         'agent_id' => $agentId,
-                        'agent_name' => $agent?->name ?? '(알 수 없음)',
+                        'agent_name' => $this->agentDisplayName($agent),
+                        'is_inactive' => $agent && ($agent->deleted_at || !$agent->is_active),
                         'resident' => 0,
                         'distribution' => 0,
                         'corporate' => 0,
@@ -294,10 +295,11 @@ class AdminClaimRequestController extends Controller
             foreach ($corporateStats as $row) {
                 $agentId = $row->agent_id;
                 if (!isset($grouped[$agentId])) {
-                    $agent = Agent::where('agent_id', $agentId)->select('agent_id', 'name')->first();
+                    $agent = Agent::withTrashed()->where('agent_id', $agentId)->select('agent_id', 'name', 'is_active', 'deleted_at')->first();
                     $grouped[$agentId] = [
                         'agent_id' => $agentId,
-                        'agent_name' => $agent?->name ?? '(알 수 없음)',
+                        'agent_name' => $this->agentDisplayName($agent),
+                        'is_inactive' => $agent && ($agent->deleted_at || !$agent->is_active),
                         'resident' => 0,
                         'distribution' => 0,
                         'corporate' => 0,
@@ -327,10 +329,11 @@ class AdminClaimRequestController extends Controller
         foreach ($logCounts as $row) {
             $agentId = $row->agent_id;
             if (!isset($grouped[$agentId])) {
-                $agent = Agent::where('agent_id', $agentId)->select('agent_id', 'name')->first();
+                $agent = Agent::withTrashed()->where('agent_id', $agentId)->select('agent_id', 'name', 'is_active', 'deleted_at')->first();
                 $grouped[$agentId] = [
                     'agent_id' => $agentId,
-                    'agent_name' => $agent?->name ?? '(알 수 없음)',
+                    'agent_name' => $this->agentDisplayName($agent),
+                    'is_inactive' => $agent && ($agent->deleted_at || !$agent->is_active),
                     'resident' => 0,
                     'distribution' => 0,
                     'corporate' => 0,
@@ -360,10 +363,15 @@ class AdminClaimRequestController extends Controller
         $totalRecall = $result->sum('recall');
         $totalReject = $result->sum('reject');
 
-        $hospitals = PartnerHospital::where('is_active', true)
-            ->select('hospital_id', 'hospital_name')
+        $hospitals = PartnerHospital::select('hospital_id', 'hospital_name', 'is_active')
             ->orderBy('hospital_name')
-            ->get();
+            ->get()
+            ->map(function ($h) {
+                if (!$h->is_active) {
+                    $h->hospital_name = $h->hospital_name . ' (비활성)';
+                }
+                return $h;
+            });
 
         $hospitalStats = [];
         if (!$hospitalId) {
@@ -415,7 +423,7 @@ class AdminClaimRequestController extends Controller
                     'total_corporate' => $totalCorporate,
                     'total_recall' => $totalRecall,
                     'total_reject' => $totalReject,
-                    'total' => $totalResident + $totalDistribution + $totalCorporate,
+                    'total' => $totalResident + $totalDistribution + $totalCorporate + $totalReject,
                 ],
                 'hospitals' => $hospitals,
                 'hospital_stats' => $hospitalStats,
@@ -801,5 +809,20 @@ class AdminClaimRequestController extends Controller
             'success' => true,
             'message' => '청구 신청이 삭제되었습니다.',
         ]);
+    }
+
+    private function agentDisplayName(?Agent $agent): string
+    {
+        if (!$agent) {
+            return '(알 수 없음)';
+        }
+        $name = $agent->name;
+        if ($agent->deleted_at) {
+            return $name . ' (삭제됨)';
+        }
+        if (!$agent->is_active) {
+            return $name . ' (비활성)';
+        }
+        return $name;
     }
 }
