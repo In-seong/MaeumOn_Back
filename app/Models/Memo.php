@@ -16,6 +16,8 @@ class Memo extends Model
         'author_type',
         'title',
         'content',
+        'category',
+        'progress',
         'memo_date',
         'attachments',
     ];
