@@ -30,6 +30,7 @@ class Customer extends Model
         'hospital',
         'acquisition_channel',
         'acquisition_note',
+        'category',
         'last_contact_date',
         'is_active',
     ];

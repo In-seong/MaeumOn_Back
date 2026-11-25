@@ -88,6 +88,7 @@ class AgentCustomerController extends Controller
             'hospital' => 'nullable|string|max:100',
             'acquisition_channel' => 'nullable|string|max:50',
             'acquisition_note' => 'nullable|string|max:500',
+            'category' => 'nullable|string|in:상주DB,배분DB,기타',
         ]);
 
         // Customer ID 생성 (C + 7자리 순번)
@@ -237,6 +238,7 @@ class AgentCustomerController extends Controller
             'hospital' => 'nullable|string|max:100',
             'acquisition_channel' => 'nullable|string|max:50',
             'acquisition_note' => 'nullable|string|max:500',
+            'category' => 'nullable|string|in:상주DB,배분DB,기타',
         ]);
 
         // 주민번호/전화번호 하이픈 제거

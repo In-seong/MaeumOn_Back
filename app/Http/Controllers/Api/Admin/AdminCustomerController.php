@@ -101,6 +101,7 @@ class AdminCustomerController extends Controller
             'hospital' => 'nullable|string|max:100',
             'acquisition_channel' => 'nullable|string|max:50',
             'acquisition_note' => 'nullable|string|max:500',
+            'category' => 'nullable|string|in:상주DB,배분DB,기타',
             'agent_id' => 'nullable|string|max:8',
         ]);
 
@@ -196,6 +197,7 @@ class AdminCustomerController extends Controller
             'hospital' => 'nullable|string|max:100',
             'acquisition_channel' => 'nullable|string|max:50',
             'acquisition_note' => 'nullable|string|max:500',
+            'category' => 'nullable|string|in:상주DB,배분DB,기타',
             'agent_id' => 'nullable|string|max:8',
         ]);
 
