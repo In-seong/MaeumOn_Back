@@ -125,6 +125,7 @@
 | hospital | varchar(100) | YES | | | 병원 |
 | acquisition_channel | varchar(50) | YES | | | 고객정보취득경로(병원 등) |
 | acquisition_note | varchar(500) | YES | | | 가입경로 기타 메모 |
+| category | varchar(20) | YES | | NULL | 고객 분류 (상주DB/배분DB/기타) |
 | last_contact_date | date | YES | | | 최근 연락일 |
 | is_active | tinyint(1) | NO | MUL | 1 | |
 | created_at | datetime | NO | | CURRENT_TIMESTAMP | |
@@ -1515,6 +1516,7 @@ FaxClientNC 연동용 테이블. **테이블명 반드시 대문자 유지**.
 **변경 이력**: 2026-08-21 customer 테이블에 acquisition_note VARCHAR(500) NULL 컬럼 추가 (가입경로 기타 메모)
 **변경 이력**: 2026-08-21 account, agent, customer 테이블에 deleted_at TIMESTAMP NULL 컬럼 추가 (3단계 상태관리: 활성화/비활성화/완전삭제)
 **변경 이력**: 2026-11-18 customer_assignment에 confirmed_at DATETIME NULL 컬럼 추가 (설계사 배분 확인 여부 추적)
+**변경 이력**: 2026-11-25 customer 테이블에 category VARCHAR(20) NULL 컬럼 추가 (고객 분류: 상주DB/배분DB/기타)
 
 ---
 
