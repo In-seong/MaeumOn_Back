@@ -152,7 +152,7 @@ class AdminDashboardController extends Controller
                 a.agent_id,
                 a.name,
                 COALESCE(c.contract_count, 0) as contract_count,
-                COALESCE(d.db_count, 0) as db_count,
+                (COALESCE(d.db_count, 0) + COALESCE(r.resident_count, 0) + COALESCE(co.corporate_count, 0)) as db_count,
                 COALESCE(api.api_count, 0) as api_count,
                 COALESCE(cl.claim_count, 0) as claim_count
             FROM agent a
@@ -170,6 +170,20 @@ class AdminDashboardController extends Controller
                 GROUP BY agent_id
             ) d ON a.agent_id = d.agent_id
             LEFT JOIN (
+                SELECT assigned_agent_id as agent_id, COUNT(*) as resident_count
+                FROM claim_request
+                WHERE source_type = 'resident' AND assigned_agent_id IS NOT NULL
+                AND created_at BETWEEN ? AND ?
+                GROUP BY assigned_agent_id
+            ) r ON a.agent_id = r.agent_id
+            LEFT JOIN (
+                SELECT agent_id, COUNT(*) as corporate_count
+                FROM corporate_inquiries
+                WHERE agent_id IS NOT NULL
+                AND assigned_at BETWEEN ? AND ?
+                GROUP BY agent_id
+            ) co ON a.agent_id = co.agent_id
+            LEFT JOIN (
                 SELECT agent_id, COUNT(*) as api_count
                 FROM codef_api_logs
                 WHERE created_at BETWEEN ? AND ?
@@ -186,8 +200,8 @@ class AdminDashboardController extends Controller
             HAVING (contract_count + db_count + api_count + claim_count) > 0
             ORDER BY (COALESCE(c.contract_count,0)*10 + COALESCE(cl.claim_count,0)*3 + COALESCE(api.api_count,0)) DESC
         ", $branchId !== null
-            ? [$start->format('Y-m-d'), $end->format('Y-m-d'), $startStr, $endStr, $startStr, $endStr, $startStr, $endStr, $branchId]
-            : [$start->format('Y-m-d'), $end->format('Y-m-d'), $startStr, $endStr, $startStr, $endStr, $startStr, $endStr]
+            ? [$start->format('Y-m-d'), $end->format('Y-m-d'), $startStr, $endStr, $startStr, $endStr, $startStr, $endStr, $startStr, $endStr, $startStr, $endStr, $branchId]
+            : [$start->format('Y-m-d'), $end->format('Y-m-d'), $startStr, $endStr, $startStr, $endStr, $startStr, $endStr, $startStr, $endStr, $startStr, $endStr]
         );
 
         $top = [];

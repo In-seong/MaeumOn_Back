@@ -5,6 +5,8 @@ namespace App\Http\Controllers\Api\Admin;
 use App\Http\Controllers\Controller;
 use App\Http\Traits\BranchFilterable;
 use App\Models\Agent;
+use App\Models\ClaimRequest;
+use App\Models\CorporateInquiry;
 use App\Models\CustomerAssignment;
 use App\Models\Contract;
 use Illuminate\Http\JsonResponse;
@@ -43,19 +45,30 @@ class AdminPerformanceController extends Controller
         $activeAgentIds = Agent::where('is_active', true)->pluck('agent_id');
 
         $assignmentQuery = CustomerAssignment::whereBetween('created_at', [$startDate, $endDate])
-            ->whereIn('agent_id', $activeAgentIds);
+            ->whereIn('agent_id', $activeAgentIds)
+            ->where('assignment_type', '!=', 'reassign');
         $contractQuery = Contract::whereBetween('contract_date', [$startDate, $endDate])
             ->whereIn('agent_id', $activeAgentIds);
         $contractAmountQuery = Contract::whereBetween('contract_date', [$startDate, $endDate])
+            ->whereIn('agent_id', $activeAgentIds);
+
+        $residentQuery = ClaimRequest::where('source_type', 'resident')
+            ->whereNotNull('assigned_agent_id')
+            ->whereBetween('created_at', [$startDate, $endDate])
+            ->whereIn('assigned_agent_id', $activeAgentIds);
+        $corporateQuery = CorporateInquiry::whereNotNull('agent_id')
+            ->whereBetween('assigned_at', [$startDate, $endDate])
             ->whereIn('agent_id', $activeAgentIds);
 
         if ($branchId !== null) {
             $assignmentQuery->whereHas('agent.branches', fn($q) => $q->where('branch.branch_id', $branchId));
             $contractQuery->whereHas('customer.agent.branches', fn($q) => $q->where('branch.branch_id', $branchId));
             $contractAmountQuery->whereHas('customer.agent.branches', fn($q) => $q->where('branch.branch_id', $branchId));
+            $residentQuery->whereHas('assignedAgent.branches', fn($q) => $q->where('branch.branch_id', $branchId));
+            $corporateQuery->whereHas('agent.branches', fn($q) => $q->where('branch.branch_id', $branchId));
         }
 
-        $totalAssignments = $assignmentQuery->count();
+        $totalAssignments = $assignmentQuery->count() + $residentQuery->count() + $corporateQuery->count();
         $totalContracts = $contractQuery->count();
         $totalContractAmount = $contractAmountQuery->sum('contract_amount');
         $dbProcessingRate = $totalAssignments > 0
@@ -135,13 +148,32 @@ class AdminPerformanceController extends Controller
                 ->where('assignment_type', '!=', 'reassign')
                 ->groupBy('agent_id')
                 ->pluck('cnt', 'agent_id');
+
+            $residentCounts = DB::table('claim_request')
+                ->selectRaw('assigned_agent_id as agent_id, COUNT(*) as cnt')
+                ->where('source_type', 'resident')
+                ->whereNotNull('assigned_agent_id')
+                ->whereBetween('created_at', [$startDate, $endDate])
+                ->whereIn('assigned_agent_id', $agentIds)
+                ->groupBy('assigned_agent_id')
+                ->pluck('cnt', 'agent_id');
+
+            $corporateCounts = DB::table('corporate_inquiries')
+                ->selectRaw('agent_id, COUNT(*) as cnt')
+                ->whereNotNull('agent_id')
+                ->whereBetween('assigned_at', [$startDate, $endDate])
+                ->whereIn('agent_id', $agentIds)
+                ->groupBy('agent_id')
+                ->pluck('cnt', 'agent_id');
         }
 
-        $agents->getCollection()->transform(function ($agent) use ($contractStats, $assignmentCounts) {
+        $agents->getCollection()->transform(function ($agent) use ($contractStats, $assignmentCounts, $residentCounts, $corporateCounts) {
             $cs = $contractStats->get($agent->agent_id);
             $contractCount = $cs ? (int) $cs->contract_count : 0;
             $contractAmount = $cs ? (float) $cs->contract_amount : 0;
-            $dbAssigned = (int) ($assignmentCounts->get($agent->agent_id) ?? 0);
+            $dbAssigned = (int) ($assignmentCounts->get($agent->agent_id) ?? 0)
+                + (int) ($residentCounts->get($agent->agent_id) ?? 0)
+                + (int) ($corporateCounts->get($agent->agent_id) ?? 0);
 
             return [
                 'agent_id' => $agent->agent_id,
@@ -268,17 +300,36 @@ class AdminPerformanceController extends Controller
             ->get()
             ->keyBy(fn ($r) => $r->year . '-' . $r->month);
 
+        $residentByMonth = DB::table('claim_request')
+            ->selectRaw('YEAR(created_at) as year, MONTH(created_at) as month, COUNT(*) as cnt')
+            ->where('source_type', 'resident')
+            ->where('assigned_agent_id', $id)
+            ->where('created_at', '>=', $twelveMonthsAgo)
+            ->groupByRaw('YEAR(created_at), MONTH(created_at)')
+            ->get()
+            ->keyBy(fn ($r) => $r->year . '-' . $r->month);
+
+        $corporateByMonth = DB::table('corporate_inquiries')
+            ->selectRaw('YEAR(assigned_at) as year, MONTH(assigned_at) as month, COUNT(*) as cnt')
+            ->where('agent_id', $id)
+            ->where('assigned_at', '>=', $twelveMonthsAgo)
+            ->groupByRaw('YEAR(assigned_at), MONTH(assigned_at)')
+            ->get()
+            ->keyBy(fn ($r) => $r->year . '-' . $r->month);
+
         $performances = [];
         for ($i = 0; $i < 12; $i++) {
             $date = $now->copy()->subMonths($i);
             $key = $date->year . '-' . $date->month;
             $cs = $contractsByMonth->get($key);
             $as = $assignmentsByMonth->get($key);
+            $rs = $residentByMonth->get($key);
+            $co = $corporateByMonth->get($key);
 
             $performances[] = [
                 'year' => $date->year,
                 'month' => $date->month,
-                'db_assigned_count' => $as ? (int) $as->cnt : 0,
+                'db_assigned_count' => ($as ? (int) $as->cnt : 0) + ($rs ? (int) $rs->cnt : 0) + ($co ? (int) $co->cnt : 0),
                 'contract_count' => $cs ? (int) $cs->contract_count : 0,
                 'contract_amount' => $cs ? (float) $cs->contract_amount : 0,
                 'consultation_count' => 0,
