@@ -166,6 +166,7 @@ class AdminDashboardController extends Controller
                 SELECT agent_id, COUNT(*) as db_count
                 FROM customer_assignment
                 WHERE created_at BETWEEN ? AND ?
+                AND assignment_type != 'reassign'
                 GROUP BY agent_id
             ) d ON a.agent_id = d.agent_id
             LEFT JOIN (

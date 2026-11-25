@@ -352,6 +352,7 @@ class AdminClaimRequestController extends Controller
             if (!isset($row['reject'])) {
                 $row['reject'] = 0;
             }
+            $row['total'] = ($row['resident'] ?? 0) + ($row['distribution'] ?? 0) + ($row['corporate'] ?? 0) + ($row['reject'] ?? 0);
         }
         unset($row);
 

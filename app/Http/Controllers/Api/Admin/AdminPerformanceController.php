@@ -132,6 +132,7 @@ class AdminPerformanceController extends Controller
                 ->selectRaw('agent_id, COUNT(*) as cnt')
                 ->whereBetween('created_at', [$startDate, $endDate])
                 ->whereIn('agent_id', $agentIds)
+                ->where('assignment_type', '!=', 'reassign')
                 ->groupBy('agent_id')
                 ->pluck('cnt', 'agent_id');
         }
@@ -262,6 +263,7 @@ class AdminPerformanceController extends Controller
             ->selectRaw('YEAR(created_at) as year, MONTH(created_at) as month, COUNT(*) as cnt')
             ->where('agent_id', $id)
             ->where('created_at', '>=', $twelveMonthsAgo)
+            ->where('assignment_type', '!=', 'reassign')
             ->groupByRaw('YEAR(created_at), MONTH(created_at)')
             ->get()
             ->keyBy(fn ($r) => $r->year . '-' . $r->month);
