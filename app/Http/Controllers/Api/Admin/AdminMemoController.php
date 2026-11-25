@@ -46,7 +46,7 @@ class AdminMemoController extends Controller
             'files' => 'nullable|array|max:5',
             'files.*' => 'file|max:10240|mimes:jpg,jpeg,png,gif,pdf,heic,heif',
             'category' => 'nullable|string|in:상주DB,배분DB,기타',
-            'progress' => 'nullable|string|in:1차,2차,3차,4차,5차,미해결',
+            'progress' => 'nullable|string|in:1차,2차,3차,4차,5차,체결,미체결',
         ]);
 
         $uploaded = $this->uploadFiles($request, $customerId);
@@ -94,7 +94,7 @@ class AdminMemoController extends Controller
             'files' => 'nullable|array|max:5',
             'files.*' => 'file|max:10240|mimes:jpg,jpeg,png,gif,pdf,heic,heif',
             'category' => 'nullable|string|in:상주DB,배분DB,기타',
-            'progress' => 'nullable|string|in:1차,2차,3차,4차,5차,미해결',
+            'progress' => 'nullable|string|in:1차,2차,3차,4차,5차,체결,미체결',
             'remove_attachments' => 'nullable|array',
             'remove_attachments.*' => 'string',
         ]);
