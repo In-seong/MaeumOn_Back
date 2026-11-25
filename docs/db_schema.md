@@ -667,6 +667,9 @@ DB 배분/회수 이력 로그.
 | title | varchar(200) | YES | | | 메모 제목 |
 | content | text | NO | | | 메모 내용 |
 | memo_date | datetime | NO | MUL | | 메모 날짜 |
+| attachments | longtext | YES | | NULL | S3 첨부파일 JSON |
+| category | varchar(20) | YES | | NULL | 분류 (상주DB/배분DB/기타) |
+| progress | varchar(20) | YES | | NULL | 진도 (1차~5차/체결/미체결) |
 | created_at | datetime | NO | MUL | CURRENT_TIMESTAMP | |
 | updated_at | datetime | YES | | CURRENT_TIMESTAMP ON UPDATE | |
 
@@ -1517,6 +1520,7 @@ FaxClientNC 연동용 테이블. **테이블명 반드시 대문자 유지**.
 **변경 이력**: 2026-08-21 account, agent, customer 테이블에 deleted_at TIMESTAMP NULL 컬럼 추가 (3단계 상태관리: 활성화/비활성화/완전삭제)
 **변경 이력**: 2026-11-18 customer_assignment에 confirmed_at DATETIME NULL 컬럼 추가 (설계사 배분 확인 여부 추적)
 **변경 이력**: 2026-11-25 customer 테이블에 category VARCHAR(20) NULL 컬럼 추가 (고객 분류: 상주DB/배분DB/기타)
+**변경 이력**: 2026-11-25 memo 테이블에 category VARCHAR(20) NULL, progress VARCHAR(20) NULL 컬럼 추가 (메모 분류/진도)
 
 ---
 
