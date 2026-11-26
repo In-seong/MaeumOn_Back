@@ -18,6 +18,7 @@ class AssignmentLog extends Model
         'assignment_id',
         'hospital_id',
         'reason',
+        'notes',
         'created_at',
     ];
 

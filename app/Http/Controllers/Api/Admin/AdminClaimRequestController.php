@@ -8,6 +8,7 @@ use App\Models\Agent;
 use App\Models\AssignmentLog;
 use App\Models\ClaimRequest;
 use App\Models\CorporateInquiry;
+use App\Models\Customer;
 use App\Models\Notification;
 use App\Models\PartnerHospital;
 use App\Services\FcmService;
@@ -516,26 +517,45 @@ class AdminClaimRequestController extends Controller
 
                 $rejectLogs = AssignmentLog::where('agent_id', $agentId)
                     ->whereIn('action', ['reject', 'recall'])
-                    ->where('notes', 'LIKE', '%request_id:%')
                     ->whereBetween('created_at', [$startDate, $endDate])
                     ->get();
 
                 foreach ($rejectLogs as $log) {
-                    if (preg_match('/request_id: (\d+)/', $log->notes, $m)) {
+                    $customerName = null;
+                    $sourceType = null;
+                    $hospitalName = null;
+                    $logHospitalId = $log->hospital_id;
+
+                    if ($log->notes && preg_match('/request_id: (\d+)/', $log->notes, $m)) {
                         $cr = ClaimRequest::with('hospital:hospital_id,hospital_name')->find((int) $m[1]);
                         if (!$cr) continue;
                         if ($hospitalId && $cr->hospital_id != $hospitalId) continue;
                         if ($dbType && in_array($dbType, ['resident', 'distribution']) && $cr->source_type !== $dbType) continue;
-
-                        $allDetails->push([
-                            'customer_name' => $cr->name,
-                            'db_type' => $cr->source_type,
-                            'hospital_name' => $cr->hospital?->hospital_name,
-                            'rejection' => $log->action === 'reject' ? '반려' : '회수',
-                            'assigned_at' => $log->created_at?->format('Y-m-d H:i'),
-                            'memo' => $log->reason,
-                        ]);
+                        $customerName = $cr->name;
+                        $sourceType = $cr->source_type;
+                        $hospitalName = $cr->hospital?->hospital_name;
+                    } elseif ($log->customer_id) {
+                        $customer = Customer::where('customer_id', $log->customer_id)->first();
+                        if (!$customer) continue;
+                        if ($hospitalId && $logHospitalId != $hospitalId) continue;
+                        $customerName = $customer->name;
+                        $sourceType = 'distribution';
+                        if ($logHospitalId) {
+                            $h = PartnerHospital::where('hospital_id', $logHospitalId)->first();
+                            $hospitalName = $h?->hospital_name;
+                        }
+                    } else {
+                        continue;
                     }
+
+                    $allDetails->push([
+                        'customer_name' => $customerName,
+                        'db_type' => $sourceType,
+                        'hospital_name' => $hospitalName,
+                        'rejection' => $log->action === 'reject' ? '반려' : '회수',
+                        'assigned_at' => $log->created_at?->format('Y-m-d H:i'),
+                        'memo' => $log->reason,
+                    ]);
                 }
             }
 
@@ -599,27 +619,46 @@ class AdminClaimRequestController extends Controller
 
                 $rejectLogs = AssignmentLog::where('agent_id', $agent->agent_id)
                     ->whereIn('action', ['reject', 'recall'])
-                    ->where('notes', 'LIKE', '%request_id:%')
                     ->whereBetween('created_at', [$startDate, $endDate])
                     ->get();
 
                 foreach ($rejectLogs as $log) {
-                    if (preg_match('/request_id: (\d+)/', $log->notes, $m)) {
+                    $customerName = null;
+                    $sourceType = null;
+                    $hospitalName = null;
+                    $logHospitalId = $log->hospital_id;
+
+                    if ($log->notes && preg_match('/request_id: (\d+)/', $log->notes, $m)) {
                         $cr = ClaimRequest::with('hospital:hospital_id,hospital_name')->find((int) $m[1]);
                         if (!$cr) continue;
                         if ($hospitalId && $cr->hospital_id != $hospitalId) continue;
                         if ($dbType && in_array($dbType, ['resident', 'distribution']) && $cr->source_type !== $dbType) continue;
-
-                        $allRows->push([
-                            'agent_name' => $agent->name,
-                            'customer_name' => $cr->name,
-                            'db_type' => $cr->source_type,
-                            'hospital_name' => $cr->hospital?->hospital_name,
-                            'rejection' => $log->action === 'reject' ? '반려' : '회수',
-                            'assigned_at' => $log->created_at?->format('Y-m-d H:i'),
-                            'memo' => $log->reason,
-                        ]);
+                        $customerName = $cr->name;
+                        $sourceType = $cr->source_type;
+                        $hospitalName = $cr->hospital?->hospital_name;
+                    } elseif ($log->customer_id) {
+                        $customer = Customer::where('customer_id', $log->customer_id)->first();
+                        if (!$customer) continue;
+                        if ($hospitalId && $logHospitalId != $hospitalId) continue;
+                        $customerName = $customer->name;
+                        $sourceType = 'distribution';
+                        if ($logHospitalId) {
+                            $h = PartnerHospital::where('hospital_id', $logHospitalId)->first();
+                            $hospitalName = $h?->hospital_name;
+                        }
+                    } else {
+                        continue;
                     }
+
+                    $allRows->push([
+                        'agent_name' => $agent->name,
+                        'customer_name' => $customerName,
+                        'db_type' => $sourceType,
+                        'hospital_name' => $hospitalName,
+                        'rejection' => $log->action === 'reject' ? '반려' : '회수',
+                        'assigned_at' => $log->created_at?->format('Y-m-d H:i'),
+                        'memo' => $log->reason,
+                    ]);
                 }
             }
 
@@ -791,6 +830,7 @@ class AdminClaimRequestController extends Controller
             'agent_id' => $agentId,
             'admin_id' => $adminId,
             'assignment_id' => null,
+            'hospital_id' => $claimRequest->hospital_id,
             'reason' => $recallReason ?: null,
             'notes' => "청구배정 {$actionLabel}: {$claimRequest->name} (request_id: {$claimRequest->request_id})",
         ]);
