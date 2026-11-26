@@ -4,9 +4,20 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Spatie\Activitylog\LogOptions;
+use Spatie\Activitylog\Traits\LogsActivity;
 
 class CustomerAssignment extends Model
 {
+    use LogsActivity;
+
+    public function getActivitylogOptions(): LogOptions
+    {
+        return LogOptions::defaults()
+            ->logAll()
+            ->logOnlyDirty()
+            ->dontSubmitEmptyLogs();
+    }
     protected $table = 'customer_assignment';
     protected $primaryKey = 'assignment_id';
 
