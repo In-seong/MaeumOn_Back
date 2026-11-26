@@ -1,8 +1,8 @@
 # MaeumOn DB 스키마 (운영 기준)
 
-> **최종 업데이트**: 2026-11-10
+> **최종 업데이트**: 2026-11-26
 > **DB**: MySQL (MariaDB)
-> **총 테이블**: 73개 (비즈니스 65개 + Laravel 시스템 8개)
+> **총 테이블**: 74개 (비즈니스 65개 + Laravel 시스템 9개)
 
 ---
 
@@ -24,7 +24,7 @@
 15. [개인정보 로그](#15-개인정보-로그) — pii_logs
 16. [CODEF API 사용 로그](#16-codef-api-사용-로그) — codef_api_logs
 17. [사이트 설정](#17-사이트-설정) — site_settings
-13. [Laravel 시스템](#13-laravel-시스템-테이블) — sessions, cache, jobs 등
+13. [Laravel 시스템](#13-laravel-시스템-테이블) — sessions, cache, jobs, activity_log 등
 19. [지사 관리](#19-지사-관리) — branch, agent_branch
 20. [자동배분](#20-자동배분) — distribution_config, distribution_list, distribution_list_item, distribution_queue
 22. [양식 다운로드](#22-양식-다운로드) — form_downloads
@@ -1166,6 +1166,26 @@ FaxClientNC 연동용 테이블. **테이블명 반드시 대문자 유지**.
 | migrations | 마이그레이션 이력 |
 | personal_access_tokens | Sanctum 인증 토큰 |
 | sessions | 세션 저장소 |
+| activity_log | 감사 로그 (spatie/laravel-activitylog) — 주요 모델의 INSERT/UPDATE/DELETE 이력. 변경 전/후 JSON 기록 |
+
+### activity_log 상세
+
+| 컬럼 | 타입 | NULL | Key | Default | 비고 |
+|------|------|------|-----|---------|------|
+| id | bigint | NO | PRI | auto_increment | |
+| log_name | varchar(255) | YES | MUL | | 로그 채널명 |
+| description | text | NO | | | created/updated/deleted |
+| subject_type | varchar(255) | YES | MUL | | 대상 모델 클래스 |
+| subject_id | bigint | YES | | | 대상 레코드 ID |
+| causer_type | varchar(255) | YES | MUL | | 변경자 모델 (Account 등) |
+| causer_id | bigint | YES | | | 변경자 ID |
+| properties | json | YES | | | {old: {...}, attributes: {...}} |
+| event | varchar(255) | YES | | | created/updated/deleted |
+| batch_uuid | char(36) | YES | | | 배치 UUID |
+| created_at | timestamp | YES | | | |
+| updated_at | timestamp | YES | | | |
+
+적용 모델: Contract, Customer, CustomerAssignment, Memo, ClaimRequest, CorporateInquiry, Consultation
 
 ---
 
