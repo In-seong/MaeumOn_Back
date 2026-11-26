@@ -314,6 +314,8 @@ class AgentCustomerController extends Controller
 
         $validated = $request->validate([
             'company_id' => 'required|integer|exists:insurance_company,company_id',
+            'contractor' => 'nullable|string|max:50',
+            'insured_person' => 'nullable|string|max:50',
             'insurance_product' => 'required|string|max:200',
             'contract_number' => 'nullable|string|max:50',
             'contract_amount' => 'nullable|numeric|min:0',
@@ -358,6 +360,8 @@ class AgentCustomerController extends Controller
 
         $validated = $request->validate([
             'company_id' => 'sometimes|integer|exists:insurance_company,company_id',
+            'contractor' => 'nullable|string|max:50',
+            'insured_person' => 'nullable|string|max:50',
             'insurance_product' => 'sometimes|string|max:200',
             'contract_number' => 'nullable|string|max:50',
             'contract_amount' => 'nullable|numeric|min:0',
