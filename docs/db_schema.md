@@ -647,6 +647,7 @@ DB 배분/회수 이력 로그.
 | agent_id | char(8) | NO | MUL | | → agent FK |
 | admin_id | char(8) | YES | | NULL | 실행 관리자 |
 | assignment_id | int(11) | YES | | NULL | → customer_assignment FK |
+| hospital_id | int(11) | YES | | NULL | → partner_hospital FK (반려 시 병원 추적) |
 | reason | varchar(500) | YES | | NULL | 회수 사유 |
 | notes | varchar(500) | YES | | NULL | 부가 메모 (청구배정 회수 등) |
 | created_at | datetime | NO | MUL | CURRENT_TIMESTAMP | |
