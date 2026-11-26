@@ -545,7 +545,9 @@ class AdminClaimRequestController extends Controller
                             $hospitalName = $h?->hospital_name;
                         }
                     } else {
-                        continue;
+                        if ($hospitalId) continue;
+                        $customerName = '(반려 처리됨)';
+                        $sourceType = null;
                     }
 
                     $allDetails->push([
@@ -647,7 +649,9 @@ class AdminClaimRequestController extends Controller
                             $hospitalName = $h?->hospital_name;
                         }
                     } else {
-                        continue;
+                        if ($hospitalId) continue;
+                        $customerName = '(반려 처리됨)';
+                        $sourceType = null;
                     }
 
                     $allRows->push([
