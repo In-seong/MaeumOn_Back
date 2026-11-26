@@ -16,6 +16,7 @@ class AssignmentLog extends Model
         'agent_id',
         'admin_id',
         'assignment_id',
+        'hospital_id',
         'reason',
         'created_at',
     ];

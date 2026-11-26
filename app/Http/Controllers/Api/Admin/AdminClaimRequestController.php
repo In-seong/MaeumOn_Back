@@ -405,12 +405,47 @@ class AdminClaimRequestController extends Controller
                         'hospital_name' => $h?->hospital_name ?? '(알 수 없음)',
                         'resident' => 0,
                         'distribution' => 0,
+                        'reject' => 0,
                         'total' => 0,
                     ];
                 }
                 $hGrouped[$hId][$row->source_type] = ($hGrouped[$hId][$row->source_type] ?? 0) + $row->count;
                 $hGrouped[$hId]['total'] += $row->count;
             }
+
+            $hRejectQuery = AssignmentLog::select('hospital_id', DB::raw('COUNT(*) as count'))
+                ->where('action', 'reject')
+                ->whereNotNull('hospital_id')
+                ->whereBetween('created_at', [$startDate, $endDate]);
+
+            if ($branchId !== null) {
+                $hRejectQuery->whereExists(function ($sub) use ($branchId) {
+                    $sub->select(DB::raw(1))
+                        ->from('agent_branch')
+                        ->whereColumn('agent_branch.agent_id', 'assignment_log.agent_id')
+                        ->where('agent_branch.branch_id', $branchId);
+                });
+            }
+
+            $hRejectStats = $hRejectQuery->groupBy('hospital_id')->get();
+
+            foreach ($hRejectStats as $row) {
+                $hId = $row->hospital_id;
+                if (!isset($hGrouped[$hId])) {
+                    $h = $hospitalMap->get($hId);
+                    $hGrouped[$hId] = [
+                        'hospital_id' => $hId,
+                        'hospital_name' => $h?->hospital_name ?? '(알 수 없음)',
+                        'resident' => 0,
+                        'distribution' => 0,
+                        'reject' => 0,
+                        'total' => 0,
+                    ];
+                }
+                $hGrouped[$hId]['reject'] = (int) $row->count;
+                $hGrouped[$hId]['total'] += $row->count;
+            }
+
             $hospitalStats = collect($hGrouped)->sortByDesc('total')->values();
         }
 

@@ -294,7 +294,16 @@ class AdminAssignmentController extends Controller
 
         $customer = Customer::where('customer_id', $assignment->customer_id)->first();
 
-        DB::transaction(function () use ($assignment, $customer, $agentId, $customerName, $recallReason, $adminId, $actionType, $actionLabel, $isReject) {
+        $hospitalId = null;
+        if ($customer) {
+            $claimRequest = ClaimRequest::where('phone', $customer->phone)
+                ->whereNotNull('hospital_id')
+                ->orderByDesc('created_at')
+                ->first();
+            $hospitalId = $claimRequest?->hospital_id;
+        }
+
+        DB::transaction(function () use ($assignment, $customer, $agentId, $customerName, $recallReason, $adminId, $actionType, $actionLabel, $isReject, $hospitalId) {
             if ($customer) {
                 $customer->update(['agent_id' => null]);
             }
@@ -305,6 +314,7 @@ class AdminAssignmentController extends Controller
                 'agent_id' => $agentId,
                 'admin_id' => $adminId,
                 'assignment_id' => $assignment->assignment_id,
+                'hospital_id' => $hospitalId,
                 'reason' => $recallReason ?: null,
                 'created_at' => now(),
             ]);
