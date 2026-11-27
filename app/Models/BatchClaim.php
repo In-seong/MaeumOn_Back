@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\DB;
 
 class BatchClaim extends Model
 {
@@ -37,7 +38,7 @@ class BatchClaim extends Model
         'completed_count' => 'integer',
     ];
 
-    protected $appends = ['batch_status_label'];
+    protected $appends = ['batch_status_label', 'customer_name'];
 
     public function getBatchStatusLabelAttribute(): string
     {
@@ -49,6 +50,34 @@ class BatchClaim extends Model
             self::STATUS_PARTIAL_FAILED => '일부 실패',
             default => $this->batch_status ?? '알 수 없음',
         };
+    }
+
+    public function getCustomerNameAttribute(): ?string
+    {
+        if ($this->relationLoaded('customer') && $this->customer) {
+            return $this->customer->name;
+        }
+
+        if ($this->customer_id) {
+            $customer = Customer::where('customer_id', $this->customer_id)->first();
+            if ($customer) {
+                return $customer->name;
+            }
+        }
+
+        $firstClaim = $this->claims()->first();
+        if ($firstClaim) {
+            $name = DB::table('claim_field_value')
+                ->join('form_field', 'form_field.form_field_id', '=', 'claim_field_value.form_field_id')
+                ->where('claim_field_value.claim_id', $firstClaim->claim_id)
+                ->where('form_field.standard_field_code', 'CONTRACTOR_NAME')
+                ->value('claim_field_value.field_value');
+            if ($name) {
+                return $name;
+            }
+        }
+
+        return null;
     }
 
     public function customer()

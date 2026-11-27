@@ -416,7 +416,6 @@ class AdminClaimRequestController extends Controller
 
             $hRejectQuery = AssignmentLog::select('hospital_id', DB::raw('COUNT(*) as count'))
                 ->where('action', 'reject')
-                ->whereNotNull('hospital_id')
                 ->whereBetween('created_at', [$startDate, $endDate]);
 
             if ($branchId !== null) {
@@ -431,12 +430,12 @@ class AdminClaimRequestController extends Controller
             $hRejectStats = $hRejectQuery->groupBy('hospital_id')->get();
 
             foreach ($hRejectStats as $row) {
-                $hId = $row->hospital_id;
+                $hId = $row->hospital_id ?? 0;
                 if (!isset($hGrouped[$hId])) {
-                    $h = $hospitalMap->get($hId);
+                    $h = $hId ? $hospitalMap->get($hId) : null;
                     $hGrouped[$hId] = [
-                        'hospital_id' => $hId,
-                        'hospital_name' => $h?->hospital_name ?? '(알 수 없음)',
+                        'hospital_id' => $hId ?: null,
+                        'hospital_name' => $hId ? ($h?->hospital_name ?? '(알 수 없음)') : '(미분류)',
                         'resident' => 0,
                         'distribution' => 0,
                         'reject' => 0,
@@ -528,12 +527,22 @@ class AdminClaimRequestController extends Controller
 
                     if ($log->notes && preg_match('/request_id: (\d+)/', $log->notes, $m)) {
                         $cr = ClaimRequest::with('hospital:hospital_id,hospital_name')->find((int) $m[1]);
-                        if (!$cr) continue;
-                        if ($hospitalId && $cr->hospital_id != $hospitalId) continue;
-                        if ($dbType && in_array($dbType, ['resident', 'distribution']) && $cr->source_type !== $dbType) continue;
-                        $customerName = $cr->name;
-                        $sourceType = $cr->source_type;
-                        $hospitalName = $cr->hospital?->hospital_name;
+                        if ($cr) {
+                            if ($hospitalId && $cr->hospital_id != $hospitalId) continue;
+                            if ($dbType && in_array($dbType, ['resident', 'distribution']) && $cr->source_type !== $dbType) continue;
+                            $customerName = $cr->name;
+                            $sourceType = $cr->source_type;
+                            $hospitalName = $cr->hospital?->hospital_name;
+                        } else {
+                            if ($hospitalId && $logHospitalId != $hospitalId) continue;
+                            preg_match('/: (.+?) \(request_id/', $log->notes, $nm);
+                            $customerName = $nm[1] ?? '(삭제된 청구)';
+                            $sourceType = null;
+                            if ($logHospitalId) {
+                                $h = PartnerHospital::where('hospital_id', $logHospitalId)->first();
+                                $hospitalName = $h?->hospital_name;
+                            }
+                        }
                     } elseif ($log->customer_id) {
                         $customer = Customer::where('customer_id', $log->customer_id)->first();
                         if (!$customer) continue;
@@ -546,7 +555,11 @@ class AdminClaimRequestController extends Controller
                         }
                     } else {
                         if ($hospitalId) continue;
-                        $customerName = '(반려 처리됨)';
+                        if ($log->notes && preg_match('/: (.+?) \(request_id/', $log->notes, $nm)) {
+                            $customerName = $nm[1];
+                        } else {
+                            $customerName = '(반려 처리됨)';
+                        }
                         $sourceType = null;
                     }
 
@@ -632,12 +645,22 @@ class AdminClaimRequestController extends Controller
 
                     if ($log->notes && preg_match('/request_id: (\d+)/', $log->notes, $m)) {
                         $cr = ClaimRequest::with('hospital:hospital_id,hospital_name')->find((int) $m[1]);
-                        if (!$cr) continue;
-                        if ($hospitalId && $cr->hospital_id != $hospitalId) continue;
-                        if ($dbType && in_array($dbType, ['resident', 'distribution']) && $cr->source_type !== $dbType) continue;
-                        $customerName = $cr->name;
-                        $sourceType = $cr->source_type;
-                        $hospitalName = $cr->hospital?->hospital_name;
+                        if ($cr) {
+                            if ($hospitalId && $cr->hospital_id != $hospitalId) continue;
+                            if ($dbType && in_array($dbType, ['resident', 'distribution']) && $cr->source_type !== $dbType) continue;
+                            $customerName = $cr->name;
+                            $sourceType = $cr->source_type;
+                            $hospitalName = $cr->hospital?->hospital_name;
+                        } else {
+                            if ($hospitalId && $logHospitalId != $hospitalId) continue;
+                            preg_match('/: (.+?) \(request_id/', $log->notes, $nm);
+                            $customerName = $nm[1] ?? '(삭제된 청구)';
+                            $sourceType = null;
+                            if ($logHospitalId) {
+                                $h = PartnerHospital::where('hospital_id', $logHospitalId)->first();
+                                $hospitalName = $h?->hospital_name;
+                            }
+                        }
                     } elseif ($log->customer_id) {
                         $customer = Customer::where('customer_id', $log->customer_id)->first();
                         if (!$customer) continue;
@@ -650,7 +673,11 @@ class AdminClaimRequestController extends Controller
                         }
                     } else {
                         if ($hospitalId) continue;
-                        $customerName = '(반려 처리됨)';
+                        if ($log->notes && preg_match('/: (.+?) \(request_id/', $log->notes, $nm)) {
+                            $customerName = $nm[1];
+                        } else {
+                            $customerName = '(반려 처리됨)';
+                        }
                         $sourceType = null;
                     }
 
