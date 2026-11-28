@@ -34,6 +34,7 @@ class Contract extends Model
         'insurance_product',
         'contractor',
         'insured_person',
+        'product_category',
         'payment_method',
         'expiration_date',
         'notes',

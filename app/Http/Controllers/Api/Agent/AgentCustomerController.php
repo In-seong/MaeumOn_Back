@@ -23,7 +23,7 @@ class AgentCustomerController extends Controller
     {
         $agentId = $request->user()->agent->agent_id;
 
-        $eager = [];
+        $eager = ['latestMemo:memo_id,customer_id,progress'];
         if ($request->boolean('export')) {
             $eager[] = 'memos';
         }
@@ -317,6 +317,7 @@ class AgentCustomerController extends Controller
             'company_id' => 'required|integer|exists:insurance_company,company_id',
             'contractor' => 'nullable|string|max:50',
             'insured_person' => 'nullable|string|max:50',
+            'product_category' => 'nullable|string|in:보장성,운전자,실손,종신,화재',
             'insurance_product' => 'required|string|max:200',
             'contract_number' => 'nullable|string|max:50',
             'contract_amount' => 'nullable|numeric|min:0',
@@ -363,6 +364,7 @@ class AgentCustomerController extends Controller
             'company_id' => 'sometimes|integer|exists:insurance_company,company_id',
             'contractor' => 'nullable|string|max:50',
             'insured_person' => 'nullable|string|max:50',
+            'product_category' => 'nullable|string|in:보장성,운전자,실손,종신,화재',
             'insurance_product' => 'sometimes|string|max:200',
             'contract_number' => 'nullable|string|max:50',
             'contract_amount' => 'nullable|numeric|min:0',

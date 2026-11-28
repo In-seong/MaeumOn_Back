@@ -246,6 +246,7 @@ FCM 푸시 알림 토큰. **Model: `FcmToken`** (`app/Models/FcmToken.php`, 2026
 | insurance_product | varchar(200) | YES | | | 보험상품명 |
 | contractor | varchar(50) | YES | | | 계약자 |
 | insured_person | varchar(50) | YES | | | 피보험자 |
+| product_category | varchar(20) | YES | | | 상품군 (보장성/운전자/실손/종신/화재) |
 | expiration_date | date | YES | | | 만기일 |
 | payment_method | varchar(20) | YES | | | 납입 방식 |
 | notes | text | YES | | | |
@@ -1176,9 +1177,9 @@ FaxClientNC 연동용 테이블. **테이블명 반드시 대문자 유지**.
 | log_name | varchar(255) | YES | MUL | | 로그 채널명 |
 | description | text | NO | | | created/updated/deleted |
 | subject_type | varchar(255) | YES | MUL | | 대상 모델 클래스 |
-| subject_id | bigint | YES | | | 대상 레코드 ID |
+| subject_id | varchar(255) | YES | | | 대상 레코드 ID (문자열 PK 대응) |
 | causer_type | varchar(255) | YES | MUL | | 변경자 모델 (Account 등) |
-| causer_id | bigint | YES | | | 변경자 ID |
+| causer_id | varchar(255) | YES | | | 변경자 ID (문자열 PK 대응) |
 | properties | json | YES | | | {old: {...}, attributes: {...}} |
 | event | varchar(255) | YES | | | created/updated/deleted |
 | batch_uuid | char(36) | YES | | | 배치 UUID |
@@ -1342,6 +1343,7 @@ FaxClientNC 연동용 테이블. **테이블명 반드시 대문자 유지**.
 | 2026-08-25 | partner_hospital, health_center에 branch_id INT(11) NULL 컬럼 추가 (관할 지사 지정, FK → branch). PartnerHospital/HealthCenter 모델에 branch() belongsTo 관계 추가. AdminHospitalController/AdminHealthCenterController에 BranchFilterable 적용 + branch_id 저장/필터링. AdminReservationController에 병원/센터 branch_id 기반 필터링 추가 |
 | 2026-11-13 | agent에 birthday_alarm_enabled TINYINT(1) NOT NULL DEFAULT 1 추가 — 설계사별 생일 알림 수신 on/off |
 | 2026-11-13 | maintenance_tasks에 status_reason TEXT NULL 추가 — 태스크 답변/메모/보류 사유 |
+| 2026-11-28 | contract에 product_category VARCHAR(20) NULL 추가 — 상품군 (보장성/운전자/실손/종신/화재) |
 
 ---
 
