@@ -164,7 +164,8 @@ class CustomerAuthController extends Controller
             ]);
         } else {
             // 새 Customer 생성
-            $lastCustomer = Customer::where('customer_id', 'like', 'C%')
+            $lastCustomer = Customer::withTrashed()
+                ->where('customer_id', 'like', 'C%')
                 ->orderByRaw('CAST(SUBSTRING(customer_id, 2) AS UNSIGNED) DESC')
                 ->first();
             $nextNum = $lastCustomer

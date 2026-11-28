@@ -105,8 +105,9 @@ class AdminCustomerController extends Controller
             'agent_id' => 'nullable|string|max:8',
         ]);
 
-        // Customer ID 생성 (C + 7자리 순번)
-        $lastCustomer = Customer::where('customer_id', 'like', 'C%')
+        // Customer ID 생성 (C + 7자리 순번) — 소프트삭제 포함
+        $lastCustomer = Customer::withTrashed()
+            ->where('customer_id', 'like', 'C%')
             ->orderByRaw('CAST(SUBSTRING(customer_id, 2) AS UNSIGNED) DESC')
             ->first();
         $nextNum = $lastCustomer
